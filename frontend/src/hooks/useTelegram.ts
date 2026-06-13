@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 
-// Типы для Telegram WebApp (дополнение к @twa-dev/sdk)
 interface TelegramUser {
   id: number;
   first_name: string;
@@ -12,7 +11,7 @@ interface TelegramUser {
 }
 
 interface UseTelegramReturn {
-  tg: typeof window.Telegram.WebApp | null;
+  tg: TelegramWebApp | null;
   user: TelegramUser | null;
   initData: string;
   colorScheme: "light" | "dark";
@@ -30,15 +29,14 @@ interface UseTelegramReturn {
 
 export const useTelegram = (): UseTelegramReturn => {
   const [isReady, setIsReady] = useState(false);
-  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
+  const tg: TelegramWebApp | null =
+    typeof window !== "undefined" ? (window.Telegram?.WebApp ?? null) : null;
 
   useEffect(() => {
     if (tg) {
       tg.ready();
       tg.expand();
       setIsReady(true);
-
-      // Отслеживаем смену темы
       tg.onEvent("themeChanged", () => {
         document.documentElement.setAttribute(
           "data-theme",
@@ -46,7 +44,6 @@ export const useTelegram = (): UseTelegramReturn => {
         );
       });
     } else {
-      // Вне Telegram (разработка в браузере) — ставим заглушку
       setIsReady(true);
     }
   }, [tg]);
@@ -86,7 +83,9 @@ export const useTelegram = (): UseTelegramReturn => {
     (type: "light" | "medium" | "heavy" | "error" | "success" | "warning") => {
       if (!tg?.HapticFeedback) return;
       if (["error", "success", "warning"].includes(type)) {
-        tg.HapticFeedback.notificationOccurred(type as "error" | "success" | "warning");
+        tg.HapticFeedback.notificationOccurred(
+          type as "error" | "success" | "warning"
+        );
       } else {
         tg.HapticFeedback.impactOccurred(type as "light" | "medium" | "heavy");
       }
