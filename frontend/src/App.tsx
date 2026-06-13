@@ -9,6 +9,7 @@ import Funnels from '@/pages/Funnels';
 import Settings from '@/pages/Settings';
 import Layout from '@/components/Layout';
 import LoadingScreen from '@/components/LoadingScreen';
+import Landing from '@/pages/Landing';
 
 export default function App() {
   const { initData, isReady } = useTelegram();
@@ -26,18 +27,10 @@ export default function App() {
     return <LoadingScreen />;
   }
 
-  // // Если вне Telegram (браузер разработчика) — показываем заглушку
-  // if (!initData && !isAuthenticated) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen bg-tg-bg">
-  //       <div className="text-center p-6">
-  //         <p className="text-2xl mb-2">🤖</p>
-  //         <p className="font-medium text-tg-text">Открывайте через Telegram</p>
-  //         <p className="text-sm text-tg-hint mt-1">Это Telegram Mini App</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  // Вне Telegram — показываем лендинг
+  if (!initData && !isAuthenticated) {
+    return <Landing />;
+  }
 
   return (
     <BrowserRouter>
