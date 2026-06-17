@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
-// import { useAuthStore } from '@/store/authStore';
+import { useInstagram } from '@/hooks/useInstagram';
+import { useTrack } from '@/hooks/useTrack';
 import api from '@/utils/api';
 
 interface DashboardData {
@@ -17,7 +18,8 @@ interface DashboardData {
 
 export default function Dashboard() {
   const { user } = useTelegram();
-  // const { user: profile } = useAuthStore();
+  const { connected, loading: igLoading } = useInstagram();
+  const { track } = useTrack();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +32,10 @@ export default function Dashboard() {
   }, []);
 
   const firstName = user?.first_name || 'Пользователь';
+
+  const handleLockedClick = (label: string) => {
+    track('locked_button_clicked', { button: label });
+  };
 
   return (
     <div className='p-4 space-y-4'>
@@ -59,6 +65,23 @@ export default function Dashboard() {
           {data?.subscription ?? 'free'}
         </span>
       </div>
+
+      {/* Баннер подключения Instagram */}
+      {!igLoading && !connected && (
+        <Link
+          to='/settings'
+          onClick={() => track('connect_banner_clicked')}
+          className='block rounded-2xl p-4 active:opacity-80 transition-opacity'
+          style={{ background: 'rgba(255,149,0,0.12)', border: '1px solid rgba(255,149,0,0.3)' }}
+        >
+          <p className='text-sm font-medium' style={{ color: '#ff9500' }}>
+            ⚠️ Подключите Instagram
+          </p>
+          <p className='text-xs mt-1' style={{ color: 'var(--tg-theme-hint-color)' }}>
+            Чтобы пользоваться задачами, воронками и лидами — привяжите бизнес-аккаунт в Настройках
+          </p>
+        </Link>
+      )}
 
       {/* Карточки статистики */}
       {loading ? (
@@ -120,10 +143,10 @@ export default function Dashboard() {
 
       {/* Быстрые действия */}
       <div className='grid grid-cols-2 gap-3'>
-        <QuickAction to='/tasks' emoji='⚡' label='Новая задача' />
-        <QuickAction to='/funnels' emoji='🎯' label='Воронки' />
-        <QuickAction to='/leads' emoji='👥' label='База лидов' />
-        <QuickAction to='/settings' emoji='⚙️' label='Аккаунты' />
+        <QuickAction to='/tasks' emoji='⚡' label='Новая задача' locked={!connected} onLockedClick={handleLockedClick} />
+        <QuickAction to='/funnels' emoji='🎯' label='Воронки' locked={!connected} onLockedClick={handleLockedClick} />
+        <QuickAction to='/leads' emoji='👥' label='База лидов' locked={!connected} onLockedClick={handleLockedClick} />
+        <QuickAction to='/settings' emoji='⚙️' label='Аккаунты' locked={false} onLockedClick={handleLockedClick} />
       </div>
     </div>
   );
@@ -163,11 +186,34 @@ function QuickAction({
   to,
   emoji,
   label,
+  locked,
+  onLockedClick,
 }: {
   to: string;
   emoji: string;
   label: string;
+  locked: boolean;
+  onLockedClick: (label: string) => void;
 }) {
+  if (locked) {
+    return (
+      <button
+        onClick={() => onLockedClick(label)}
+        className='rounded-2xl p-4 flex items-center gap-3 relative opacity-50 active:opacity-40 transition-opacity'
+        style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+      >
+        <span className='text-2xl'>{emoji}</span>
+        <span
+          className='text-sm font-medium'
+          style={{ color: 'var(--tg-theme-text-color)' }}
+        >
+          {label}
+        </span>
+        <span className='absolute top-2 right-2 text-xs'>🔒</span>
+      </button>
+    );
+  }
+
   return (
     <Link
       to={to}

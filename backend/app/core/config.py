@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # Meta Instagram
     meta_app_id: str = ""
     meta_app_secret: str = ""
+    meta_redirect_uri: str = ""
     meta_webhook_verify_token: str = ""
 
     class Config:
