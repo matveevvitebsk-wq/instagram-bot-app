@@ -4,7 +4,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import get_settings
-from app.api import auth, accounts, tasks, webhooks, analytics
+from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth
 
 settings = get_settings()
 
@@ -42,6 +42,10 @@ app.include_router(tasks.router,     prefix="/api/tasks",     tags=["Tasks"])
 app.include_router(webhooks.router,  prefix="/api/webhooks",  tags=["Webhooks"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 
+
+app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(meta_oauth.router, prefix="/api/auth/meta", tags=["Meta OAuth"])
+app.include_router(telegram_webhook.router, prefix="/api/webhooks", tags=["Telegram"])
 
 @app.get("/health")
 async def health_check():

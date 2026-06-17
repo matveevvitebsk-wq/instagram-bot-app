@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useAuthStore } from '@/store/authStore';
+import { useTrack } from '@/hooks/useTrack';
 import Dashboard from '@/pages/Dashboard';
 import Tasks from '@/pages/Tasks';
 import Leads from '@/pages/Leads';
@@ -12,25 +13,24 @@ import LoadingScreen from '@/components/LoadingScreen';
 import Landing from '@/pages/Landing';
 
 export default function App() {
-  const { initData, isReady } = useTelegram();
+  const { initData, isReady, platform } = useTelegram();
   const { login, isAuthenticated, isLoading } = useAuthStore();
+  const { track } = useTrack();
 
-  // Автоматический вход при открытии Mini App
   useEffect(() => {
     if (isReady && initData && !isAuthenticated) {
       login(initData);
     }
   }, [isReady, initData, isAuthenticated, login]);
 
-  // Пока Telegram SDK инициализируется или идёт авторизация — спиннер
-  if (!isReady || isLoading) {
-    return <LoadingScreen />;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      track('app_opened', { platform });
+    }
+  }, [isAuthenticated]);
 
-  // Вне Telegram — показываем лендинг
-  if (!initData && !isAuthenticated) {
-    return <Landing />;
-  }
+  if (!isReady || isLoading) return <LoadingScreen />;
+  if (!initData && !isAuthenticated) return <Landing />;
 
   return (
     <BrowserRouter>
