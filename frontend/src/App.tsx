@@ -11,11 +11,17 @@ import Settings from '@/pages/Settings';
 import Layout from '@/components/Layout';
 import LoadingScreen from '@/components/LoadingScreen';
 import Landing from '@/pages/Landing';
+import Privacy from '@/pages/Privacy';
+import Terms from '@/pages/Terms';
+
+const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
   const { initData, isReady, platform } = useTelegram();
   const { login, isAuthenticated, isLoading } = useAuthStore();
   const { track } = useTrack();
+
+  const isPublicPath = PUBLIC_PATHS.includes(window.location.pathname);
 
   useEffect(() => {
     if (isReady && initData && !isAuthenticated) {
@@ -29,20 +35,33 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
+  if (isPublicPath) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (!isReady || isLoading) return <LoadingScreen />;
   if (!initData && !isAuthenticated) return <Landing />;
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<Layout />}>
+        <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path='tasks' element={<Tasks />} />
-          <Route path='leads' element={<Leads />} />
-          <Route path='funnels' element={<Funnels />} />
-          <Route path='settings' element={<Settings />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="leads" element={<Leads />} />
+          <Route path="funnels" element={<Funnels />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
-        <Route path='*' element={<Navigate to='/' replace />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
