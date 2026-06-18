@@ -72,7 +72,8 @@ async def meta_oauth_callback(code: str = None, state: str = None, error: str = 
 
     # 3. Сохраняем в Supabase
     sb.table("ig_accounts").upsert({
-        "user_id": profile_id,
+        "owner_id": profile_id,
+        "username": f"ig_{ig_user_id}",
         "page_id": str(ig_user_id),
         "access_token": access_token,
         "is_active": True,
