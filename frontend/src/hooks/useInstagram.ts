@@ -9,7 +9,7 @@ export const useInstagram = () => {
     api.get("/api/accounts/")
       .then((res) => {
         const accounts = res.data.accounts ?? res.data ?? [];
-        setConnected(accounts.length > 0);
+        setConnected(accounts.filter((a: any) => a.is_active).length > 0);
       })
       .catch(() => setConnected(false))
       .finally(() => setLoading(false));
