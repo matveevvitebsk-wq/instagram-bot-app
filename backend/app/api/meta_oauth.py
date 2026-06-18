@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 import httpx
 from app.core.config import get_settings
@@ -17,8 +17,13 @@ SCOPES = "instagram_business_basic,instagram_business_manage_messages,instagram_
 
 @router.get("/url")
 async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
-    """Генерирует ссылку для подключения Instagram аккаунта пользователя."""
-    profile_id = current_user.get("profile_id") or current_user.get("id")
+    sb = get_supabase()
+    # Получаем profile_id из Supabase по telegram_id
+    result = sb.table("customer_profiles").select("id").eq(
+        "telegram_id", current_user["telegram_id"]
+    ).single().execute()
+    profile_id = result.data["id"]
+    print(f"[META OAUTH] Generating URL for profile_id={profile_id}")
     params = (
         f"force_reauth=true"
         f"&client_id={settings.meta_app_id}"
@@ -32,15 +37,19 @@ async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
 
 @router.get("/callback")
 async def meta_oauth_callback(code: str = None, state: str = None, error: str = None):
-    """Принимает code от Instagram, обменивает на access_token, сохраняет аккаунт."""
+    print(f"[META OAUTH] Callback: code={code[:10] if code else None}, state={state}, error={error}")
+
     if error or not code:
         return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=1")
+
+    if not state or state == "None":
+        print(f"[META OAUTH] ERROR: state is empty")
+        return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=2")
 
     profile_id = state
     sb = get_supabase()
 
     async with httpx.AsyncClient() as client:
-        # 1. Обмен code на короткий access_token
         token_resp = await client.post(
             INSTAGRAM_TOKEN_URL,
             data={
@@ -52,13 +61,14 @@ async def meta_oauth_callback(code: str = None, state: str = None, error: str = 
             },
         )
         token_data = token_resp.json()
+        print(f"[META OAUTH] Token response: {token_data}")
+
         if "access_token" not in token_data:
             return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=1")
 
         short_token = token_data["access_token"]
         ig_user_id = token_data.get("user_id")
 
-        # 2. Обмен короткого токена на долгий (60 дней)
         long_resp = await client.get(
             INSTAGRAM_LONG_TOKEN_URL,
             params={
@@ -68,14 +78,14 @@ async def meta_oauth_callback(code: str = None, state: str = None, error: str = 
             },
         )
         long_data = long_resp.json()
+        print(f"[META OAUTH] Long token response: {long_data}")
         access_token = long_data.get("access_token", short_token)
 
-    # 3. Сохраняем в Supabase
     sb.table("ig_accounts").upsert({
         "owner_id": profile_id,
-        "username": f"ig_{ig_user_id}",
         "page_id": str(ig_user_id),
         "access_token": access_token,
+        "username": f"ig_{ig_user_id}",
         "is_active": True,
     }, on_conflict="page_id").execute()
 
