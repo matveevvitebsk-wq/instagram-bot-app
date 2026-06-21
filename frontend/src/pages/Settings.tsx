@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-
-const API = import.meta.env.VITE_API_URL || "https://api.almarathon.com";
+import api from "../utils/api";
 
 interface InstagramAccount {
   username: string;
@@ -18,12 +16,8 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
 
-  const token = localStorage.getItem("jwt_token");
-  const headers = { Authorization: "Bearer " + token };
-
   useEffect(() => {
-    axios
-      .get(API + "/api/accounts/", { headers })
+    api.get("/api/accounts/")
       .then((res) => {
         const active = res.data?.find((a: InstagramAccount) => a.is_active);
         if (active) {
@@ -43,7 +37,7 @@ export default function Settings() {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const res = await axios.get(API + "/api/auth/meta/url", { headers });
+      const res = await api.get("/api/auth/meta/url");
       window.location.href = res.data.url;
     } catch {
       setConnecting(false);
@@ -51,7 +45,7 @@ export default function Settings() {
   };
 
   const handleDisconnect = async () => {
-    await axios.delete(API + "/api/auth/meta/disconnect", { headers });
+    await api.delete("/api/auth/meta/disconnect");
     setAccount(null);
   };
 
@@ -142,3 +136,4 @@ export default function Settings() {
     </div>
   );
 }
+// v3
