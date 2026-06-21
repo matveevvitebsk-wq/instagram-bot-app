@@ -12,8 +12,8 @@ def get_supabase() -> Client:
     Этот ключ обходит RLS политики (использовать только на сервере!).
     """
     return create_client(
-        settings.supabase_url,
-        settings.supabase_service_role_key
+        settings.SUPABASE_URL,
+        settings.SUPABASE_SERVICE_ROLE_KEY
     )
 
 
