@@ -29,6 +29,8 @@ export default defineConfig({
           vendor: ["react", "react-dom", "react-router-dom"],
           twa: ["@twa-dev/sdk"],
         },
+        entryFileNames: "assets/index-v4-[hash].js",
+        chunkFileNames: "assets/[name]-v4-[hash].js",
       },
     },
   },
