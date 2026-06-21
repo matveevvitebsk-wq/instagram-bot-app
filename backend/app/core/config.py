@@ -3,44 +3,62 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    # App
-    environment: str = "development"
-    debug: bool = False
+    # ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМА РАБОТЫ
+    # true  = только тестеры из Meta Console (до 50 чел.), ИП не нужно
+    # false = все пользователи (требует ИП + App Review у Meta)
+    DEVELOPMENT_MODE: bool = True
 
     # Telegram
-    bot_token: str
-    webapp_url: str = ""
-
-    # Supabase
-    supabase_url: str
-    supabase_anon_key: str
-    supabase_service_role_key: str
+    BOT_TOKEN: str
+    WEBAPP_URL: str = "https://almarathon.com"
 
     # JWT
-    jwt_secret: str
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 7  # 7 дней
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_HOURS: int = 24
+
+    # Supabase
+    SUPABASE_URL: str
+    SUPABASE_SERVICE_KEY: str
+
+    # Meta / Instagram
+    META_APP_ID: str = ""
+    META_APP_SECRET: str = ""
+    META_WEBHOOK_VERIFY_TOKEN: str = ""
+    META_REDIRECT_URI: str = "https://api.almarathon.com/api/auth/meta/callback"
 
     # N8n
-    n8n_base_url: str = "http://n8n:5678"
-    n8n_api_key: str = ""
+    N8N_URL: str = "https://n8n.almarathon.com"
+    N8N_API_KEY: str = ""
 
-    # CORS
-    cors_origins: str = "https://t.me,http://localhost:3000"
+    # Debug
+    debug: bool = False
+    cors_origins: str = "https://almarathon.com,https://t.me"
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
 
-    # Meta Instagram
-    meta_app_id: str = ""
-    meta_app_secret: str = ""
-    meta_redirect_uri: str = ""
-    meta_webhook_verify_token: str = ""
+    @property
+    def meta_oauth_scopes(self) -> str:
+        base = (
+            "instagram_business_basic,"
+            "instagram_business_manage_messages,"
+            "instagram_business_manage_comments"
+        )
+        if not self.DEVELOPMENT_MODE:
+            base += ",instagram_business_content_publish"
+        return base
+
+    @property
+    def meta_api_base(self) -> str:
+        return "https://graph.instagram.com"
 
     class Config:
         env_file = ".env"
-        case_sensitive = False
+
+
+settings = Settings()
 
 
 @lru_cache()

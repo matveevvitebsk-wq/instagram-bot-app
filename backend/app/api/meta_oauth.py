@@ -1,92 +1,153 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
-import httpx
-from app.core.config import get_settings
+from app.core.config import settings
 from app.core.security import get_current_user
-from app.core.supabase import get_supabase
+from app.core.supabase import supabase
+import httpx
+from datetime import datetime, timedelta
 
-router = APIRouter()
-settings = get_settings()
-
-INSTAGRAM_OAUTH_URL = "https://www.instagram.com/oauth/authorize"
-INSTAGRAM_TOKEN_URL = "https://api.instagram.com/oauth/access_token"
-INSTAGRAM_LONG_TOKEN_URL = "https://graph.instagram.com/access_token"
-
-SCOPES = "instagram_business_basic,instagram_business_manage_messages,instagram_business_content_publish"
+router = APIRouter(prefix="/api/auth/meta", tags=["meta_oauth"])
 
 
 @router.get("/url")
 async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
-    sb = get_supabase()
-    # Получаем profile_id из Supabase по telegram_id
-    result = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", current_user["telegram_id"]
-    ).single().execute()
-    profile_id = result.data["id"]
-    print(f"[META OAUTH] Generating URL for profile_id={profile_id}")
-    params = (
-        f"force_reauth=true"
-        f"&client_id={settings.meta_app_id}"
-        f"&redirect_uri={settings.meta_redirect_uri}"
+    """
+    Генерирует URL для подключения Instagram через Meta OAuth.
+
+    DEVELOPMENT_MODE=true  — работает только для тестеров из Meta Console.
+    DEVELOPMENT_MODE=false — работает для всех (после ИП + App Review).
+    """
+    profile_id = current_user["profile_id"]
+
+    oauth_url = (
+        f"https://api.instagram.com/oauth/authorize"
+        f"?client_id={settings.META_APP_ID}"
+        f"&redirect_uri={settings.META_REDIRECT_URI}"
+        f"&scope={settings.meta_oauth_scopes}"
         f"&response_type=code"
-        f"&scope={SCOPES}"
         f"&state={profile_id}"
     )
-    return {"url": f"{INSTAGRAM_OAUTH_URL}?{params}"}
+
+    return {
+        "url": oauth_url,
+        "mode": "development" if settings.DEVELOPMENT_MODE else "production",
+        "warning": (
+            "Режим разработки: подключить аккаунт могут только тестеры из Meta Console."
+            if settings.DEVELOPMENT_MODE
+            else None
+        ),
+    }
 
 
 @router.get("/callback")
-async def meta_oauth_callback(code: str = None, state: str = None, error: str = None):
-    print(f"[META OAUTH] Callback: code={code[:10] if code else None}, state={state}, error={error}")
-
-    if error or not code:
-        return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=1")
-
-    if not state or state == "None":
-        print(f"[META OAUTH] ERROR: state is empty")
-        return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=2")
+async def meta_oauth_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    error: str = Query(None),
+    error_reason: str = Query(None),
+):
+    """
+    Callback от Meta после авторизации пользователя.
+    Обменивает code → short-lived token → long-lived token (60 дней).
+    Сохраняет аккаунт в ig_accounts.
+    """
+    # Пользователь отказал
+    if error:
+        return RedirectResponse(
+            f"https://almarathon.com/settings?instagram=error&reason={error_reason or error}"
+        )
 
     profile_id = state
-    sb = get_supabase()
 
     async with httpx.AsyncClient() as client:
+
+        # --- Шаг 1: code → short-lived token (1 час) ---
         token_resp = await client.post(
-            INSTAGRAM_TOKEN_URL,
+            "https://api.instagram.com/oauth/access_token",
             data={
-                "client_id": settings.meta_app_id,
-                "client_secret": settings.meta_app_secret,
+                "client_id": settings.META_APP_ID,
+                "client_secret": settings.META_APP_SECRET,
                 "grant_type": "authorization_code",
-                "redirect_uri": settings.meta_redirect_uri,
+                "redirect_uri": settings.META_REDIRECT_URI,
                 "code": code,
             },
         )
         token_data = token_resp.json()
-        print(f"[META OAUTH] Token response: {token_data}")
 
-        if "access_token" not in token_data:
-            return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_error=1")
+        if "error_message" in token_data or "error" in token_data:
+            error_msg = token_data.get("error_message") or str(token_data.get("error"))
+            return RedirectResponse(
+                f"https://almarathon.com/settings?instagram=error&reason={error_msg}"
+            )
 
         short_token = token_data["access_token"]
-        ig_user_id = token_data.get("user_id")
+        ig_user_id = str(token_data["user_id"])
 
+        # --- Шаг 2: short-lived → long-lived token (60 дней) ---
         long_resp = await client.get(
-            INSTAGRAM_LONG_TOKEN_URL,
+            f"{settings.meta_api_base}/access_token",
             params={
                 "grant_type": "ig_exchange_token",
-                "client_secret": settings.meta_app_secret,
+                "client_secret": settings.META_APP_SECRET,
                 "access_token": short_token,
             },
         )
         long_data = long_resp.json()
-        print(f"[META OAUTH] Long token response: {long_data}")
-        access_token = long_data.get("access_token", short_token)
 
-    sb.table("ig_accounts").upsert({
-        "owner_id": profile_id,
-        "page_id": str(ig_user_id),
-        "access_token": access_token,
-        "username": f"ig_{ig_user_id}",
-        "is_active": True,
-    }, on_conflict="page_id").execute()
+        if "error" in long_data:
+            return RedirectResponse(
+                "https://almarathon.com/settings?instagram=error&reason=token_exchange_failed"
+            )
 
-    return RedirectResponse(url=f"{settings.webapp_url}/settings?ig_success=1")
+        long_token = long_data["access_token"]
+        expires_in = long_data.get("expires_in", 5184000)  # ~60 дней
+
+        # --- Шаг 3: получить данные аккаунта ---
+        me_resp = await client.get(
+            f"{settings.meta_api_base}/{ig_user_id}",
+            params={
+                "fields": "id,username,name,profile_picture_url,followers_count",
+                "access_token": long_token,
+            },
+        )
+        me_data = me_resp.json()
+
+    # --- Шаг 4: сохранить в Supabase ---
+    token_expires_at = (
+        datetime.utcnow() + timedelta(seconds=expires_in)
+    ).isoformat()
+
+    supabase.table("ig_accounts").upsert(
+        {
+            "owner_id": profile_id,
+            "page_id": ig_user_id,
+            "username": me_data.get("username", ""),
+            "display_name": me_data.get("name", ""),
+            "profile_picture_url": me_data.get("profile_picture_url", ""),
+            "followers_count": me_data.get("followers_count", 0),
+            "access_token": long_token,
+            "token_expires_at": token_expires_at,
+            "is_active": True,
+            "mode": "development" if settings.DEVELOPMENT_MODE else "production",
+        },
+        on_conflict="owner_id,page_id",
+    ).execute()
+
+    # --- Шаг 5: редирект обратно в Mini App ---
+    return RedirectResponse(
+        f"https://almarathon.com/settings?instagram=connected&username={me_data.get('username', '')}"
+    )
+
+
+@router.delete("/disconnect")
+async def disconnect_instagram(current_user: dict = Depends(get_current_user)):
+    """
+    Деактивирует Instagram аккаунт (is_active=false), токен не удаляет.
+    """
+    profile_id = current_user["profile_id"]
+
+    supabase.table("ig_accounts").update({"is_active": False}).eq(
+        "owner_id", profile_id
+    ).execute()
+
+    return {"status": "disconnected"}
