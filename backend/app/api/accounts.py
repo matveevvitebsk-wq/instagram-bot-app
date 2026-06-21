@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import Optional
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class LinkAccountRequest(BaseModel):
@@ -17,10 +18,15 @@ async def list_accounts(current_user: dict = Depends(get_current_user)):
     profile = sb.table("customer_profiles").select("id").eq(
         "telegram_id", current_user["telegram_id"]
     ).single().execute()
-    result = sb.table("ig_accounts").select("id,username,page_id,is_active,created_at").eq(
+    result = sb.table("ig_accounts").select(
+        "id,username,display_name,page_id,is_active,created_at,"
+        "profile_picture_url,followers_count,mode"
+    ).eq(
         "owner_id", profile.data["id"]
     ).eq("is_active", True).execute()
-    return {"accounts": result.data}
+    logger.info(f"[ACCOUNTS] Returning: {result.data}")
+    print(f"[ACCOUNTS] Returning: {result.data}", flush=True)
+    return result.data
 
 @router.post("/")
 async def link_account(

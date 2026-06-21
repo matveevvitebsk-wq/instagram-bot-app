@@ -1,52 +1,32 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from contextlib import asynccontextmanager
+from app.api import auth, accounts, tasks, webhooks, analytics, events
+from app.api import meta_oauth
+from app.core.config import settings
 
-from app.core.config import get_settings
-from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth
+app = FastAPI(title="MediaHave API", version="1.0.0")
 
-settings = get_settings()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Запуск и остановка фоновых сервисов."""
-    print("🚀 Backend запущен")
-    yield
-    print("🛑 Backend остановлен")
-
-
-app = FastAPI(
-    title="Instagram Automation API",
-    version="1.0.0",
-    description="Бэкенд для автоматизации Instagram через Telegram Mini App",
-    docs_url="/docs" if settings.debug else None,
-    redoc_url="/redoc" if settings.debug else None,
-    lifespan=lifespan,
-)
-
-# ─── Middleware ───────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["https://almarathon.com", "https://t.me"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ─── Роуты ───────────────────────────────────────────────────────────────
-app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])
-app.include_router(accounts.router,  prefix="/api/accounts",  tags=["Accounts"])
-app.include_router(tasks.router,     prefix="/api/tasks",     tags=["Tasks"])
-app.include_router(webhooks.router,  prefix="/api/webhooks",  tags=["Webhooks"])
-app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(auth.router)
+app.include_router(accounts.router)
+app.include_router(tasks.router)
+app.include_router(webhooks.router)
+app.include_router(analytics.router)
+app.include_router(events.router)
+app.include_router(meta_oauth.router)  # Meta OAuth
 
-
-app.include_router(events.router, prefix="/api/events", tags=["Events"])
-app.include_router(meta_oauth.router, prefix="/api/auth/meta", tags=["Meta OAuth"])
-app.include_router(telegram_webhook.router, prefix="/api/webhooks", tags=["Telegram"])
 
 @app.get("/health")
-async def health_check():
-    return {"status": "ok", "version": "1.0.0"}
+async def health():
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "mode": "development" if settings.DEVELOPMENT_MODE else "production",
+    }
