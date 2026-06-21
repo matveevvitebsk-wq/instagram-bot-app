@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from app.core.config import settings
 from app.core.security import get_current_user
-from app.core.supabase import supabase
+from app.core.supabase import get_supabase
 import httpx
 from datetime import datetime, timedelta
 
@@ -17,7 +17,12 @@ async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
     DEVELOPMENT_MODE=true  — работает только для тестеров из Meta Console.
     DEVELOPMENT_MODE=false — работает для всех (после ИП + App Review).
     """
-    profile_id = current_user["profile_id"]
+    sb = get_supabase()
+    telegram_id = current_user["telegram_id"]
+    profile = sb.table("customer_profiles").select("id").eq(
+        "telegram_id", telegram_id
+    ).single().execute()
+    profile_id = profile.data["id"]
 
     oauth_url = (
         f"https://api.instagram.com/oauth/authorize"
@@ -117,7 +122,7 @@ async def meta_oauth_callback(
         datetime.utcnow() + timedelta(seconds=expires_in)
     ).isoformat()
 
-    supabase.table("ig_accounts").upsert(
+    get_supabase().table("ig_accounts").upsert(
         {
             "owner_id": profile_id,
             "page_id": ig_user_id,
@@ -144,9 +149,14 @@ async def disconnect_instagram(current_user: dict = Depends(get_current_user)):
     """
     Деактивирует Instagram аккаунт (is_active=false), токен не удаляет.
     """
-    profile_id = current_user["profile_id"]
+    sb = get_supabase()
+    telegram_id = current_user["telegram_id"]
+    profile = sb.table("customer_profiles").select("id").eq(
+        "telegram_id", telegram_id
+    ).single().execute()
+    profile_id = profile.data["id"]
 
-    supabase.table("ig_accounts").update({"is_active": False}).eq(
+    sb.table("ig_accounts").update({"is_active": False}).eq(
         "owner_id", profile_id
     ).execute()
 

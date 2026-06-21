@@ -52,7 +52,7 @@ def verify_telegram_init_data(init_data: str) -> dict:
         # Секретный ключ = HMAC-SHA256("WebAppData", bot_token)
         secret_key = hmac.new(
             b"WebAppData",
-            settings.bot_token.encode(),
+            settings.BOT_TOKEN.encode(),
             hashlib.sha256
         ).digest()
 
@@ -87,11 +87,11 @@ def create_access_token(user_data: dict) -> str:
         "first_name": user_data.get("first_name", ""),
         "username": user_data.get("username", ""),
         "exp": datetime.now(timezone.utc) + timedelta(
-            minutes=settings.jwt_expire_minutes
+            minutes=settings.JWT_EXPIRE_HOURS * 60
         ),
         "iat": datetime.now(timezone.utc),
     }
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
@@ -99,8 +99,8 @@ def decode_access_token(token: str) -> dict:
     try:
         payload = jwt.decode(
             token,
-            settings.jwt_secret,
-            algorithms=[settings.jwt_algorithm]
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
         )
         return payload
     except JWTError:

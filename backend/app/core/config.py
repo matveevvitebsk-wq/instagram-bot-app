@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Supabase
     SUPABASE_URL: str
-    SUPABASE_SERVICE_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: str
 
     # Meta / Instagram
     META_APP_ID: str = ""
