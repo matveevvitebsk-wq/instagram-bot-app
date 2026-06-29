@@ -18,26 +18,38 @@ instagram-bot-app/
 ├── frontend/               # React + Vite + Tailwind (Telegram Mini App)
 │   ├── src/
 │   │   ├── pages/
+│   │   │   ├── Landing.tsx      # Публичный экран вне Telegram Mini App
 │   │   │   ├── Dashboard.tsx    # Главный экран, статистика
 │   │   │   ├── Tasks.tsx        # Создание и управление задачами
 │   │   │   ├── Leads.tsx        # Лиды из Instagram
 │   │   │   ├── Funnels.tsx      # Управление воронками
-│   │   │   └── Settings.tsx     # Привязка аккаунта
+│   │   │   ├── Settings.tsx     # Привязка аккаунта
+│   │   │   ├── Privacy.tsx      # Политика конфиденциальности
+│   │   │   └── Terms.tsx        # Условия использования
 │   │   ├── components/
 │   │   │   ├── Layout.tsx       # Нижняя навигация (cross-platform)
 │   │   │   └── LoadingScreen.tsx
 │   │   ├── hooks/
-│   │   │   └── useTelegram.ts   # Обёртка Telegram WebApp API
+│   │   │   ├── useTelegram.ts   # Обёртка Telegram WebApp API
+│   │   │   ├── useInstagram.ts  # Проверка подключения Instagram аккаунта
+│   │   │   └── useTrack.ts      # Отправка событий аналитики в backend
 │   │   ├── store/
 │   │   │   └── authStore.ts     # Zustand: состояние авторизации
 │   │   ├── utils/
 │   │   │   └── api.ts           # Axios + JWT interceptor
 │   │   ├── App.tsx              # Роутер + auth guard
 │   │   ├── main.tsx             # Точка входа, init Telegram
-│   │   └── index.css            # Telegram CSS переменные
+│   │   ├── index.css            # Telegram CSS переменные
+│   │   └── vite-env.d.ts        # Типы Vite
 │   ├── index.html               # ВАЖНО: telegram-web-app.js первым!
+│   ├── Dockerfile               # Сборка frontend-контейнера
+│   ├── nginx-spa.conf           # Nginx конфиг для SPA
 │   ├── vite.config.ts
 │   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── package-lock.json
 │   └── package.json
 │
 ├── backend/                # FastAPI (Python 3.12)
@@ -47,7 +59,10 @@ instagram-bot-app/
 │   │   │   ├── accounts.py      # CRUD Instagram аккаунтов
 │   │   │   ├── tasks.py         # Задачи автоматизации
 │   │   │   ├── webhooks.py      # Callbacks от N8n и Meta
-│   │   │   └── analytics.py     # Аналитика дашборда
+│   │   │   ├── analytics.py     # Аналитика дашборда
+│   │   │   ├── events.py        # Приём событий трекинга frontend
+│   │   │   ├── meta_oauth.py    # OAuth-подключение Meta / Instagram
+│   │   │   └── telegram_webhook.py # Telegram webhook endpoints
 │   │   ├── core/
 │   │   │   ├── config.py        # Pydantic Settings (.env)
 │   │   │   ├── security.py      # Telegram verify + JWT
@@ -56,8 +71,8 @@ instagram-bot-app/
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── n8n/
-│   └── workflows/          # JSON экспорты N8n workflow
+├── n8n/                    # Каталог для JSON экспортов N8n workflow
+│   └── (workflows не добавлены в репозиторий)
 │
 ├── nginx/
 │   └── nginx.conf          # Reverse proxy + SSL
@@ -120,6 +135,7 @@ cp .env.example .env
 2. `/newbot` → дайте имя → получите токен → `BOT_TOKEN=...`
 3. `/newapp` → выберите бота → укажите URL вашего приложения → `WEBAPP_URL=...`
 4. Для локальной разработки используйте **ngrok**:
+
    ```bash
    # Windows:
    choco install ngrok   # или скачайте с ngrok.com
@@ -129,6 +145,7 @@ cp .env.example .env
    brew install ngrok
    ngrok http 3000
    ```
+
    Полученный `https://xxxx.ngrok.io` → установите как WEBAPP_URL в @BotFather
 
 ---
@@ -136,6 +153,7 @@ cp .env.example .env
 ## Шаг 5 — Локальная разработка
 
 ### Вариант A — через VS Code Tasks (рекомендуется):
+
 - `Ctrl+Shift+B` → выберите нужную задачу
 
 ### Вариант B — вручную в терминале:
@@ -165,6 +183,7 @@ npm run dev
 (нормально! Mini App работает только внутри Telegram).
 
 ### Тестирование в Telegram (локально):
+
 1. Запустите ngrok: `ngrok http 3000`
 2. Установите полученный URL в @BotFather как WebApp URL
 3. Откройте бота в Telegram → кнопка открытия Mini App
@@ -198,21 +217,22 @@ docker compose logs -f backend
 
 ## Что было исправлено из вашего проекта
 
-| Проблема | Решение |
-|---|---|
-| `verify_token` хардкодом в N8n If3 ноде | Вынесен в `.env` → `META_WEBHOOK_VERIFY_TOKEN` |
-| Нет авторизации через Telegram | Добавлена полная верификация `initData` по HMAC-SHA256 |
-| Нет таблицы `automation_tasks` | SQL миграция в `docs/supabase_migrations.sql` |
-| `customer_profiles` без `telegram_id` | `ALTER TABLE` добавляет нужные колонки |
-| Токен Instagram хранится открытым | Комментарий с pgcrypto шифрованием |
-| N8n доступен напрямую без auth | Nginx проксирует, N8n за Basic Auth |
-| Нет обратной связи N8n → Telegram | `POST /api/webhooks/n8n/callback` отправляет push |
+| Проблема                                | Решение                                                |
+| --------------------------------------- | ------------------------------------------------------ |
+| `verify_token` хардкодом в N8n If3 ноде | Вынесен в `.env` → `META_WEBHOOK_VERIFY_TOKEN`         |
+| Нет авторизации через Telegram          | Добавлена полная верификация `initData` по HMAC-SHA256 |
+| Нет таблицы `automation_tasks`          | SQL миграция в `docs/supabase_migrations.sql`          |
+| `customer_profiles` без `telegram_id`   | `ALTER TABLE` добавляет нужные колонки                 |
+| Токен Instagram хранится открытым       | Комментарий с pgcrypto шифрованием                     |
+| N8n доступен напрямую без auth          | Nginx проксирует, N8n за Basic Auth                    |
+| Нет обратной связи N8n → Telegram       | `POST /api/webhooks/n8n/callback` отправляет push      |
 
 ---
 
 ## Платформенная совместимость
 
 Mini App корректно работает на всех платформах через:
+
 - `tg.expand()` — полноэкранный режим
 - `safe-area-inset-*` — учёт iPhone notch, Android навигации
 - CSS переменные `--tg-theme-*` — автоматическая тёмная/светлая тема
