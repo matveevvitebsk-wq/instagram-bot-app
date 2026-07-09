@@ -60,7 +60,7 @@ export default function Funnels() {
 
   async function toggleFunnel(id: string) {
     try {
-      const res = await api.patch(\`/api/funnels/\${id}/toggle\`);
+      const res = await api.patch(`\/api/funnels/\${id}/toggle\`);
       setFunnels((prev) => prev.map((f) => f.id === id ? { ...f, is_active: res.data.is_active } : f));
     } catch { setError("Не удалось изменить статус"); }
   }
