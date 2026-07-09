@@ -1,4 +1,8 @@
+import { useState } from 'react';
+
 export default function Landing() {
+  const [showTestModal, setShowTestModal] = useState(false);
+
   return (
     <>
       <style>{`
@@ -254,73 +258,218 @@ export default function Landing() {
           h1 { letter-spacing: -1px; }
         }
 
+        /* Модалка */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          background: rgba(10,10,15,0.7);
+          animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(24px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-card {
+          background: linear-gradient(145deg, #1a1a2e, #16162a);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 24px;
+          padding: 40px 32px 32px;
+          max-width: 400px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 0 80px rgba(99,102,241,0.15), 0 0 200px rgba(236,72,153,0.05);
+          animation: slideUp 0.3s ease;
+          position: relative;
+        }
+
+        .modal-icon-wrap {
+          width: 72px;
+          height: 72px;
+          margin: 0 auto 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(236,72,153,0.15));
+          border: 1px solid rgba(99,102,241,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 32px;
+        }
+
+        .modal-title {
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 20px;
+          font-weight: 700;
+          margin-bottom: 10px;
+          background: linear-gradient(135deg, #a5b4fc, #ec4899);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .modal-desc {
+          font-size: 14px;
+          color: #9ca3af;
+          line-height: 1.6;
+          margin-bottom: 28px;
+        }
+
+        .modal-close-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 28px;
+          border-radius: 12px;
+          font-family: 'Inter', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: #fff;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          border: none;
+          cursor: pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+          box-shadow: 0 0 30px rgba(99,102,241,0.25);
+        }
+
+        .modal-close-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 0 45px rgba(99,102,241,0.4);
+        }
+
+        .modal-close-btn:active {
+          transform: translateY(0);
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .dot { animation: none; }
           .cta-btn { transition: none; }
+          .modal-overlay { animation: none; }
+          .modal-card { animation: none; }
         }
       `}</style>
 
-      <div className="landing">
-        <div className="grid-bg" />
-        <div className="glow" />
-        <div className="glow-2" />
+      <div className='landing'>
+        <div className='grid-bg' />
+        <div className='glow' />
+        <div className='glow-2' />
 
         {/* Навбар */}
         <nav>
-          <span className="logo">MediaHave</span>
-          <span className="nav-badge">Beta</span>
+          <span className='logo'>MediaHave</span>
+          <span className='nav-badge'>Beta</span>
         </nav>
 
         {/* Герой */}
-        <section className="hero">
-          <div className="hero-tag">
-            <span className="dot" />
+        <section className='hero'>
+          <div className='hero-tag'>
+            <span className='dot' />
             Работает прямо в Telegram
           </div>
 
           <h1>
             Соцсети на
             <br />
-            <span className="accent">автопилоте</span>
+            <span className='accent'>автопилоте</span>
           </h1>
 
-          <p className="subtitle">
-            Автоматизируйте Instagram: воронки, ответы в Direct,
-            публикации и аналитику — всё через Telegram бот.
-            Скоро больше платформ.
+          <p className='subtitle'>
+            Автоматизируйте Instagram: воронки, ответы в Direct, публикации и
+            аналитику — всё через Telegram бот. Скоро больше платформ.
           </p>
 
-          <a
-            // href="https://t.me/mediahave_bot"
-            className="cta-btn"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            className='cta-btn'
+            onClick={() => setShowTestModal(true)}
+            type='button'
           >
-            <svg className="tg-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.17 13.857l-2.965-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.983.702z"/>
+            <svg
+              className='tg-icon'
+              viewBox='0 0 24 24'
+              xmlns='http://www.w3.org/2000/svg'
+            >
+              <path d='M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.17 13.857l-2.965-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.983.702z' />
             </svg>
             Открыть в Telegram
-          </a>
+          </button>
         </section>
 
         {/* Фичи */}
-        <div className="features">
+        <div className='features'>
           {[
-            { icon: "🎯", title: "Ключевые воронки", desc: "Пользователь пишет слово — бот автоматически отправляет нужный материал в Direct" },
-            { icon: "💬", title: "Авто-ответы в DM", desc: "Отвечайте на сообщения 24/7 без участия менеджера" },
-            { icon: "📸", title: "Публикации по расписанию", desc: "Планируйте посты и Stories заранее, выходите в эфир вовремя" },
-            { icon: "📊", title: "Аналитика с AI", desc: "Инсайты по аудитории и эффективности воронок каждую неделю" },
+            {
+              icon: '🎯',
+              title: 'Ключевые воронки',
+              desc: 'Пользователь пишет слово — бот автоматически отправляет нужный материал в Direct',
+            },
+            {
+              icon: '💬',
+              title: 'Авто-ответы в DM',
+              desc: 'Отвечайте на сообщения 24/7 без участия менеджера',
+            },
+            {
+              icon: '📸',
+              title: 'Публикации по расписанию',
+              desc: 'Планируйте посты и Stories заранее, выходите в эфир вовремя',
+            },
+            {
+              icon: '📊',
+              title: 'Аналитика с AI',
+              desc: 'Инсайты по аудитории и эффективности воронок каждую неделю',
+            },
           ].map((f) => (
-            <div key={f.title} className="feature-card">
-              <span className="feature-icon">{f.icon}</span>
-              <div className="feature-title">{f.title}</div>
-              <div className="feature-desc">{f.desc}</div>
+            <div key={f.title} className='feature-card'>
+              <span className='feature-icon'>{f.icon}</span>
+              <div className='feature-title'>{f.title}</div>
+              <div className='feature-desc'>{f.desc}</div>
             </div>
           ))}
         </div>
 
+        {/* Модалка */}
+        {showTestModal && (
+          <div
+            className='modal-overlay'
+            onClick={() => setShowTestModal(false)}
+          >
+            <div className='modal-card' onClick={(e) => e.stopPropagation()}>
+              <div className='modal-icon-wrap'>🚧</div>
+              <div className='modal-title'>Сайт в тестовом режиме</div>
+              <div className='modal-desc'>
+                Мы дорабатываем приложение перед запуском. Скоро вы сможете
+                воспользоваться всеми функциями прямо в Telegram.
+              </div>
+              <button
+                className='modal-close-btn'
+                onClick={() => setShowTestModal(false)}
+                type='button'
+              >
+                Понятно
+              </button>
+            </div>
+          </div>
+        )}
+
         <footer>
-          © 2025 MediaHave · <a href="https://t.me/mediahave_bot" style={{color:"#6366f1",textDecoration:"none"}}>@mediahave_bot</a>
+          © 2025 MediaHave ·{' '}
+          <a
+            href='https://t.me/mediahave_bot'
+            style={{ color: '#6366f1', textDecoration: 'none' }}
+          >
+            @mediahave_bot
+          </a>
         </footer>
       </div>
     </>
