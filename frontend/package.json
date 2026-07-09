@@ -10,13 +10,13 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.46.1",
     "@twa-dev/sdk": "^7.10.0",
     "axios": "^1.7.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
-    "zustand": "^5.0.1",
-    "@supabase/supabase-js": "^2.46.1"
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",
