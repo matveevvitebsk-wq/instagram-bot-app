@@ -291,7 +291,7 @@ export default function Landing() {
           </p>
 
           <a
-            href="https://t.me/mediahave_bot"
+            // href="https://t.me/mediahave_bot"
             className="cta-btn"
             target="_blank"
             rel="noopener noreferrer"
