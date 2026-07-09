@@ -15,10 +15,16 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
+    // 1. УДАЛИТЕ (или закомментируйте) эти две строки:
+    // "baseUrl": "./",
+    // "ignoreDeprecations": "6.0",
+
+    // 2. Если у вас используются абсолютные импорты,
+    // настройте современный маппинг через paths (без baseUrl):
     "paths": {
-      "@/*": ["src/*"]
+      "*": ["./node_modules/*", "./src/*"]
+      // "paths": {
+      //   "@/*": ["src/*"]
     }
   },
   "include": ["src"],
