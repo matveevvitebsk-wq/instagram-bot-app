@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import get_settings
-from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth,
-    funnels
+from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels
 
 settings = get_settings()
 
