@@ -19,3 +19,7 @@ hdocker compose down
 docker compose up -d --build
 docker compose ps -a
 sudo systemctl restart docker
+
+
+Эта команда сразу выведет топ-20 процессов, отсортированных по максимальной нагрузке на процессор.
+top -b -n 1 -o %CPU | head -n 20
