@@ -7,11 +7,15 @@ docker build --no-cache -t n8n-backend:latest ./backend
 docker build --no-cache -t n8n-frontend:latest ./frontend
 
 docker compose up -d --force-recreate backend frontend
-
+Проверьте статус
 docker compose ps
 
-docker compose logs -f backend
-
 docker compose up -d --build
-
+Запустите контейнеры
 docker compose up -d
+
+
+hdocker compose down
+docker compose up -d --build
+docker compose ps -a
+sudo systemctl restart docker
