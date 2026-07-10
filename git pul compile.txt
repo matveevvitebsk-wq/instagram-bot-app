@@ -1,0 +1,17 @@
+cd /opt/instagram-bot/instagram-bot-app
+
+git pull origin main
+
+docker build --no-cache -t n8n-backend:latest ./backend
+
+docker build --no-cache -t n8n-frontend:latest ./frontend
+
+docker compose up -d --force-recreate backend frontend
+
+docker compose ps
+
+docker compose logs -f backend
+
+docker compose up -d --build
+
+docker compose up -d
