@@ -465,7 +465,8 @@ export default function Landing() {
         <footer>
           © 2025 MediaHave ·{' '}
           <a
-            href='https://t.me/mediahave_bot'
+            // href='https://t.me/mediahave_bot'
+            href=''
             style={{ color: '#6366f1', textDecoration: 'none' }}
           >
             @mediahave_bot
