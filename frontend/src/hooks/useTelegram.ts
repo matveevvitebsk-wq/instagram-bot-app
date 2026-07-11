@@ -25,6 +25,10 @@ interface UseTelegramReturn {
   showConfirm: (text: string, callback: (confirmed: boolean) => void) => void;
   hapticFeedback: (type: "light" | "medium" | "heavy" | "error" | "success" | "warning") => void;
   closeApp: () => void;
+  // НОВОЕ: открывает ссылку в системном браузере (Safari/Chrome), а не в WebView Mini App.
+  // ОБЯЗАТЕЛЬНО использовать для любых внешних OAuth-редиректов (Meta/Instagram и т.д.) —
+  // window.location.href внутри Telegram WebView для внешних доменов не работает надёжно.
+  openLink: (url: string) => void;
 }
 
 export const useTelegram = (): UseTelegramReturn => {
@@ -93,6 +97,21 @@ export const useTelegram = (): UseTelegramReturn => {
     [tg]
   );
 
+  // НОВОЕ: openLink — правильный способ покидать Mini App для внешних OAuth-флоу.
+  // tg.openLink() открывает системный браузер (или Telegram in-app browser с try_instant_view: false),
+  // что даёт Meta/Instagram нормальный user-agent и позволяет OAuth пройти корректно.
+  // Вне Telegram (разработка в обычном браузере) — фолбэк на window.open.
+  const openLink = useCallback(
+    (url: string) => {
+      if (tg?.openLink) {
+        tg.openLink(url, { try_instant_view: false });
+      } else {
+        window.open(url, "_blank");
+      }
+    },
+    [tg]
+  );
+
   return {
     tg,
     user: (tg?.initDataUnsafe?.user as TelegramUser) ?? null,
@@ -108,5 +127,6 @@ export const useTelegram = (): UseTelegramReturn => {
     showConfirm: (text, cb) => tg?.showConfirm(text, cb),
     hapticFeedback,
     closeApp: () => tg?.close(),
+    openLink,
   };
 };
