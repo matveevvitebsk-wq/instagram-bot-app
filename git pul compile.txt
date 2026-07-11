@@ -1,12 +1,21 @@
 cd /opt/instagram-bot/instagram-bot-app
 
+# 1. Подтягиваем актуальный код (если были изменения в Git)
 git pull origin main
 
+# 2. Пересобираем бэкенд без кэша
 docker build --no-cache -t n8n-backend:latest ./backend
 
+# 3. Пересобираем фронтенд (теперь он намертво вшьет правильные ключи из .env)
 docker build --no-cache -t n8n-frontend:latest ./frontend
 
-docker compose up -d --force-recreate backend frontend
+# 4. Перезапускаем все сервисы, чтобы применить новые образы
+docker compose up -d --force-recreate
+
+
+
+docker compose up -d --force-recreate --build backend nginx
+
 Проверьте статус
 docker compose ps
 
@@ -23,3 +32,7 @@ sudo systemctl restart docker
 
 Эта команда сразу выведет топ-20 процессов, отсортированных по максимальной нагрузке на процессор.
 top -b -n 1 -o %CPU | head -n 20
+
+
+если git pull origin main не сработал, то Очистите локальные изменения в package-файлах командой
+git checkout -- frontend/package.json frontend/package-lock.json
