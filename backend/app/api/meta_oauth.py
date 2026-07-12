@@ -5,6 +5,7 @@ from app.core.security import get_current_user
 from app.core.supabase import get_supabase
 import httpx
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 router = APIRouter(prefix="/api/auth/meta", tags=["meta_oauth"])
 
@@ -17,31 +18,61 @@ async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
     DEVELOPMENT_MODE=true  — работает только для тестеров из Meta Console.
     DEVELOPMENT_MODE=false — работает для всех (после ИП + App Review).
     """
+
+
+
     sb = get_supabase()
+
     telegram_id = current_user["telegram_id"]
-    profile = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", telegram_id
-    ).single().execute()
+
+    profile = (
+        sb.table("customer_profiles")
+        .select("id")
+        .eq("telegram_id", telegram_id)
+        .single()
+        .execute()
+    )
+
     profile_id = profile.data["id"]
 
+    params = {
+        "client_id": settings.META_APP_ID,
+        "redirect_uri": settings.META_REDIRECT_URI,
+        "response_type": "code",
+        "scope": settings.meta_oauth_scopes,
+        "state": profile_id,
+    }     
+
     oauth_url = (
-        f"https://api.instagram.com/oauth/authorize"
-        f"?client_id={settings.META_APP_ID}"
-        f"&redirect_uri={settings.META_REDIRECT_URI}"
-        f"&scope={settings.meta_oauth_scopes}"
-        f"&response_type=code"
-        f"&state={profile_id}"
-    )
+        f"{settings.facebook_oauth_url}?"
+        + urlencode(params)
+    )  
 
     return {
         "url": oauth_url,
         "mode": "development" if settings.DEVELOPMENT_MODE else "production",
         "warning": (
-            "Режим разработки: подключить аккаунт могут только тестеры из Meta Console."
+            "Подключение доступно только тестерам Meta."
             if settings.DEVELOPMENT_MODE
             else None
         ),
     }
+        # f"https://api.instagram.com/oauth/authorize"
+        # f"?client_id={settings.META_APP_ID}"
+        # f"&redirect_uri={settings.META_REDIRECT_URI}"
+        # f"&scope={settings.meta_oauth_scopes}"
+        # f"&response_type=code"
+        # f"&state={profile_id}"
+
+    # return {
+    #     "url": oauth_url,
+    #     "mode": "development" if settings.DEVELOPMENT_MODE else "production",
+    #     "warning": (
+    #         "Режим разработки: подключить аккаунт могут только тестеры из Meta Console."
+    #         if settings.DEVELOPMENT_MODE
+    #         else None
+    #     ),
+    # }
 
 
 @router.get("/callback")
@@ -63,6 +94,7 @@ async def meta_oauth_callback(
         )
 
     profile_id = state
+
 
     async with httpx.AsyncClient() as client:
 
