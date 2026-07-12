@@ -48,6 +48,7 @@ async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
         + urlencode(params)
     )  
 
+    print("OAuth URL:", oauth_url)
     return {
         "url": oauth_url,
         "mode": "development" if settings.DEVELOPMENT_MODE else "production",
