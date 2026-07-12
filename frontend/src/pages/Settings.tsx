@@ -40,7 +40,12 @@ export default function Settings() {
   const handleConnect = async () => {
     setConnecting(true);
     try {
+      console.log('Получаем OAuth URL...');
+
       const res = await api.get('/api/auth/meta/url');
+
+      console.log(res.data);
+
       // ИСПРАВЛЕНО: было window.location.href = res.data.url
       // window.location.href на внешний домен внутри Telegram WebView
       // либо блокируется, либо Meta детектит in-app browser и отдаёт ошибку.
@@ -48,7 +53,8 @@ export default function Settings() {
       openLink(res.data.url);
       // Оставляем connecting=true ненадолго, чтобы показать подсказку ниже.
       // Сбрасывать не обязательно — пользователь покидает Mini App.
-    } catch {
+    } catch (e) {
+      console.error(e);
       setConnecting(false);
     }
   };
