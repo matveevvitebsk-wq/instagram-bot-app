@@ -67,33 +67,22 @@ class Settings(BaseSettings):
 
     if not self.DEVELOPMENT_MODE:
         scopes.append("instagram_content_publish")
+        return ",".join(scopes)
 
-    return ",".join(scopes)
-        # base = (
-        #     "instagram_business_basic,"
-        #     "instagram_business_manage_messages,"
-        #     "instagram_business_manage_comments"
-        # )
-        # if not self.DEVELOPMENT_MODE:
-        #     base += ",instagram_business_content_publish"
-        # return base
 # ------------------------------------------
     @property
-    def facebook_oauth_url(self) -> str:
-        return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"   
+    def meta_oauth_url(self) -> str:
+        return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
+
 
     @property
     def meta_graph_api(self) -> str:
         return f"https://graph.facebook.com/{self.META_API_VERSION}"
 
+
     @property
     def meta_api_base(self) -> str:
         return f"https://graph.facebook.com/{self.META_API_VERSION}"
-        # return "https://graph.instagram.com"
-
-    @property
-    def meta_oauth_url(self) -> str:
-    return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
 
     class Config:
         env_file = ".env"
