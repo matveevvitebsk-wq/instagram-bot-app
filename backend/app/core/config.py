@@ -84,8 +84,8 @@ class Settings(BaseSettings):
     def meta_api_base(self) -> str:
         return f"https://graph.facebook.com/{self.META_API_VERSION}"
 
-    class Config:
-        env_file = ".env"
+    # class Config:
+    #     env_file = ".env"
 
     model_config = SettingsConfigDict(
         env_file=".env",
