@@ -55,7 +55,6 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",")]
 
 
-# ------------------------------------------
     @property
     def meta_oauth_scopes(self) -> str:
         scopes = [
@@ -63,13 +62,14 @@ class Settings(BaseSettings):
             "instagram_manage_messages",
             "pages_show_list",
             "pages_read_engagement",
-    ]
+        ]
 
-    if not self.DEVELOPMENT_MODE:
-        scopes.append("instagram_content_publish")
+        if not self.DEVELOPMENT_MODE:
+            scopes.append("instagram_content_publish")
+
         return ",".join(scopes)
 
-# ------------------------------------------
+
     @property
     def meta_oauth_url(self) -> str:
         return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
