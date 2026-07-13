@@ -1,38 +1,32 @@
+# Перейти в каталог проекта
 cd /opt/instagram-bot/instagram-bot-app
 
-# 1. Подтягиваем актуальный код (если были изменения в Git)
+# Если есть локальные изменения в package-файлах
+git checkout -- frontend/package.json frontend/package-lock.json
+
+# Получить последние изменения
 git pull origin main
 
-# 2. Пересобираем бэкенд без кэша
-docker build --no-cache -t n8n-backend:latest ./backend
+# Полностью остановить проект
+docker compose down
 
-# 3. Пересобираем фронтенд (теперь он намертво вшьет правильные ключи из .env)
-docker build --no-cache -t n8n-frontend:latest ./frontend
+# Пересобрать backend без кэша
+docker build --no-cache -t instagram-bot-app-backend ./backend
 
-# 4. Перезапускаем все сервисы, чтобы применить новые образы
+# Пересобрать frontend без кэша
+docker build --no-cache -t instagram-bot-app-frontend ./frontend
+
+# Пересоздать все контейнеры
 docker compose up -d --force-recreate
 
-
-
-docker compose up -d --force-recreate --build backend nginx
-
-Проверьте статус
+# Проверить состояние контейнеров
 docker compose ps
 
-docker compose up -d --build
-Запустите контейнеры
-docker compose up -d
+# Если backend не запустился — посмотреть последние 100 строк логов
+docker logs backend --tail 100
 
+# Проверить конфигурацию nginx
+docker exec nginx nginx -t
 
-hdocker compose down
-docker compose up -d --build
-docker compose ps -a
-sudo systemctl restart docker
-
-
-Эта команда сразу выведет топ-20 процессов, отсортированных по максимальной нагрузке на процессор.
+# Проверить использование процессора
 top -b -n 1 -o %CPU | head -n 20
-
-
-если git pull origin main не сработал, то Очистите локальные изменения в package-файлах командой
-git checkout -- frontend/package.json frontend/package-lock.json
