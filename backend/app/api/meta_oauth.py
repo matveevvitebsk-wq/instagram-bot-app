@@ -44,7 +44,7 @@ async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
     }     
 
     oauth_url = (
-        f"{settings.facebook_oauth_url}?"
+        f"{settings.meta_oauth_url}?"
         + urlencode(params)
     )  
 
