@@ -58,10 +58,15 @@ class Settings(BaseSettings):
     @property
     def meta_oauth_scopes(self) -> str:
         scopes = [
-            "instagram_basic",
-            "instagram_manage_messages",
-            "pages_show_list",
-            "pages_read_engagement",
+            # "instagram_basic",
+            # "instagram_manage_messages",
+            # "pages_show_list",
+            # "pages_read_engagement",
+            "instagram_business_basic",
+            "instagram_business_manage_messages",
+            "instagram_business_manage_comments",
+            "instagram_business_content_publish",
+            "instagram_business_manage_insights"
         ]
 
         if not self.DEVELOPMENT_MODE:
@@ -73,6 +78,7 @@ class Settings(BaseSettings):
     @property
     def meta_oauth_url(self) -> str:
         return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
+    #     return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
 
 
     @property
