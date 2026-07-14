@@ -27,3 +27,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# SSL certificates
+nginx/ssl/
+*.pem
+*.key

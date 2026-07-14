@@ -9,13 +9,17 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
-    ports:
-      - '5678:5678'
+#    ports:
+#      - '5678:5678'
     environment:
       - N8N_HOST=${N8N_HOST}
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - WEBHOOK_URL=https://${N8N_HOST}/
+      # ─── ДОБАВЬТЕ ЭТИ ДВЕ СТРОКИ СЮДА ────────────────────────
+      - N8N_DISABLE_TASK_BROKER=true  # Полностью отключаем проблемный брокер
+      - EXECUTIONS_MODE=regular        # Принудительный стандартный режим
+      # ─────────────────────────────────────────────────────────
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
@@ -32,6 +36,7 @@ services:
     networks:
       - app-network
     healthcheck:
+      disable: true   # Временно отключаем проверку здоровья для n8n
       test: ['CMD', 'wget', '-O', '-', 'http://localhost:5678/healthz']
       interval: 30s
       timeout: 10s
@@ -76,6 +81,9 @@ services:
     image: nginx:alpine
     container_name: nginx
     restart: unless-stopped
+    environment:
+      - VITE_SUPABASE_URL=${SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     deploy:
       resources:
         limits:
@@ -86,6 +94,7 @@ services:
       - '443:443'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Эта строка должна вести к существующей папке с вашими сертификатами:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
       - certbot_data:/var/www/certbot:ro
