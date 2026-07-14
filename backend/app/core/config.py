@@ -77,7 +77,7 @@ class Settings(BaseSettings):
 
     @property
     def meta_oauth_url(self) -> str:
-        return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
+        return "https://www.instagram.com/oauth/authorize"
     #     return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
 
 
