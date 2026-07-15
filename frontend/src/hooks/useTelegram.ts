@@ -102,9 +102,10 @@ export const useTelegram = (): UseTelegramReturn => {
   // что даёт Meta/Instagram нормальный user-agent и позволяет OAuth пройти корректно.
   // Вне Telegram (разработка в обычном браузере) — фолбэк на window.open.
   const openLink = useCallback(
-
     (url: string) => {
-      console.log(url);
+      console.log("Platform:", tg?.platform);
+      console.log("URL:", url);
+
       if (tg?.openLink) {
         tg.openLink(url, { try_instant_view: false });
       } else {
@@ -113,6 +114,18 @@ export const useTelegram = (): UseTelegramReturn => {
     },
     [tg]
   );
+  // const openLink = useCallback(
+
+  //   (url: string) => {
+  //     console.log(url);
+  //     if (tg?.openLink) {
+  //       tg.openLink(url, { try_instant_view: false });
+  //     } else {
+  //       window.open(url, "_blank");
+  //     }
+  //   },
+  //   [tg]
+  // );
 
   return {
     tg,
