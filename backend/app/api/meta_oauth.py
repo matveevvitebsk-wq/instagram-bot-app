@@ -30,6 +30,51 @@ router = APIRouter(prefix="/api/auth/meta", tags=["meta_oauth"])
 # ══════════════════════════════════════════════════════════════════════
 
 
+# ══════════════════════════════════════════════════════════════════════
+# ВОССТАНОВЛЕНО (15.07.2026): старый эндпоинт /url для обратной совместимости
+# ══════════════════════════════════════════════════════════════════════
+# Старый фронтенд (сборка на production) всё ещё вызывает /api/auth/meta/url.
+# Удаление этого эндпоинта ломает старый фронтенд (404).
+# Оставляем для обратной совместимости, пока новый фронтенд не задеплоится.
+# ══════════════════════════════════════════════════════════════════════
+@router.get("/url")
+async def get_meta_oauth_url(current_user: dict = Depends(get_current_user)):
+    """
+    [DEPRECATED] Старый эндпоинт для обратной совместимости.
+    Используйте /start-page для OAuth внутри Telegram.
+    """
+    sb = get_supabase()
+    telegram_id = current_user["telegram_id"]
+    profile = (
+        sb.table("customer_profiles")
+        .select("id")
+        .eq("telegram_id", telegram_id)
+        .single()
+        .execute()
+    )
+    profile_id = profile.data["id"]
+
+    params = {
+        "client_id": settings.META_APP_ID,
+        "redirect_uri": settings.META_REDIRECT_URI,
+        "response_type": "code",
+        "scope": settings.meta_oauth_scopes,
+        "state": profile_id,
+    }
+
+    oauth_url = f"{settings.meta_oauth_url}?{urlencode(params)}"
+
+    return {
+        "url": oauth_url,
+        "mode": "development" if settings.DEVELOPMENT_MODE else "production",
+        "warning": (
+            "Подключение доступно только тестерам Meta."
+            if settings.DEVELOPMENT_MODE
+            else None
+        ),
+    }
+
+
 @router.get("/start-page", response_class=HTMLResponse)
 async def meta_oauth_start_page(
     request: Request,
