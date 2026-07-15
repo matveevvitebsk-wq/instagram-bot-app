@@ -61,7 +61,8 @@ export default function Settings() {
     // Открываем Telegram deep link.
     // Telegram запускает Mini App заново с параметром:
     // start_param = "ig_auth"
-    openTelegramLink('https://t.me/mediahave_bot?startapp=ig_auth');
+    // openTelegramLink('https://t.me/mediahave_bot?startapp=ig_auth');
+    openTelegramLink('https://t.me/mediahave_bot/mediahave?startapp=ig_auth');
   };
 
   const handleDisconnect = async () => {
