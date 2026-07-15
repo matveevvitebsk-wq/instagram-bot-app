@@ -12,7 +12,7 @@ interface InstagramAccount {
 }
 
 export default function Settings() {
-  const { openLink } = useTelegram(); // НОВОЕ
+  const { openLink, initData } = useTelegram(); // ← ИСПРАВЛЕНО: initData для передачи на прокси-страницу
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -30,33 +30,39 @@ export default function Settings() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('instagram') === 'connected') {
-      window.history.replaceState({}, '', '/settings');
-    }
   }, []);
 
-  const handleConnect = async () => {
+  // ══════════════════════════════════════════════════════════════════════
+  // ИСПРАВЛЕНО (15.07.2026): Server-side OAuth — прокси-страница
+  // ══════════════════════════════════════════════════════════════════════
+  // ПРОБЛЕМА: старый код получал URL Instagram OAuth через API
+  // (/api/auth/meta/url) и открывал его через openLink(). Это
+  // открывало системный браузер (пользователь покидал Telegram).
+  //
+  // РЕШЕНИЕ: openLink() открывает HTML-страницу бэкенда
+  // (/api/auth/meta/start-page?initData=...) на том же домене
+  // api.almarathon.com. Она открывается во встроенном браузере
+  // Telegram (in-app). Страница:
+  //   1. Проверяет, есть ли аккаунт в БД (по initData)
+  //   2. Если есть — показывает "Уже подключено"
+  //   3. Если нет — редиректит на Instagram OAuth
+  //   4. Instagram редиректит на callback (тот же домен)
+  //   5. Callback отдаёт HTML "Подключено" с кнопкой "Вернуться в Telegram"
+  // ══════════════════════════════════════════════════════════════════════
+  const handleConnect = () => {
     setConnecting(true);
-    try {
-      console.log('Получаем OAuth URL...');
 
-      const res = await api.get('/api/auth/meta/url');
+    // Строим URL прокси-страницы на бэкенде (тот же домен)
+    const encodedInitData = encodeURIComponent(initData || '');
+    const startPageUrl = `${
+      import.meta.env.VITE_API_URL || 'https://api.almarathon.com'
+    }/api/auth/meta/start-page?initData=${encodedInitData}`;
 
-      console.log(res.data);
+    console.log('Открываем прокси-страницу OAuth:', startPageUrl);
 
-      // ИСПРАВЛЕНО: было window.location.href = res.data.url
-      // window.location.href на внешний домен внутри Telegram WebView
-      // либо блокируется, либо Meta детектит in-app browser и отдаёт ошибку.
-      // openLink() открывает системный браузер — OAuth проходит корректно.
-      openLink(res.data.url);
-      // Оставляем connecting=true ненадолго, чтобы показать подсказку ниже.
-      // Сбрасывать не обязательно — пользователь покидает Mini App.
-    } catch (e) {
-      console.error(e);
-      setConnecting(false);
-    }
+    // openLink открывает во встроенном браузере Telegram (in-app)
+    openLink(startPageUrl);
+    // Сбрасывать connecting не обязательно — пользователь остаётся в Telegram
   };
 
   const handleDisconnect = async () => {
@@ -145,14 +151,14 @@ export default function Settings() {
             >
               {connecting ? 'Открываем Instagram...' : 'Подключить Instagram'}
             </button>
-            {/* НОВОЕ: подсказка — OAuth открывается вне Mini App */}
+            {/* ← ИСПРАВЛЕНО (15.07.2026): подсказка — OAuth внутри Telegram */}
             {connecting && (
               <p
                 className='text-xs text-center'
                 style={{ color: 'var(--tg-theme-hint-color)' }}
               >
-                Откроется браузер для авторизации в Instagram. После подключения
-                вернитесь в Telegram и откройте бота заново.
+                Откроется страница авторизации Instagram внутри Telegram. После
+                подключения нажмите "Вернуться в Telegram" и обновите бота.
               </p>
             )}
           </div>
