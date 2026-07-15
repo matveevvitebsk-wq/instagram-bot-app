@@ -12,8 +12,8 @@ interface InstagramAccount {
 }
 
 export default function Settings() {
-  // ИСПРАВЛЕНО (15.07.2026): используем openLink + initData для прямого вызова OAuth
-  const { openLink, initData } = useTelegram();
+  // ИСПРАВЛЕНО (15.07.2026): используем openTelegramLink для открытия формы в боте
+  const { openTelegramLink } = useTelegram();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,37 +34,23 @@ export default function Settings() {
   }, []);
 
   // ══════════════════════════════════════════════════════════════════════
-  // ИСПРАВЛЕНО (15.07.2026): Server-side OAuth — прямой вызов openLink
+  // ИСПРАВЛЕНО (15.07.2026): Открытие формы в Telegram боте
   // ══════════════════════════════════════════════════════════════════════
-  // ПРОБЛЕМА: старый код получал URL Instagram OAuth через API
-  // (/api/auth/meta/url) и открывал его через openLink(). Это
-  // открывало системный браузер (пользователь покидал Telegram).
+  // ПРОБЛЕМА: openLink() открывает страницу в браузере, пользователь
+  // покидает Telegram.
   //
-  // РЕШЕНИЕ: openLink() открывает HTML-страницу бэкенда
-  // (/api/auth/meta/start-page?initData=...) на том же домене
-  // api.almarathon.com. Она открывается во встроенном браузере
-  // Telegram (in-app). Страница:
-  //   1. Проверяет, есть ли аккаунт в БД (по initData)
-  //   2. Если есть — показывает "Уже подключено"
-  //   3. Если нет — редиректит на Instagram OAuth
-  //   4. Instagram редиректит на callback (тот же домен)
-  //   5. Callback отдаёт HTML "Подключено" с кнопкой "Вернуться в Telegram"
+  // РЕШЕНИЕ: openTelegramLink() открывает deep link в Telegram боте.
+  // Telegram webhook обрабатывает /start ig_auth и отправляет форму.
   // ══════════════════════════════════════════════════════════════════════
   const handleConnect = () => {
     setConnecting(true);
 
     console.log('Нажата кнопка Instagram');
 
-    // ИСПРАВЛЕНО (15.07.2026): прямой вызов openLink с initData
-    // Открываем прокси-страницу бэкенда во встроенном браузере Telegram
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
-    const startPageUrl = `${apiUrl}/api/auth/meta/start-page?initData=${encodeURIComponent(
-      initData || '',
-    )}`;
-
-    console.log('Открываем OAuth страницу:', startPageUrl);
-
-    openLink(startPageUrl);
+    // ИСПРАВЛЕНО (15.07.2026): открываем Telegram бота с формой
+    // Deep link: https://t.me/bot_username?start=ig_auth
+    // Параметр ig_auth передаётся в webhook через /start ig_auth
+    openTelegramLink('https://t.me/mediahave_bot?start=ig_auth');
   };
 
   const handleDisconnect = async () => {
