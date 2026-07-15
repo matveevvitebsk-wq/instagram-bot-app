@@ -37,6 +37,8 @@ export const useTelegram = (): UseTelegramReturn => {
     typeof window !== "undefined" ? (window.Telegram?.WebApp ?? null) : null;
 
   useEffect(() => {
+    console.log("Version:", tg?.version);
+    console.log("Platform:", tg?.platform);
     if (tg) {
       tg.ready();
       tg.expand();
@@ -101,31 +103,30 @@ export const useTelegram = (): UseTelegramReturn => {
   // tg.openLink() открывает системный браузер (или Telegram in-app browser с try_instant_view: false),
   // что даёт Meta/Instagram нормальный user-agent и позволяет OAuth пройти корректно.
   // Вне Telegram (разработка в обычном браузере) — фолбэк на window.open.
+
   const openLink = useCallback(
     (url: string) => {
       console.log("Platform:", tg?.platform);
       console.log("URL:", url);
+      console.log("Version:", window.Telegram?.WebApp.version);
+      console.log("Platform:", window.Telegram?.WebApp.platform);
+      console.log("WebApp:", window.Telegram?.WebApp);
 
       if (tg?.openLink) {
-        tg.openLink(url, { try_instant_view: false });
+        // Открывает ссылку во встроенном браузере Telegram,
+        // а не в Chrome/Safari.
+        tg.openLink(url, {
+          try_instant_view: false,
+          try_browser: "internal",
+        });
       } else {
         window.open(url, "_blank");
       }
     },
     [tg]
   );
-  // const openLink = useCallback(
 
-  //   (url: string) => {
-  //     console.log(url);
-  //     if (tg?.openLink) {
-  //       tg.openLink(url, { try_instant_view: false });
-  //     } else {
-  //       window.open(url, "_blank");
-  //     }
-  //   },
-  //   [tg]
-  // );
+
 
   return {
     tg,

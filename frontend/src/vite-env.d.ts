@@ -8,6 +8,9 @@ declare module "*.css" {
 // Telegram WebApp типы
 interface TelegramWebApp {
     initData: string;
+    colorScheme: "light" | "dark";
+    platform: string;
+    version: string;
     initDataUnsafe: {
         user?: {
             id: number;
@@ -48,7 +51,10 @@ interface TelegramWebApp {
     showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
     // НОВОЕ: открывает URL вне WebView Mini App (системный браузер или Telegram in-app browser).
     // Обязателен для OAuth-редиректов на внешние домены (Meta/Instagram и т.п.).
-    openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+    openLink: (url: string, options?: {
+        try_instant_view?: boolean;
+        try_browser?: "internal" | "chrome" | "firefox" | "safari";
+    }) => void;
 }
 
 declare interface Window {
