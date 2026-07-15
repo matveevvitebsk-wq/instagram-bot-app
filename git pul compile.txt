@@ -1,10 +1,10 @@
 
 
-# Если есть локальные изменения в package-файлах
-git checkout -- frontend/package.json frontend/package-lock.json
 # Перейти в каталог проекта
 cd /opt/instagram-bot/instagram-bot-app
 # Получить последние изменения
+# Если есть локальные изменения в package-файлах
+git checkout -- frontend/package.json frontend/package-lock.json
 git pull origin main
 
 # Полностью остановить проект
