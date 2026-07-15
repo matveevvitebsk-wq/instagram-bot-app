@@ -53,6 +53,10 @@ export default function Settings() {
   const handleConnect = () => {
     setConnecting(true);
 
+    console.log('Нажата кнопка Instagram');
+
+    console.log('openTelegramLink:', openTelegramLink);
+
     // НОВОЕ (15.07.2026)
     // Открываем Telegram deep link.
     // Telegram запускает Mini App заново с параметром:
