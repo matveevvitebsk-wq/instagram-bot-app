@@ -100,66 +100,35 @@ export const useTelegram = (): UseTelegramReturn => {
   );
 
   // ══════════════════════════════════════════════════════════════════════
-  // ИСПРАВЛЕНО (15.07.2026): openLink для внешних OAuth-флоу
+  // ВОССТАНОВЛЕНО (15.07.2026): открытие ссылки ВНУТРИ Telegram
   // ══════════════════════════════════════════════════════════════════════
+  // Используем try_browser: "internal" — ссылка открывается во встроенном
+  // браузере Telegram, не покидая приложение. На десктопе — аналогично.
+  // Вне Telegram (обычный браузер) — фолбэк на window.open.
   //
-  // ПРОБЛЕМА:
-  //   1. Старый код пытался на ПК извлечь state из URL Instagram и создать
-  //      deep link "https://t.me" + stateParam — это БИТАЯ ССЫЛКА.
-  //      state от Instagram — это параметр OAuth, а не путь в Telegram.
-  //      В результате на ПК OAuth не работал.
-  //
-  //   2. На мобильных openLink() открывал встроенный браузер Telegram
-  //      (in-app browser), который Meta/Instagram часто блокируют
-  //      (детектят user-agent in-app браузера и отклоняют OAuth).
-  //
-  // РЕШЕНИЕ:
-  //   - На ВСЕХ платформах (ПК и мобильные) используем один подход:
-  //     webApp.openLink(url, options) с параметром try_browser: 'external'.
-  //
-  //   - try_browser: 'external' — заставляет Telegram открыть ссылку
-  //     в системном браузере (Chrome/Safari), а не в in-app браузере.
-  //     Это даёт Meta/Instagram нормальный user-agent и позволяет OAuth
-  //     пройти корректно.
-  //
-  //   - ВАЖНО: try_browser: 'external' работает с версии Telegram
-  //     Mini App 8.0+. Если версия ниже — фоллбэк на openLink() без
-  //     опции (откроется во встроенном браузере).
-  //
-  //   - Вне Telegram (обычный браузер при разработке) — window.open.
-  //
+  // ОПАСНОСТЬ: Meta/Instagram может заблокировать in-app браузер Telegram
+  // (детект по user-agent). Если OAuth перестанет работать — нужно будет
+  // вернуть try_browser: "external" (системный браузер).
   // ══════════════════════════════════════════════════════════════════════
-  const openLink = useCallback((url: string) => {
-    const webApp = window.Telegram?.WebApp;
+  const openLink = useCallback(
+    (url: string) => {
+      const webApp = window.Telegram?.WebApp;
 
-    // Вне Telegram (обычный браузер) — открываем через window.open
-    if (!webApp) {
-      window.open(url, "_blank");
-      return;
-    }
+      if (!webApp) {
+        window.open(url, "_blank");
+        return;
+      }
 
-    // Telegram Mini App API версия 8.0+ поддерживает try_browser
-    // ║ Версия   ║ Описание                                    ║
-    // ║ < 6.0    ║ openLink() открывает во встроенном браузере  ║
-    // ║ 6.0 - 7.9║ openLink() с try_instant_view: false         ║
-    // ║ 8.0+     ║ openLink() с try_browser: 'external'         ║
-    const version = parseFloat(webApp.version || "0");
-    const supportsExternalBrowser = version >= 8.0;
-
-    if (supportsExternalBrowser) {
-      // ← ИСПРАВЛЕНО (15.07.2026): используем try_browser: 'external'
-      //   чтобы OAuth Meta/Instagram открывался в системном браузере
+      // ← ВОССТАНОВЛЕНО (15.07.2026): try_browser: "internal"
+      //   открывает ссылку во встроенном браузере Telegram,
+      //   а не в Chrome/Safari.
       webApp.openLink(url, {
         try_instant_view: false,
-        try_browser: 'external',  // ← ключевая опция: системный браузер
+        try_browser: "internal",
       });
-      return;
-    }
-
-    // Фоллбэк для старых версий (< 8.0): открываем как обычно
-    // ← ИСПРАВЛЕНО (15.07.2026): убрана битая логика для ПК
-    webApp.openLink(url, { try_instant_view: false });
-  }, []);
+    },
+    []
+  );
 
 
   // const openLink = useCallback(
