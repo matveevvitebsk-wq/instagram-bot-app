@@ -47,10 +47,25 @@ interface TelegramWebApp {
     };
     showAlert: (message: string, callback?: () => void) => void;
     showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
-    // НОВОЕ: открывает URL вне WebView Mini App (системный браузер или Telegram in-app browser).
-    // Обязателен для OAuth-редиректов на внешние домены (Meta/Instagram и т.п.).
+    // ══════════════════════════════════════════════════════════════════════
+    // ИСПРАВЛЕНО (15.07.2026): добавлен try_browser в опции openLink
+    // ══════════════════════════════════════════════════════════════════════
+    // ПРОБЛЕМА: отсутствовал параметр try_browser, из-за чего TS выдавал
+    // ошибку при использовании try_browser: 'external' в useTelegram.ts
+    //
+    // РЕШЕНИЕ: добавлен try_browser?: 'internal' | 'external' в опции
+    // openLink. Это официальный параметр Telegram Mini App API 8.0+.
+    //
+    // try_browser: 'external' — открывает ссылку в системном браузере
+    // (Chrome/Safari), а не во встроенном браузере Telegram.
+    // Это критически важно для OAuth Meta/Instagram, т.к. in-app браузер
+    // Telegram блокируется Meta (детект по user-agent).
+    //
+    // try_browser: 'internal' — открывает во встроенном браузере Telegram.
+    // ══════════════════════════════════════════════════════════════════════
     openLink: (url: string, options?: {
         try_instant_view?: boolean;
+        try_browser?: 'internal' | 'external';  // ← ИСПРАВЛЕНО (15.07.2026)
     }) => void;
     // ДОБАВЛЕНО: Новый метод для работы с внутренними ссылками Telegram (Deep Links).
     // Необходим для перенаправления пользователя на прокси-бота на десктопных платформах.

@@ -99,43 +99,66 @@ export const useTelegram = (): UseTelegramReturn => {
     [tg]
   );
 
-  // НОВОЕ: openLink — правильный способ покидать Mini App для внешних OAuth-флоу.
-  // tg.openLink() открывает системный браузер (или Telegram in-app browser с try_instant_view: false),
-  // что даёт Meta/Instagram нормальный user-agent и позволяет OAuth пройти корректно.
-  // Вне Telegram (разработка в обычном браузере) — фолбэк на window.open.
+  // ══════════════════════════════════════════════════════════════════════
+  // ИСПРАВЛЕНО (15.07.2026): openLink для внешних OAuth-флоу
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // ПРОБЛЕМА:
+  //   1. Старый код пытался на ПК извлечь state из URL Instagram и создать
+  //      deep link "https://t.me" + stateParam — это БИТАЯ ССЫЛКА.
+  //      state от Instagram — это параметр OAuth, а не путь в Telegram.
+  //      В результате на ПК OAuth не работал.
+  //
+  //   2. На мобильных openLink() открывал встроенный браузер Telegram
+  //      (in-app browser), который Meta/Instagram часто блокируют
+  //      (детектят user-agent in-app браузера и отклоняют OAuth).
+  //
+  // РЕШЕНИЕ:
+  //   - На ВСЕХ платформах (ПК и мобильные) используем один подход:
+  //     webApp.openLink(url, options) с параметром try_browser: 'external'.
+  //
+  //   - try_browser: 'external' — заставляет Telegram открыть ссылку
+  //     в системном браузере (Chrome/Safari), а не в in-app браузере.
+  //     Это даёт Meta/Instagram нормальный user-agent и позволяет OAuth
+  //     пройти корректно.
+  //
+  //   - ВАЖНО: try_browser: 'external' работает с версии Telegram
+  //     Mini App 8.0+. Если версия ниже — фоллбэк на openLink() без
+  //     опции (откроется во встроенном браузере).
+  //
+  //   - Вне Telegram (обычный браузер при разработке) — window.open.
+  //
+  // ══════════════════════════════════════════════════════════════════════
   const openLink = useCallback((url: string) => {
     const webApp = window.Telegram?.WebApp;
 
-    // Ранний возврат, если открыто в обычном браузере вне Telegram
+    // Вне Telegram (обычный браузер) — открываем через window.open
     if (!webApp) {
       window.open(url, "_blank");
       return;
     }
 
-    // Проверяем, ПК это или мобилка
-    const desktopPlatforms = ['tdesktop', 'macos', 'weba'];
-    const isDesktop = desktopPlatforms.includes(webApp.platform);
+    // Telegram Mini App API версия 8.0+ поддерживает try_browser
+    // ║ Версия   ║ Описание                                    ║
+    // ║ < 6.0    ║ openLink() открывает во встроенном браузере  ║
+    // ║ 6.0 - 7.9║ openLink() с try_instant_view: false         ║
+    // ║ 8.0+     ║ openLink() с try_browser: 'external'         ║
+    const version = parseFloat(webApp.version || "0");
+    const supportsExternalBrowser = version >= 8.0;
 
-    if (isDesktop && typeof webApp.openTelegramLink === 'function') {
-      try {
-        // 1. Достаем параметр state из ссылки Инстаграма
-        const stateParam = new URL(url).searchParams.get("state") || "";
-
-        // 2. Строка ссылки без хитрых кавычек (через обычные плюсы)
-        // ===!!! ВНИМАНИЕ: ЗАМЕНИТЕ ТЕКСТ ПОД СТРЕЛКАМИ НИЖЕ !!!===
-        //                       vvvvvvvvvvvvvvvvvvvvvvvvvvv
-        const tgDeepLink = "https://t.me" + stateParam;
-
-        // Открываем внутреннее окно Mini App на ПК
-        webApp.openTelegramLink(tgDeepLink);
-      } catch (e) {
-        // Если ссылка сломалась, пробуем открыть как обычно
-        webApp.openLink(url, { try_instant_view: false });
-      }
-    } else {
-      // На телефонах открываем во встроенном браузере Telegram
-      webApp.openLink(url, { try_instant_view: false });
+    if (supportsExternalBrowser) {
+      // ← ИСПРАВЛЕНО (15.07.2026): используем try_browser: 'external'
+      //   чтобы OAuth Meta/Instagram открывался в системном браузере
+      webApp.openLink(url, {
+        try_instant_view: false,
+        try_browser: 'external',  // ← ключевая опция: системный браузер
+      });
+      return;
     }
+
+    // Фоллбэк для старых версий (< 8.0): открываем как обычно
+    // ← ИСПРАВЛЕНО (15.07.2026): убрана битая логика для ПК
+    webApp.openLink(url, { try_instant_view: false });
   }, []);
 
 
