@@ -12,6 +12,8 @@
 
 3. **Старый код на ПК** пытался создать deep link `"https://t.me" + stateParam` — это битая ссылка, state от Instagram не является путём в Telegram.
 
+4. **Старый фронтенд на production** вызывает `GET /api/auth/meta/url`, получает URL Instagram и открывает его через `openLink()`. Это всегда открывает системный браузер.
+
 ## Решение: Server-side OAuth через прокси-страницу
 
 Создана HTML-страница на **том же домене** (`api.almarathon.com`), которая открывается во **встроенном браузере Telegram** (in-app). Вся OAuth-цепочка происходит внутри Telegram.
@@ -22,13 +24,34 @@
 Mini App → кнопка "Подключить Instagram"
   → openLink("https://api.almarathon.com/api/auth/meta/start-page?initData=...")
   → Telegram открывает во встроенном браузере (in-app) — НЕ покидаем Telegram
+
+  → [прокси-страница /start-page]
   → Бэкенд проверяет аккаунт в БД по initData:
-      ├─ ЕСТЬ в БД → показывает "Уже подключено @username" с кнопкой "Вернуться"
+
+      ├─ ЕСТЬ в БД → HTML "✅ Instagram подключён @username"
+      │               Кнопка "Вернуться в Telegram"
+      │
       └─ НЕТ в БД → редирект на Instagram OAuth
-           → Instagram редиректит на /api/auth/meta/callback (тот же домен)
-           → Сохраняем токены в Supabase
-           → Показываем HTML "Instagram подключён @username" с кнопкой "Вернуться"
-  → Пользователь нажимает "Вернуться" → вкладка закрывается → он в Telegram
+                      ↓
+           Instagram показывает окно подтверждения:
+           "Ранее вы подключили приложение n8n-call-api-IG
+            к аккаунту Instagram. Хотите продолжить?"
+                      ↓
+           Пользователь нажимает "Разрешить"
+                      ↓
+           Instagram редиректит на /api/auth/meta/callback (тот же домен)
+                      ↓
+           Бэкенд: code → short-lived token → long-lived token (60 дней)
+                  Получает данные аккаунта (username, followers, etc.)
+                  Сохраняет в Supabase (таблица ig_accounts)
+                      ↓
+           HTML "✅ Instagram подключён @username"
+           Кнопка "Вернуться в Telegram"
+
+  → Пользователь нажимает "Вернуться"
+  → Вкладка встроенного браузера закрывается
+  → Пользователь снова в Telegram Mini App
+  → Функции приложения разблокированы
 ```
 
 ### Ключевые моменты
@@ -36,10 +59,12 @@ Mini App → кнопка "Подключить Instagram"
 - **initData** передаётся через URL-параметр, чтобы страница могла идентифицировать пользователя без Telegram WebView API
 - **Callback** отдаёт HTML-страницу вместо редиректа на внешний домен (`almarathon.com/settings`)
 - Если аккаунт **уже есть в БД** — Instagram даже не открывается, сразу "Уже подключено"
+- **Токены обновляются** (short-lived → long-lived 60 дней) на бэкенде, пользователь этого не видит
+- **Изменения вступают в силу только после деплоя** на сервер
 
 ---
 
-## Изменённые файлы
+## Изменённые файлы (3 шт.)
 
 ### 1. `frontend/src/hooks/useTelegram.ts`
 
@@ -48,21 +73,20 @@ Mini App → кнопка "Подключить Instagram"
 **Было (проблема):**
 
 ```ts
-// try_browser: 'internal' — неофициальный параметр, игнорируется Telegram
 webApp.openLink(url, {
   try_instant_view: false,
-  try_browser: 'internal',
+  try_browser: 'internal', // ← неофициальный параметр, игнорируется
 });
 ```
 
 **Стало (исправление):**
 
 ```ts
-// Без try_browser — Telegram сам открывает во встроенном браузере (in-app)
 webApp.openLink(url, { try_instant_view: false });
+// Без try_browser — Telegram сам открывает во встроенном браузере (in-app)
 ```
 
-**Почему:** Параметр `try_browser: 'internal'` не существует в официальном API Telegram. Он игнорируется, и Telegram открывает ссылку по умолчанию (в новых версиях — системный браузер). Без этого параметра на мобильных устройствах Telegram открывает ссылку во встроенном браузере.
+**Почему:** Параметр `try_browser: 'internal'` не существует в официальном API Telegram. Он игнорируется. Без него на мобильных Telegram открывает ссылку во встроенном браузере.
 
 ---
 
@@ -76,7 +100,7 @@ webApp.openLink(url, { try_instant_view: false });
 const handleConnect = async () => {
   setConnecting(true);
   const res = await api.get('/api/auth/meta/url');
-  openLink(res.data.url); // ← открывает URL Instagram напрямую
+  openLink(res.data.url); // ← открывает URL Instagram напрямую → системный браузер
 };
 ```
 
@@ -93,9 +117,9 @@ const handleConnect = () => {
 };
 ```
 
-**Почему:** Вместо прямого открытия Instagram OAuth URL, теперь открывается прокси-страница на `api.almarathon.com`. Она:
+**Почему:** Вместо прямого URL Instagram открывается прокси-страница на `api.almarathon.com`. Она:
 
-1. Проверяет наличие аккаунта в БД
+1. Проверяет наличие аккаунта в БД по initData
 2. Если есть — показывает "Уже подключено" (Instagram не открывается)
 3. Если нет — редиректит на Instagram OAuth
 
@@ -105,9 +129,9 @@ const handleConnect = () => {
 
 ### 3. `backend/app/api/meta_oauth.py`
 
-#### 3.1. Новый эндпоинт `/start-page`
+#### 3.1. Добавлен эндпоинт `/start-page`
 
-**Добавлен:** `GET /api/auth/meta/start-page`
+**`GET /api/auth/meta/start-page`**
 
 **Параметры:** `initData` (query) — Telegram initData для идентификации пользователя
 
@@ -129,7 +153,7 @@ return RedirectResponse(
 )
 ```
 
-Редирект на внешний домен (`almarathon.com`) выкидывал пользователя из встроенного браузера Telegram в системный браузер.
+Редирект на внешний домен (`almarathon.com`) выкидывает из встроенного браузера Telegram в системный.
 
 **Стало (исправление):**
 
@@ -141,19 +165,19 @@ return HTMLResponse(content=f"""...""", status_code=200)
 
 #### 3.3. Восстановлен эндпоинт `/url` (обратная совместимость)
 
-**Восстановлен:** `GET /api/auth/meta/url`
+**`GET /api/auth/meta/url`** — восстановлен, помечен `[DEPRECATED]`.
 
-**Почему:** Старый фронтенд (сборка на production) всё ещё вызывает этот эндпоинт. Удаление ломало старый фронт (404). Оставлен для обратной совместимости, помечен как `[DEPRECATED]`.
+**Почему:** Старый фронтенд (сборка на production) вызывает этот эндпоинт. Удаление ломало старый фронт (404 на production). Оставлен для обратной совместимости, пока новый фронт не задеплоен.
 
 ---
 
 ## Как это работает после исправления
 
-### Сценарий 1: Аккаунт уже подключён
+### Сценарий 1: Аккаунт уже подключён (есть в БД)
 
 ```
 Пользователь → кнопка "Подключить Instagram"
-  → openLink("https://api.almarathon.com/api/auth/meta/start-page?initData=...")
+  → openLink(".../start-page?initData=...")
   → Встроенный браузер Telegram
   → Бэкенд: аккаунт ЕСТЬ в БД
   → HTML: "✅ Instagram подключён @username. Уже подключён к сервису."
@@ -164,21 +188,24 @@ return HTMLResponse(content=f"""...""", status_code=200)
 
 ```
 Пользователь → кнопка "Подключить Instagram"
-  → openLink("https://api.almarathon.com/api/auth/meta/start-page?initData=...")
+  → openLink(".../start-page?initData=...")
   → Встроенный браузер Telegram
   → Бэкенд: аккаунта НЕТ → редирект на Instagram OAuth
-  → Пользователь авторизуется в Instagram
-  → Instagram редиректит на /api/auth/meta/callback
-  → Бэкенд сохраняет токены в Supabase
+  → Instagram: "Ранее вы подключили приложение n8n-call-api-IG
+                к аккаунту Instagram. Хотите продолжить?"
+  → Пользователь → "Разрешить"
+  → Instagram → редирект на /api/auth/meta/callback
+  → Бэкенд: обмен токенов, получение данных, сохранение в Supabase
   → HTML: "✅ Instagram подключён @username. Успешно подключён."
   → Кнопка "Вернуться в Telegram" → пользователь в Mini App
+  → Функции приложения разблокированы
 ```
 
 ### Сценарий 3: Ошибка (не удалось определить пользователя)
 
 ```
 Пользователь → кнопка "Подключить Instagram"
-  → openLink("https://api.almarathon.com/api/auth/meta/start-page?initData=...")
+  → openLink(".../start-page?initData=...")
   → Встроенный браузер Telegram
   → Бэкенд: initData невалидный или отсутствует
   → HTML: "❌ Ошибка авторизации. Откройте через Telegram Mini App."
@@ -186,9 +213,45 @@ return HTMLResponse(content=f"""...""", status_code=200)
 
 ---
 
-## Что нужно сделать для вступления в силу
+## Деплой на сервер
 
-1. **Перезапустить бэкенд** на сервере (чтобы применить изменения в `meta_oauth.py`)
-2. **Собрать и задеплоить новый фронтенд** (чтобы применить изменения в `Settings.tsx` и `useTelegram.ts`)
+**ВНИМАНИЕ:** Изменения вступают в силу **только после деплоя**. Пока код не задеплоен — на production работает старая версия, и ссылка открывается в браузере.
 
-После деплоя нового фронтенда старый эндпоинт `/url` можно будет удалить.
+### Команды для деплоя (вводить на сервере)
+
+```bash
+# 1. Запушить локальные изменения на GitHub (если ещё не сделано)
+git add .
+git commit -m "fix: OAuth Instagram внутри Telegram (server-side OAuth)"
+git push origin main
+
+# 2. На сервере — получить изменения
+git pull origin main
+
+# 3. Полностью остановить проект
+docker compose down
+
+# 4. Пересобрать backend без кэша
+docker build --no-cache -t instagram-bot-app-backend ./backend
+
+# 5. Пересобрать frontend без кэша
+docker build --no-cache -t instagram-bot-app-frontend ./frontend
+
+# 6. Пересоздать все контейнеры
+docker compose up -d --force-recreate
+
+# 7. Проверить состояние контейнеров
+docker compose ps
+```
+
+### Проверка после деплоя
+
+1. Открыть в браузере: `https://api.almarathon.com/api/auth/meta/start-page?initData=test`
+   — если виден HTML-дизайн с заголовком "Ошибка авторизации" — бэкенд обновлён
+
+2. Открыть Telegram Mini App, нажать "Подключить Instagram"
+   — ссылка должна открыться во встроенном браузере Telegram
+
+### После деплоя нового фронтенда
+
+Старый эндпоинт `/api/auth/meta/url` можно будет удалить (он больше не нужен).
