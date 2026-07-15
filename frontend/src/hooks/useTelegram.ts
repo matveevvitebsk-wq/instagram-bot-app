@@ -103,28 +103,68 @@ export const useTelegram = (): UseTelegramReturn => {
   // tg.openLink() открывает системный браузер (или Telegram in-app browser с try_instant_view: false),
   // что даёт Meta/Instagram нормальный user-agent и позволяет OAuth пройти корректно.
   // Вне Telegram (разработка в обычном браузере) — фолбэк на window.open.
+  const openLink = useCallback((url: string) => {
+    const webApp = window.Telegram?.WebApp;
 
-  const openLink = useCallback(
-    (url: string) => {
-      console.log("Platform:", tg?.platform);
-      console.log("URL:", url);
-      console.log("Version:", window.Telegram?.WebApp.version);
-      console.log("Platform:", window.Telegram?.WebApp.platform);
-      console.log("WebApp:", window.Telegram?.WebApp);
+    // Ранний возврат (Early Return) для фолбека.
+    // Если Mini App открыт в обычном браузере, сразу открываем ссылку в новой вкладке и выходим.
+    if (!webApp) {
+      window.open(url, "_blank");
+      return;
+    }
 
-      if (tg?.openLink) {
-        // Открывает ссылку во встроенном браузере Telegram,
-        // а не в Chrome/Safari.
-        tg.openLink(url, {
-          try_instant_view: false,
-          try_browser: "internal",
-        });
-      } else {
-        window.open(url, "_blank");
+    // Определение текущей платформы пользователя.
+    // Массив содержит идентификаторы десктопных версий и веб-версии Telegram.
+    const desktopPlatforms = ['tdesktop', 'macos', 'weba'];
+    const isDesktop = desktopPlatforms.includes(webApp.platform);
+
+    // Изменено главное условие `if`.
+    // Теперь мы проверяем не просто наличие метода, а то, находится ли пользователь на ПК (`isDesktop`).
+    if (isDesktop && typeof webApp.openTelegramLink === 'function') {
+
+      // Блок try-catch для безопасности.
+      // Если в `url` прилетит битая строка, `new URL(url)` не уронит всё приложение, а уйдет в catch.
+      try {
+        // ИСПРАВЛЕНО: Добавлен слэш (/), имя вашего прокси-бота и знак доллара ($) перед фигурной скобкой.
+        const tgDeepLink = `https://t.me{new URL(url).searchParams.get("state") || ""}`;
+
+        // Открывает Mini App поверх текущего или в новом внутреннем окне на ПК!
+        webApp.openTelegramLink(tgDeepLink);
+      } catch (e) {
+        // Обязательный блок catch. 
+        // Если URL окажется невалидным, приложение не упадет, а попробует открыть ссылку стандартным методом.
+        webApp.openLink(url, { try_instant_view: false });
       }
-    },
-    [tg]
-  );
+
+    } else {
+      // Альтернативная ветка `else` для мобильных платформ (iOS / Android).
+      // На смартфонах встроенный браузер Telegram отлично справляется с внешними сайтами.
+      // Используем `openLink` с очищенными от багов параметрами, чтобы открыть In-App Browser смартфона.
+      webApp.openLink(url, { try_instant_view: false });
+    }
+  }, []);
+
+  // const openLink = useCallback(
+  //   (url: string) => {
+  //     console.log("Platform:", tg?.platform);
+  //     console.log("URL:", url);
+  //     console.log("Version:", window.Telegram?.WebApp.version);
+  //     console.log("Platform:", window.Telegram?.WebApp.platform);
+  //     console.log("WebApp:", window.Telegram?.WebApp);
+
+  //     if (tg?.openLink) {
+  //       // Открывает ссылку во встроенном браузере Telegram,
+  //       // а не в Chrome/Safari.
+  //       tg.openLink(url, {
+  //         try_instant_view: false,
+  //         try_browser: "internal",
+  //       });
+  //     } else {
+  //       window.open(url, "_blank");
+  //     }
+  //   },
+  //   [tg]
+  // );
 
 
 

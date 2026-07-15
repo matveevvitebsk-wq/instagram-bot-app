@@ -8,8 +8,6 @@ declare module "*.css" {
 // Telegram WebApp типы
 interface TelegramWebApp {
     initData: string;
-    colorScheme: "light" | "dark";
-    platform: string;
     version: string;
     initDataUnsafe: {
         user?: {
@@ -53,8 +51,10 @@ interface TelegramWebApp {
     // Обязателен для OAuth-редиректов на внешние домены (Meta/Instagram и т.п.).
     openLink: (url: string, options?: {
         try_instant_view?: boolean;
-        try_browser?: "internal" | "chrome" | "firefox" | "safari";
     }) => void;
+    // ДОБАВЛЕНО: Новый метод для работы с внутренними ссылками Telegram (Deep Links).
+    // Необходим для перенаправления пользователя на прокси-бота на десктопных платформах.
+    openTelegramLink: (url: string) => void;
 }
 
 declare interface Window {
