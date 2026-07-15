@@ -54,6 +54,22 @@ export const useTelegram = (): UseTelegramReturn => {
   const tg: TelegramWebApp | null =
     typeof window !== "undefined" ? (window.Telegram?.WebApp ?? null) : null;
 
+  console.log(
+    "Telegram WebApp:",
+    window.Telegram?.WebApp
+  );
+
+  console.log(
+    "initDataUnsafe:",
+    window.Telegram?.WebApp?.initDataUnsafe
+  );
+
+  console.log(
+    "start_param:",
+    window.Telegram?.WebApp?.initDataUnsafe?.start_param
+  );
+
+
   useEffect(() => {
     console.log("Version:", tg?.version);
     console.log("Platform:", tg?.platform);
@@ -164,9 +180,16 @@ export const useTelegram = (): UseTelegramReturn => {
 
   const openTelegramLink = useCallback(
     (url: string) => {
+
+      console.log(
+        "OPEN TELEGRAM LINK:",
+        url
+      );
+
       const webApp = window.Telegram?.WebApp;
 
       if (!webApp) {
+        console.log("Telegram WebApp отсутствует");
         window.open(url, "_blank");
         return;
       }
