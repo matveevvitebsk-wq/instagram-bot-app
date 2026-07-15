@@ -17,7 +17,18 @@ import Terms from '@/pages/Terms';
 const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
-  const { initData, isReady, platform } = useTelegram();
+  const { initData, isReady, platform, openLink } = useTelegram();
+  useEffect(() => {
+    console.log(
+      'Telegram start_param:',
+      window.Telegram?.WebApp?.initDataUnsafe?.start_param,
+    );
+
+    console.log(
+      'Telegram initDataUnsafe:',
+      window.Telegram?.WebApp?.initDataUnsafe,
+    );
+  }, []);
   const { login, isAuthenticated, isLoading } = useAuthStore();
   const { track } = useTrack();
 
@@ -35,12 +46,36 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
+  // ═══════════════════════════════════════════════════════
+  // НОВОЕ (15.07.2026)
+  //
+  // Обработка запуска через:
+  // https://t.me/mediahave_bot?startapp=ig_auth
+  //
+  // Telegram открывает Mini App заново,
+  // мы проверяем start_param и запускаем OAuth.
+  // ═══════════════════════════════════════════════════════
+
+  useEffect(() => {
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+
+    if (startParam === 'ig_auth' && initData) {
+      const url =
+        `https://api.almarathon.com/api/auth/meta/start-page` +
+        `?initData=${encodeURIComponent(initData)}`;
+
+      console.log('Запуск Instagram OAuth:', url);
+
+      openLink(url);
+    }
+  }, [initData, openLink]);
+
   if (isPublicPath) {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
+          <Route path='/privacy' element={<Privacy />} />
+          <Route path='/terms' element={<Terms />} />
         </Routes>
       </BrowserRouter>
     );
@@ -52,18 +87,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
+        <Route path='/' element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="leads" element={<Leads />} />
-          <Route path="funnels" element={<Funnels />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path='tasks' element={<Tasks />} />
+          <Route path='leads' element={<Leads />} />
+          <Route path='funnels' element={<Funnels />} />
+          <Route path='settings' element={<Settings />} />
         </Route>
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path='/privacy' element={<Privacy />} />
+        <Route path='/terms' element={<Terms />} />
+        <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
- 

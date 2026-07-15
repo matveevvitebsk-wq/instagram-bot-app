@@ -43,6 +43,10 @@ interface UseTelegramReturn {
   //
   // ══════════════════════════════════════════════════════════════════════
   openLink: (url: string) => void;
+  // НОВОЕ (15.07.2026)
+  // Открывает ссылку t.me внутри Telegram,
+  // используется для запуска Mini App через startapp
+  openTelegramLink: (url: string) => void;
 }
 
 export const useTelegram = (): UseTelegramReturn => {
@@ -147,6 +151,31 @@ export const useTelegram = (): UseTelegramReturn => {
     []
   );
 
+  // ═══════════════════════════════════════════════════════
+  // НОВОЕ (15.07.2026)
+  //
+  // Открытие Telegram deep-link.
+  // Используется для:
+  // https://t.me/mediahave_bot?startapp=ig_auth
+  //
+  // В отличие от openLink(), эта функция открывает
+  // Telegram-ссылки внутри приложения Telegram.
+  // ═══════════════════════════════════════════════════════
+
+  const openTelegramLink = useCallback(
+    (url: string) => {
+      const webApp = window.Telegram?.WebApp;
+
+      if (!webApp) {
+        window.open(url, "_blank");
+        return;
+      }
+
+      webApp.openTelegramLink(url);
+    },
+    []
+  );
+
   return {
     tg,
     user: (tg?.initDataUnsafe?.user as TelegramUser) ?? null,
@@ -163,5 +192,6 @@ export const useTelegram = (): UseTelegramReturn => {
     hapticFeedback,
     closeApp: () => tg?.close(),
     openLink,
+    openTelegramLink,
   };
 };

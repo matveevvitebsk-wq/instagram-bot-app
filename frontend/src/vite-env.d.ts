@@ -18,9 +18,14 @@ interface TelegramWebApp {
             language_code?: string;
             photo_url?: string;
             is_premium?: boolean;
+
         };
         auth_date?: number;
         hash?: string;
+        // НОВОЕ (15.07.2026)
+        // Параметр из Telegram deep link:
+        // https://t.me/mediahave_bot?startapp=ig_auth
+        start_param?: string;
     };
     colorScheme: "light" | "dark";
     platform: string;
@@ -76,7 +81,7 @@ interface TelegramWebApp {
     // ══════════════════════════════════════════════════════════════════════
     openLink: (url: string, options?: {
         try_instant_view?: boolean;
-        try_browser?: "internal" | "chrome" | "firefox" | "safari";  // ← ВОССТАНОВЛЕНО (15.07.2026)
+        try_browser?: "chrome" | "firefox" | "safari";  // ← ВОССТАНОВЛЕНО (15.07.2026)
     }) => void;
     // ДОБАВЛЕНО: Новый метод для работы с внутренними ссылками Telegram (Deep Links).
     // Необходим для перенаправления пользователя на прокси-бота на десктопных платформах.
