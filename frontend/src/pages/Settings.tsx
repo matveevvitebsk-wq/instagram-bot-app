@@ -12,8 +12,8 @@ interface InstagramAccount {
 }
 
 export default function Settings() {
-  // const { openLink, initData } = useTelegram(); // ← ИСПРАВЛЕНО: initData для передачи на прокси-страницу
-  const { openTelegramLink } = useTelegram();
+  // ИСПРАВЛЕНО (15.07.2026): используем openLink + initData для прямого вызова OAuth
+  const { openLink, initData } = useTelegram();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ export default function Settings() {
   }, []);
 
   // ══════════════════════════════════════════════════════════════════════
-  // ИСПРАВЛЕНО (15.07.2026): Server-side OAuth — прокси-страница
+  // ИСПРАВЛЕНО (15.07.2026): Server-side OAuth — прямой вызов openLink
   // ══════════════════════════════════════════════════════════════════════
   // ПРОБЛЕМА: старый код получал URL Instagram OAuth через API
   // (/api/auth/meta/url) и открывал его через openLink(). Это
@@ -55,14 +55,16 @@ export default function Settings() {
 
     console.log('Нажата кнопка Instagram');
 
-    console.log('openTelegramLink:', openTelegramLink);
+    // ИСПРАВЛЕНО (15.07.2026): прямой вызов openLink с initData
+    // Открываем прокси-страницу бэкенда во встроенном браузере Telegram
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
+    const startPageUrl = `${apiUrl}/api/auth/meta/start-page?initData=${encodeURIComponent(
+      initData || '',
+    )}`;
 
-    // НОВОЕ (15.07.2026)
-    // Открываем Telegram deep link.
-    // Telegram запускает Mini App заново с параметром:
-    // start_param = "ig_auth"
-    // openTelegramLink('https://t.me/mediahave_bot?startapp=ig_auth');
-    openTelegramLink('https://t.me/mediahave_bot/mediahave?startapp=ig_auth');
+    console.log('Открываем OAuth страницу:', startPageUrl);
+
+    openLink(startPageUrl);
   };
 
   const handleDisconnect = async () => {

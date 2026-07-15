@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
+// ИСПРАВЛЕНО (15.07.2026): добавлен openLink для OAuth внутри Telegram
 import { useAuthStore } from '@/store/authStore';
 import { useTrack } from '@/hooks/useTrack';
 import Dashboard from '@/pages/Dashboard';
@@ -17,7 +18,8 @@ import Terms from '@/pages/Terms';
 const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
-  const { initData, isReady, platform, tg } = useTelegram();
+  // ИСПРАВЛЕНО (15.07.2026): добавлен openLink в деструктуризацию
+  const { initData, isReady, platform, tg, openLink } = useTelegram();
 
   console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
   console.log('START PARAM:', tg?.initDataUnsafe?.start_param);
@@ -64,8 +66,11 @@ export default function App() {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
     if (startParam === 'ig_auth' && initData) {
+      // ИСПРАВЛЕНО (15.07.2026): используем VITE_API_URL вместо хардкода
+      const apiUrl =
+        import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
       const url =
-        `https://api.almarathon.com/api/auth/meta/start-page` +
+        `${apiUrl}/api/auth/meta/start-page` +
         `?initData=${encodeURIComponent(initData)}`;
 
       console.log('Запуск Instagram OAuth:', url);
