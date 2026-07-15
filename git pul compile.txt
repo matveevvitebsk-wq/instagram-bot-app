@@ -30,3 +30,11 @@ docker exec nginx nginx -t
 
 # Проверить использование процессора
 top -b -n 1 -o %CPU | head -n 20
+
+
+
+#  только frontend
+cd frontend
+npm run build
+cd ..
+docker compose restart nginx
