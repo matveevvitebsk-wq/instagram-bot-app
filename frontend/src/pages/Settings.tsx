@@ -1,7 +1,7 @@
 // frontend/src/pages/Settings.tsx
 import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
-import { api } from '../utils/api';
+// import { api } from '../utils/api';
 
 interface InstagramAccount {
   id: string;

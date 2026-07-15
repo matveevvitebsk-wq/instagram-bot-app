@@ -1,27 +1,32 @@
-// frontend/src/utils/api.ts
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL ?? "",
+  timeout: 15000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
+// Автоматически добавляем JWT к каждому запросу
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem("jwt");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
+// Обрабатываем 401 — разлогиниваем пользователя
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      sessionStorage.removeItem("jwt");
+      window.location.reload();
+    }
     return Promise.reject(error);
   }
 );
 
-export { api };
+export default api;
