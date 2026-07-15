@@ -17,7 +17,11 @@ import Terms from '@/pages/Terms';
 const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
-  const { initData, isReady, platform, openLink } = useTelegram();
+  const { initData, isReady, platform, tg } = useTelegram();
+
+  console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
+  console.log('START PARAM:', tg?.initDataUnsafe?.start_param);
+
   useEffect(() => {
     console.log(
       'Telegram start_param:',
