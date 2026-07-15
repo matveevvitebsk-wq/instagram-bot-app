@@ -182,7 +182,7 @@ export const useTelegram = (): UseTelegramReturn => {
     (url: string) => {
 
       console.log(
-        "OPEN TELEGRAM LINK:",
+        "OPEN TELEGRAM LINKS:",
         url
       );
 
