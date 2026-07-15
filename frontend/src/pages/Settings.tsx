@@ -1,310 +1,305 @@
-import { useState, useEffect } from 'react';
-import api from '../utils/api';
-import { useTelegram } from '@/hooks/useTelegram'; // НОВОЕ: для openLink
+// frontend/src/pages/Settings.tsx
+import React, { useState, useEffect } from 'react';
+import { useTelegram } from '../hooks/useTelegram';
+import { api } from '../utils/api';
 
 interface InstagramAccount {
+  id: string;
   username: string;
-  display_name: string;
-  profile_picture_url: string;
-  followers_count: number;
-  mode: string;
-  is_active: boolean;
+  connected: boolean;
+  status: 'active' | 'pending' | 'error';
 }
 
-export default function Settings() {
-  // ИСПРАВЛЕНО (15.07.2026): используем openLink + initData для OAuth внутри Telegram
-  const { openLink, initData } = useTelegram();
+const Settings: React.FC = () => {
+  const { tg, user } = useTelegram();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
-  const [isDev, setIsDev] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [regForm, setRegForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    fullName: '',
+  });
+  const [regStep, setRegStep] = useState<
+    'initial' | 'instagram' | 'verification'
+  >('initial');
 
   useEffect(() => {
-    api
-      .get('/api/accounts/')
-      .then((res) => {
-        const active = res.data?.find((a: InstagramAccount) => a.is_active);
-        if (active) {
-          setAccount(active);
-          setIsDev(active.mode === 'development');
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    fetchAccountStatus();
   }, []);
 
-  // ══════════════════════════════════════════════════════════════════════
-  // ИСПРАВЛЕНО (15.07.2026): Server-side OAuth — прямой вызов openLink
-  // ══════════════════════════════════════════════════════════════════════
-  // ПРОБЛЕМА: openLink() с try_browser: 'external' открывает системный
-  // браузер, пользователь покидает Telegram.
-  //
-  // РЕШЕНИЕ: openLink() открывает HTML-страницу бэкенда
-  // (/api/auth/meta/start-page?initData=...) на том же домене
-  // api.almarathon.com. Она открывается во встроенном браузере
-  // Telegram (in-app). Страница:
-  //   1. Проверяет, есть ли аккаунт в БД (по initData)
-  //   2. Если есть — показывает "Уже подключено"
-  //   3. Если нет — редиректит на Instagram OAuth
-  //   4. Instagram редиректит на callback (тот же домен)
-  //   5. Callback отдаёт HTML "Подключено" с кнопкой "Вернуться в Telegram"
-  // ══════════════════════════════════════════════════════════════════════
-  const handleConnect = () => {
-    setConnecting(true);
-
-    console.log('Нажата кнопка Instagram');
-
-    // ИСПРАВЛЕНО (15.07.2026): прямой вызов openLink с initData
-    // Открываем прокси-страницу бэкенда во встроенном браузере Telegram
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
-    const startPageUrl = `${apiUrl}/api/auth/meta/start-page?initData=${encodeURIComponent(
-      initData || '',
-    )}`;
-
-    console.log('Открываем OAuth страницу:', startPageUrl);
-
-    openLink(startPageUrl);
+  const fetchAccountStatus = async () => {
+    try {
+      const response = await api.get('/api/accounts/status');
+      setAccount(response.data);
+    } catch (error) {
+      console.error('Failed to fetch account status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDisconnect = async () => {
-    await api.delete('/api/auth/meta/disconnect');
-    setAccount(null);
+  const handleConnectInstagram = () => {
+    // Открываем Instagram OAuth
+    const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+    const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
+    const scope =
+      'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
+
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
+
+    // Открываем в новом окне или в Telegram WebView
+    if (tg) {
+      tg.openLink(authUrl);
+    } else {
+      window.open(authUrl, '_blank');
+    }
+  };
+
+  const handleRegisterInstagram = () => {
+    setShowRegistration(true);
+    setRegStep('initial');
+  };
+
+  const handleSubmitRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegStep('instagram');
+
+    // Имитация открытия Instagram
+    setTimeout(() => {
+      setRegStep('verification');
+    }, 2000);
+  };
+
+  const handleStartInstagramAuth = () => {
+    // Здесь начинается процесс регистрации через Instagram
+    // Открываем Instagram для регистрации
+    const instagramUrl = 'https://www.instagram.com/accounts/emailsignup/';
+
+    if (tg) {
+      tg.openLink(instagramUrl);
+    } else {
+      window.open(instagramUrl, '_blank');
+    }
   };
 
   if (loading) {
     return (
-      <div className='flex items-center justify-center h-64'>
-        <div className='text-[var(--tg-theme-hint-color)]'>Загрузка...</div>
+      <div className='flex items-center justify-center h-full'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto'></div>
+          <p className='mt-2 text-gray-500'>Загрузка...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className='p-4 space-y-4'>
-      <h1 className='text-xl font-bold text-[var(--tg-theme-text-color)]'>
-        Настройки
-      </h1>
+    <div className='p-4 pb-20'>
+      <h2 className='text-xl font-semibold mb-4'>Настройки</h2>
 
-      {isDev && account && (
-        <div className='bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3'>
-          <p className='text-yellow-400 text-sm font-medium'>
-            Режим тестирования
-          </p>
-          <p className='text-yellow-300/80 text-xs mt-1'>
-            Сервис работает в режиме разработки. Автоматизация доступна только
-            для аккаунтов в списке тестеров Meta. После получения ИП будет
-            доступно всем пользователям.
-          </p>
-        </div>
-      )}
+      {/* Instagram Account Section */}
+      <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4'>
+        <h3 className='text-lg font-medium mb-3'>Instagram аккаунт</h3>
 
-      <div className='bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-4 space-y-3'>
-        <h2 className='text-base font-semibold text-[var(--tg-theme-text-color)]'>
-          Instagram аккаунт
-        </h2>
-
-        {account ? (
-          <div className='space-y-3'>
-            <div className='flex items-center gap-3'>
-              {account.profile_picture_url && (
-                <img
-                  src={account.profile_picture_url}
-                  alt={account.username}
-                  className='w-12 h-12 rounded-full object-cover'
-                />
-              )}
+        {account?.connected ? (
+          <div className='space-y-2'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className='text-[var(--tg-theme-text-color)] font-medium'>
-                  @{account.username}
-                </p>
-                <p className='text-[var(--tg-theme-hint-color)] text-sm'>
-                  {account.followers_count?.toLocaleString()} подписчиков
+                <p className='font-medium'>@{account.username}</p>
+                <p
+                  className={`text-sm ${account.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}
+                >
+                  {account.status === 'active' ? '✓ Активен' : '⏳ На проверке'}
                 </p>
               </div>
-              <div className='ml-auto'>
-                <span className='bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full'>
-                  Подключён
-                </span>
-              </div>
+              <button
+                onClick={handleConnectInstagram}
+                className='px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700'
+              >
+                Обновить
+              </button>
             </div>
-            <button
-              onClick={handleDisconnect}
-              className='w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm'
-            >
-              Отключить аккаунт
-            </button>
           </div>
         ) : (
           <div className='space-y-3'>
-            <p className='text-[var(--tg-theme-hint-color)] text-sm'>
+            <p className='text-gray-600 dark:text-gray-400 text-sm'>
               Подключите Instagram Business или Creator аккаунт.
             </p>
-            <div className='bg-blue-500/10 border border-blue-500/30 rounded-lg p-3'>
-              <p className='text-blue-300 text-xs'>
-                Сервис в режиме тестирования. Напишите нам в @mediahave_bot — мы
-                добавим вас в список тестеров Meta.
-              </p>
-            </div>
+
+            {/* Кнопка регистрации */}
             <button
-              onClick={handleConnect}
-              disabled={connecting}
-              className='w-full py-3 rounded-xl bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] font-medium disabled:opacity-50'
+              onClick={handleRegisterInstagram}
+              className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all'
             >
-              {connecting ? 'Открываем Instagram...' : 'Подключить Instagram'}
+              📸 Создать Instagram аккаунт
             </button>
-            {/* ← ИСПРАВЛЕНО (15.07.2026): подсказка — OAuth внутри Telegram */}
-            {connecting && (
-              <p
-                className='text-xs text-center'
-                style={{ color: 'var(--tg-theme-hint-color)' }}
+
+            {/* Кнопка входа (существующий аккаунт) */}
+            <button
+              onClick={handleConnectInstagram}
+              className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
+            >
+              🔑 Войти в существующий
+            </button>
+
+            <div className='text-center text-xs text-gray-500 mt-2'>
+              Сервис в режиме тестирования.
+              <br />
+              Напишите нам в{' '}
+              <a
+                href='https://t.me/mediahave_bot'
+                className='text-blue-600 hover:underline'
               >
-                Откроется страница авторизации Instagram внутри Telegram. После
-                подключения нажмите "Вернуться в Telegram" и обновите бота.
-              </p>
-            )}
+                @mediahave_bot
+              </a>{' '}
+              — мы добавим вас в список тестеров Meta.
+            </div>
           </div>
         )}
       </div>
+
+      {/* Модальное окно регистрации */}
+      {showRegistration && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
+          <div className='bg-white dark:bg-gray-800 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto'>
+            <div className='p-6'>
+              <div className='flex justify-between items-start mb-4'>
+                <h3 className='text-xl font-bold'>Создать Instagram аккаунт</h3>
+                <button
+                  onClick={() => setShowRegistration(false)}
+                  className='text-gray-500 hover:text-gray-700'
+                >
+                  ✕
+                </button>
+              </div>
+
+              {regStep === 'initial' && (
+                <form onSubmit={handleSubmitRegistration}>
+                  <div className='space-y-3'>
+                    <div>
+                      <label className='block text-sm font-medium mb-1'>
+                        Имя пользователя
+                      </label>
+                      <input
+                        type='text'
+                        value={regForm.username}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, username: e.target.value })
+                        }
+                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
+                        placeholder='username'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium mb-1'>
+                        Email
+                      </label>
+                      <input
+                        type='email'
+                        value={regForm.email}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, email: e.target.value })
+                        }
+                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
+                        placeholder='email@example.com'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium mb-1'>
+                        Пароль
+                      </label>
+                      <input
+                        type='password'
+                        value={regForm.password}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, password: e.target.value })
+                        }
+                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
+                        placeholder='••••••••'
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium mb-1'>
+                        Полное имя
+                      </label>
+                      <input
+                        type='text'
+                        value={regForm.fullName}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, fullName: e.target.value })
+                        }
+                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
+                        placeholder='John Doe'
+                      />
+                    </div>
+
+                    <button
+                      type='submit'
+                      className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all mt-2'
+                    >
+                      Продолжить
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {regStep === 'instagram' && (
+                <div className='text-center py-8'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
+                  <p className='text-lg font-medium'>Открываем Instagram...</p>
+                  <p className='text-gray-500 text-sm mt-2'>
+                    Пожалуйста, подождите
+                  </p>
+                </div>
+              )}
+
+              {regStep === 'verification' && (
+                <div className='text-center py-8'>
+                  <div className='text-6xl mb-4'>📸</div>
+                  <h4 className='text-xl font-bold mb-2'>Почти готово!</h4>
+                  <p className='text-gray-600 dark:text-gray-400 mb-4'>
+                    Для завершения регистрации откройте Instagram и подтвердите
+                    аккаунт.
+                  </p>
+                  <button
+                    onClick={handleStartInstagramAuth}
+                    className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all'
+                  >
+                    📱 Открыть Instagram
+                  </button>
+                  <button
+                    onClick={() => setShowRegistration(false)}
+                    className='w-full py-2 text-gray-500 hover:text-gray-700 text-sm mt-2'
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Telegram bot info */}
+      <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-4'>
+        <div className='flex items-start space-x-3'>
+          <span className='text-2xl'>🤖</span>
+          <div>
+            <p className='font-medium'>@mediahave_bot</p>
+            <p className='text-sm text-gray-600 dark:text-gray-400'>
+              Поддержка и помощь в настройке
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
-// v4 — openLink вместо window.location.href для корректного OAuth из Telegram WebView
-// import { useState, useEffect } from "react";
-// import api from "../utils/api";
+};
 
-// interface InstagramAccount {
-//   username: string;
-//   display_name: string;
-//   profile_picture_url: string;
-//   followers_count: number;
-//   mode: string;
-//   is_active: boolean;
-// }
-
-// export default function Settings() {
-//   const [account, setAccount] = useState<InstagramAccount | null>(null);
-//   const [isDev, setIsDev] = useState(false);
-//   const [loading, setLoading] = useState(true);
-//   const [connecting, setConnecting] = useState(false);
-
-//   useEffect(() => {
-//     api.get("/api/accounts/")
-//       .then((res) => {
-//         const active = res.data?.find((a: InstagramAccount) => a.is_active);
-//         if (active) {
-//           setAccount(active);
-//           setIsDev(active.mode === "development");
-//         }
-//       })
-//       .catch(() => {})
-//       .finally(() => setLoading(false));
-
-//     const params = new URLSearchParams(window.location.search);
-//     if (params.get("instagram") === "connected") {
-//       window.history.replaceState({}, "", "/settings");
-//     }
-//   }, []);
-
-//   const handleConnect = async () => {
-//     setConnecting(true);
-//     try {
-//       const res = await api.get("/api/auth/meta/url");
-//       window.location.href = res.data.url;
-//     } catch {
-//       setConnecting(false);
-//     }
-//   };
-
-//   const handleDisconnect = async () => {
-//     await api.delete("/api/auth/meta/disconnect");
-//     setAccount(null);
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="flex items-center justify-center h-64">
-//         <div className="text-[var(--tg-theme-hint-color)]">Загрузка...</div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="p-4 space-y-4">
-//       <h1 className="text-xl font-bold text-[var(--tg-theme-text-color)]">
-//         Настройки
-//       </h1>
-
-//       {isDev && account && (
-//         <div className="bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3">
-//           <p className="text-yellow-400 text-sm font-medium">
-//             Режим тестирования
-//           </p>
-//           <p className="text-yellow-300/80 text-xs mt-1">
-//             Сервис работает в режиме разработки. Автоматизация доступна
-//             только для аккаунтов в списке тестеров Meta. После получения ИП
-//             будет доступно всем пользователям.
-//           </p>
-//         </div>
-//       )}
-
-//       <div className="bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-4 space-y-3">
-//         <h2 className="text-base font-semibold text-[var(--tg-theme-text-color)]">
-//           Instagram аккаунт
-//         </h2>
-
-//         {account ? (
-//           <div className="space-y-3">
-//             <div className="flex items-center gap-3">
-//               {account.profile_picture_url && (
-//                 <img
-//                   src={account.profile_picture_url}
-//                   alt={account.username}
-//                   className="w-12 h-12 rounded-full object-cover"
-//                 />
-//               )}
-//               <div>
-//                 <p className="text-[var(--tg-theme-text-color)] font-medium">
-//                   @{account.username}
-//                 </p>
-//                 <p className="text-[var(--tg-theme-hint-color)] text-sm">
-//                   {account.followers_count?.toLocaleString()} подписчиков
-//                 </p>
-//               </div>
-//               <div className="ml-auto">
-//                 <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full">
-//                   Подключён
-//                 </span>
-//               </div>
-//             </div>
-//             <button
-//               onClick={handleDisconnect}
-//               className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm"
-//             >
-//               Отключить аккаунт
-//             </button>
-//           </div>
-//         ) : (
-//           <div className="space-y-3">
-//             <p className="text-[var(--tg-theme-hint-color)] text-sm">
-//               Подключите Instagram Business или Creator аккаунт.
-//             </p>
-//             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-//               <p className="text-blue-300 text-xs">
-//                 Сервис в режиме тестирования. Напишите нам в @mediahave_bot
-//                 — мы добавим вас в список тестеров Meta.
-//               </p>
-//             </div>
-//             <button
-//               onClick={handleConnect}
-//               disabled={connecting}
-//               className="w-full py-3 rounded-xl bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] font-medium disabled:opacity-50"
-//             >
-//               {connecting ? "Открываем Instagram..." : "Подключить Instagram"}
-//             </button>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-// // v3
+export default Settings;
