@@ -25,9 +25,23 @@ interface UseTelegramReturn {
   showConfirm: (text: string, callback: (confirmed: boolean) => void) => void;
   hapticFeedback: (type: "light" | "medium" | "heavy" | "error" | "success" | "warning") => void;
   closeApp: () => void;
-  // НОВОЕ: открывает ссылку в системном браузере (Safari/Chrome), а не в WebView Mini App.
-  // ОБЯЗАТЕЛЬНО использовать для любых внешних OAuth-редиректов (Meta/Instagram и т.д.) —
-  // window.location.href внутри Telegram WebView для внешних доменов не работает надёжно.
+  // ══════════════════════════════════════════════════════════════════════
+  // ВОССТАНОВЛЕНО (15.07.2026): openLink без try_browser
+  // ══════════════════════════════════════════════════════════════════════
+  // Убран try_browser: 'internal' — этот параметр неофициальный,
+  // Telegram его игнорирует и открывает системный браузер.
+  //
+  // Теперь openLink(url) вызывает webApp.openLink(url) БЕЗ опций.
+  // Telegram сам решает, как открыть ссылку:
+  //   - на мобильных — во встроенном браузере Telegram (in-app)
+  //   - на десктопе — в системном браузере
+  //
+  // Страница https://api.almarathon.com/api/auth/meta/start-page
+  // может быть открыта во встроенном браузере, что и нужно.
+  // После OAuth Instagram редиректит на тот же домен (api.almarathon.com),
+  // поэтому пользователь НЕ покидает Telegram.
+  //
+  // ══════════════════════════════════════════════════════════════════════
   openLink: (url: string) => void;
 }
 
@@ -100,15 +114,22 @@ export const useTelegram = (): UseTelegramReturn => {
   );
 
   // ══════════════════════════════════════════════════════════════════════
-  // ВОССТАНОВЛЕНО (15.07.2026): открытие ссылки ВНУТРИ Telegram
+  // ИСПРАВЛЕНО (15.07.2026): openLink — без try_browser
   // ══════════════════════════════════════════════════════════════════════
-  // Используем try_browser: "internal" — ссылка открывается во встроенном
-  // браузере Telegram, не покидая приложение. На десктопе — аналогично.
-  // Вне Telegram (обычный браузер) — фолбэк на window.open.
+  // ПРОБЛЕМА: try_browser: 'internal' — неофициальный параметр,
+  // Telegram его игнорирует. Параметр try_browser: 'external' —
+  // официальный, но открывает системный браузер (покидаем Telegram).
   //
-  // ОПАСНОСТЬ: Meta/Instagram может заблокировать in-app браузер Telegram
-  // (детект по user-agent). Если OAuth перестанет работать — нужно будет
-  // вернуть try_browser: "external" (системный браузер).
+  // РЕШЕНИЕ: убираем try_browser вообще. Telegram сам выбирает
+  // где открыть ссылку. На мобильных — встроенный браузер (in-app),
+  // что позволяет оставаться в Telegram.
+  //
+  // АРХИТЕКТУРА Server-side OAuth:
+  //   1. Settings.tsx → openLink("https://api.almarathon.com/api/auth/meta/start-page")
+  //   2. Бэкенд отдаёт HTML-страницу, которая проверяет наличие аккаунта в БД
+  //   3. Если аккаунта нет — редирект на Instagram OAuth
+  //   4. Instagram редиректит на api.almarathon.com (тот же домен)
+  //   5. После OAuth — страница "Подключено" с кнопкой "Вернуться в Telegram"
   // ══════════════════════════════════════════════════════════════════════
   const openLink = useCallback(
     (url: string) => {
@@ -119,41 +140,12 @@ export const useTelegram = (): UseTelegramReturn => {
         return;
       }
 
-      // ← ВОССТАНОВЛЕНО (15.07.2026): try_browser: "internal"
-      //   открывает ссылку во встроенном браузере Telegram,
-      //   а не в Chrome/Safari.
-      webApp.openLink(url, {
-        try_instant_view: false,
-        try_browser: "internal",
-      });
+      // ← ИСПРАВЛЕНО (15.07.2026): без try_browser
+      // Telegram сам откроет ссылку во встроенном браузере (на мобильных)
+      webApp.openLink(url, { try_instant_view: false });
     },
     []
   );
-
-
-  // const openLink = useCallback(
-  //   (url: string) => {
-  //     console.log("Platform:", tg?.platform);
-  //     console.log("URL:", url);
-  //     console.log("Version:", window.Telegram?.WebApp.version);
-  //     console.log("Platform:", window.Telegram?.WebApp.platform);
-  //     console.log("WebApp:", window.Telegram?.WebApp);
-
-  //     if (tg?.openLink) {
-  //       // Открывает ссылку во встроенном браузере Telegram,
-  //       // а не в Chrome/Safari.
-  //       tg.openLink(url, {
-  //         try_instant_view: false,
-  //         try_browser: "internal",
-  //       });
-  //     } else {
-  //       window.open(url, "_blank");
-  //     }
-  //   },
-  //   [tg]
-  // );
-
-
 
   return {
     tg,
