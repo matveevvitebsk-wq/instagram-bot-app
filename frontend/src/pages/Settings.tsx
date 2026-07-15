@@ -12,7 +12,8 @@ interface InstagramAccount {
 }
 
 export default function Settings() {
-  const { openLink, initData } = useTelegram(); // ← ИСПРАВЛЕНО: initData для передачи на прокси-страницу
+  // const { openLink, initData } = useTelegram(); // ← ИСПРАВЛЕНО: initData для передачи на прокси-страницу
+  const { openTelegramLink } = useTelegram();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,17 +53,11 @@ export default function Settings() {
   const handleConnect = () => {
     setConnecting(true);
 
-    // Строим URL прокси-страницы на бэкенде (тот же домен)
-    const encodedInitData = encodeURIComponent(initData || '');
-    const startPageUrl = `${
-      import.meta.env.VITE_API_URL || 'https://api.almarathon.com'
-    }/api/auth/meta/start-page?initData=${encodedInitData}`;
-
-    console.log('Открываем прокси-страницу OAuth:', startPageUrl);
-
-    // openLink открывает во встроенном браузере Telegram (in-app)
-    openLink(startPageUrl);
-    // Сбрасывать connecting не обязательно — пользователь остаётся в Telegram
+    // НОВОЕ (15.07.2026)
+    // Открываем Telegram deep link.
+    // Telegram запускает Mini App заново с параметром:
+    // start_param = "ig_auth"
+    openTelegramLink('https://t.me/mediahave_bot?startapp=ig_auth');
   };
 
   const handleDisconnect = async () => {
