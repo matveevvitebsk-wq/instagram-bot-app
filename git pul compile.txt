@@ -38,3 +38,10 @@ cd frontend
 npm run build
 cd ..
 docker compose restart nginx
+
+
+
+
+Значит сначала найти реальный compose-файл, которым был поднят n8n-docker-caddy-caddy-1.
+Команды:
+docker inspect n8n-docker-caddy-caddy-1 | grep -i com.docker.compose.project.config_files
