@@ -1,7 +1,7 @@
 // frontend/src/pages/Settings.tsx
 import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
-// import { api } from '../utils/api';
+import api from '../utils/api';
 
 interface InstagramAccount {
   id: string;
@@ -30,14 +30,14 @@ const Settings: React.FC = () => {
   }, []);
 
   const fetchAccountStatus = async () => {
-    // try {
-    //   const response = await api.get('/api/accounts/status');
-    //   setAccount(response.data);
-    // } catch (error) {
-    //   console.error('Failed to fetch account status:', error);
-    // } finally {
-    //   setLoading(false);
-    // }
+    try {
+      const response = await api.get('/api/accounts/status');
+      setAccount(response.data);
+    } catch (error) {
+      console.error('Failed to fetch account status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConnectInstagram = () => {
