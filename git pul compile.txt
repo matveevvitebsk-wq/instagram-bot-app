@@ -90,25 +90,35 @@ docker compose up -d backend
 
 
 
+Обновить код:
 cd /opt/instagram-bot/instagram-bot-app
-
-    Проверить состояние локального репозитория
-git status
-git branch
-git remote -v
-    Загрузить из репозитория
-git pull origin main
-
-    Пересобрать backend:
-docker compose build --no-cache backend или docker compose build backend
-docker compose up -d backend
-
-    Пересобрать frontend (React build внутри контейнера не делается, поэтому сначала собрать dist):
+git pull
+Пересобрать frontend:
 cd frontend
 npm install
 npm run build
-cd ..
 
+После этого появится:
+
+frontend/dist/
+Пересобрать backend (есть Dockerfile):
+cd /opt/instagram-bot/instagram-bot-app
+docker compose build --no-cache backend
+docker compose up -d backend
+Перезапустить nginx, чтобы он перечитал nginx.conf и взял новый frontend/dist:
+docker compose restart nginx
+
+Проверка:
+
+docker ps
+docker exec nginx ls -la /usr/share/nginx/html
+docker exec nginx nginx -t
+
+Итог по твоей архитектуре:
+
+backend — пересобирается (docker compose build backend)
+frontend — собирается через npm run build
+nginx — НЕ пересобирается, только перезапускается (docker compose restart nginx)
 
 
 
