@@ -90,6 +90,8 @@ docker compose up -d backend
 
 
 
+cd /opt/instagram-bot/instagram-bot-app
+
     Проверить состояние локального репозитория
 git status
 git branch
