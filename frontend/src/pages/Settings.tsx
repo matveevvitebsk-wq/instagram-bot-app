@@ -52,6 +52,7 @@ const Settings: React.FC = () => {
     // Открываем в новом окне или в Telegram WebView
     if (tg) {
       tg.openLink(authUrl);
+      console.log(user);
     } else {
       window.open(authUrl, '_blank');
     }
