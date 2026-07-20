@@ -48,15 +48,15 @@ async def auth_telegram(body: TelegramAuthRequest):
         "photo_url": user_data.get("photo_url", ""),
     }
 
-# Вместо upsert
-# existing = sb.table("customer_profiles").select("*").eq("telegram_id", telegram_id).execute()
-
-if existing.data:
-    # Обновляем
-    result = sb.table("customer_profiles").update(profile_data).eq("telegram_id", telegram_id).execute()
-else:
-    # Создаём
-    result = sb.table("customer_profiles").insert(profile_data).execute()
+    # Вместо upsert
+    existing = sb.table("customer_profiles").select("*").eq("telegram_id", telegram_id).execute()
+    print("existing  ", existing)
+    if existing.data:
+        # Обновляем
+        result = sb.table("customer_profiles").update(profile_data).eq("telegram_id", telegram_id).execute()
+    else:
+        # Создаём
+        result = sb.table("customer_profiles").insert(profile_data).execute()
 
     if not result.data:
         raise HTTPException(

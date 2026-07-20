@@ -114,6 +114,11 @@ docker ps
 docker exec nginx ls -la /usr/share/nginx/html
 docker exec nginx nginx -t
 
+
+
+docker compose logs -f backend
+
+
 Итог по твоей архитектуре:
 
 backend — пересобирается (docker compose build backend)
