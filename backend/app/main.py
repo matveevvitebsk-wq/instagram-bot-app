@@ -5,18 +5,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import RateLimitMiddleware
 from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-import logging
-
-class LogHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        print(f"📌 {request.method} {request.url.path}")
-        auth = request.headers.get("authorization")
-        if auth:
-            print(f"   🔑 Authorization: {auth[:30]}...")
-        else:
-            print("   ❌ Нет заголовка Authorization")
-        return await call_next(request)
+ 
 
 app.add_middleware(LogHeadersMiddleware)
 
