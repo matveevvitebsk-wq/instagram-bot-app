@@ -19,7 +19,7 @@ class LinkAccountRequest(BaseModel):
 @router.get("/")
 async def get_accounts(current_user: dict = Depends(get_current_user)):
     print(f"📁 Accounts called for user: {current_user}")
-    
+
 async def list_accounts(current_user: dict = Depends(get_current_user)):
     sb = get_supabase()
     profile = sb.table("customer_profiles").select("id").eq(
