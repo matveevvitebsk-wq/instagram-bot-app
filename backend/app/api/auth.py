@@ -49,6 +49,7 @@ async def auth_telegram(body: TelegramAuthRequest):
     }
 
     result = sb.table("customer_profiles").upsert(
+        console.log(profile_data + '    +++');
         profile_data,
         on_conflict="telegram_id"
     ).execute()
