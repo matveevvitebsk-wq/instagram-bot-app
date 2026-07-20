@@ -25,6 +25,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       const res = await api.post("/api/auth/telegram", { init_data: initData });
       const { access_token, user } = res.data;
 
+      console.log("🔑 Ответ от бэкенда:", res.data);
+
+      console.log("🔑 Сохраняем токен:", access_token);
+
+
       // Сохраняем в sessionStorage (очищается при закрытии вкладки)
       // НЕ localStorage — чувствительные данные не должны храниться дольше сессии
       sessionStorage.setItem("jwt", access_token);
