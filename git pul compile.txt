@@ -90,7 +90,7 @@ docker compose up -d backend
 
 
 
-Обновить код:
+Обновить код: загрузить изменения
 cd /opt/instagram-bot/instagram-bot-app
 git pull origin main
 Пересобрать frontend:
@@ -121,6 +121,23 @@ frontend — собирается через npm run build
 nginx — НЕ пересобирается, только перезапускается (docker compose restart nginx)
 
 
+
+Отправить на гитхаб
+# Перейди в папку проекта
+cd /opt/instagram-bot/instagram-bot-app
+
+# Проверь, какие файлы изменены
+git status
+
+# Добавь нужные файлы (НЕ добавляй .env с секретами!)
+git add backend/app/main.py
+# если правил ещё что-то, добавь отдельно или используй git add -p
+
+# Создай коммит с описанием
+git commit -m "fix: исправлен CORS и middleware для OPTIONS"
+
+# Отправь на GitHub (ветка, скорее всего, main или master)
+git push origin main
 
 
 
