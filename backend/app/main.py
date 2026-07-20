@@ -30,7 +30,7 @@ app.add_middleware(
 )
 
 # Rate limiter — не более 120 запросов в минуту с одного IP
-app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
+# app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
 
 app.include_router(auth.router,             prefix="/api/auth",      tags=["Auth"])
 app.include_router(accounts.router,         prefix="/api/accounts",  tags=["Accounts"])

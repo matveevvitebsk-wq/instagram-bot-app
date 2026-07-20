@@ -21,6 +21,7 @@ import './index.css';
 //     tg.colorScheme || "light"
 //   );
 // }
+
 // Временно для разработки в браузере
 if (!window.Telegram?.WebApp) {
   (window as any).Telegram = {
