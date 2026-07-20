@@ -118,3 +118,16 @@ async def get_current_user(
 ) -> dict:
     """Dependency для защищённых эндпоинтов."""
     return decode_access_token(credentials.credentials)
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+) -> dict:
+    token = credentials.credentials
+    print(f"🔑 Received token: {token[:20]}...")  # ← покажет первые 20 символов
+    try:
+        payload = decode_access_token(token)
+        print(f"✅ Decoded user: {payload}")
+        return payload
+    except Exception as e:
+        print(f"❌ Token error: {e}")
+        raise
