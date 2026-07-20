@@ -92,7 +92,7 @@ docker compose up -d backend
 
 Обновить код:
 cd /opt/instagram-bot/instagram-bot-app
-git pull
+git pull origin main
 Пересобрать frontend:
 cd frontend
 npm install
