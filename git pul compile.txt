@@ -104,6 +104,7 @@ frontend/dist/
 Пересобрать backend (есть Dockerfile):
 cd /opt/instagram-bot/instagram-bot-app
 docker compose build --no-cache backend
+docker compose up -d --build backend
 docker compose up -d backend
 Перезапустить nginx, чтобы он перечитал nginx.conf и взял новый frontend/dist:
 docker compose restart nginx
