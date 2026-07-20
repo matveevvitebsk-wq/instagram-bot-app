@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.rate_limit import RateLimitMiddleware
 from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels
+from fastapi import Request, Response
 
 settings = get_settings()
 
@@ -29,8 +30,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def options_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            },
+        )
+    return await call_next(request)
+
 # Rate limiter — не более 120 запросов в минуту с одного IP
-# app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
 
 app.include_router(auth.router,             prefix="/api/auth",      tags=["Auth"])
 app.include_router(accounts.router,         prefix="/api/accounts",  tags=["Accounts"])
