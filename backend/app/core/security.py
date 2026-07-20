@@ -117,7 +117,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ) -> dict:
     token = credentials.credentials
-    print(f"🔑 Received token: {token[:20]}...")  # покажет начало токена
+    print(f"🔑 Received token: {token[:20]}...")
     try:
         payload = decode_access_token(token)
         print(f"✅ Decoded user: {payload}")

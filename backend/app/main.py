@@ -4,10 +4,6 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.rate_limit import RateLimitMiddleware
 from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels
-from fastapi import Request, Response
- 
-
-app.add_middleware(LogHeadersMiddleware)
 
 settings = get_settings()
 
