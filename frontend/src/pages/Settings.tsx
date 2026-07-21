@@ -40,21 +40,37 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleConnectInstagram = () => {
-    // Открываем Instagram OAuth
-    const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-    const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
-    const scope =
-      'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
+  // const handleConnectInstagram = () => {
+  //   // Открываем Instagram OAuth
+  //   const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+  //   const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
+  //   const scope =
+  //     'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
 
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
+  //   const authUrl = `https://www.facebook.com/v23.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
 
-    // Открываем в новом окне или в Telegram WebView
-    if (tg) {
-      tg.openLink(authUrl);
-      console.log(user);
-    } else {
-      window.open(authUrl, '_blank');
+  //   // Открываем в новом окне или в Telegram WebView
+  //   if (tg) {
+  //     tg.openLink(authUrl);
+  //     console.log(user);
+  //   } else {
+  //     window.open(authUrl, '_blank');
+  //   }
+  // };
+
+  const handleConnectInstagram = async () => {
+    try {
+      const response = await api.get('/api/auth/meta/url');
+
+      const authUrl = response.data.auth_url;
+
+      if (tg) {
+        tg.openLink(authUrl);
+      } else {
+        window.open(authUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Instagram OAuth error:', error);
     }
   };
 
