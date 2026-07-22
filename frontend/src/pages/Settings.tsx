@@ -42,8 +42,8 @@ const Settings: React.FC = () => {
 
   // const handleConnectInstagram = () => {
   //   // Открываем Instagram OAuth
-  //   const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-  //   const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
+  //   const clientId = import.meta.env.META_APP_ID;
+  //   const redirectUri = import.meta.env.META_REDIRECT_URI;
   //   const scope =
   //     'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
 
