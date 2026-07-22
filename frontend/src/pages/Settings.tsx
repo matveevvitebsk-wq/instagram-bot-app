@@ -60,7 +60,8 @@ const Settings: React.FC = () => {
 
   const handleConnectInstagram = async () => {
     try {
-      const response = await api.get('/api/auth/meta/url');
+      // const response = await api.get('/api/auth/meta/url');
+      const response = await api.get('/api/instagram/meta/url');
 
       const authUrl = response.data.auth_url;
 
