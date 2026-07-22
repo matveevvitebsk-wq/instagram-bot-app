@@ -25,22 +25,33 @@ class InstagramRegisterRequest(BaseModel):
 
 @router.get("/meta/url")
 async def get_meta_oauth_url():
-    params = {
-        "client_id": settings.META_APP_ID,
-        "redirect_uri": settings.META_REDIRECT_URI,
-        "scope": settings.meta_oauth_scopes,
-        "response_type": "code",
-    }
-
-    auth_url = (
-        f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?"
-        + urlencode(params)
+    url = (
+        f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth"
+        f"?client_id={settings.META_APP_ID}"
+        f"&redirect_uri={settings.META_REDIRECT_URI}"
+        f"&scope={settings.meta_oauth_scopes}"
+        f"&response_type=code"
     )
 
     return {
-        "auth_url": auth_url
+        "auth_url": url
     }
-    
+    # params = {
+    #     "client_id": settings.META_APP_ID,
+    #     "redirect_uri": settings.META_REDIRECT_URI,
+    #     "scope": settings.meta_oauth_scopes,
+    #     "response_type": "code",
+    # }
+
+    # auth_url = (
+    #     f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?"
+    #     + urlencode(params)
+    # )
+
+    # return {
+    #     "auth_url": auth_url
+    # }
+
 
 @router.post("/auth/callback")
 async def instagram_auth_callback(request: InstagramAuthRequest):
