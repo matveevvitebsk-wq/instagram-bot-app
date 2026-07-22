@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional
 from app.core.config import settings
+from urllib.parse import urlencode
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 
@@ -21,6 +22,26 @@ class InstagramRegisterRequest(BaseModel):
     password: str
     full_name: Optional[str] = None
 
+
+@router.get("/meta/url")
+async def get_meta_oauth_url():
+    params = {
+        "client_id": settings.META_APP_ID,
+        "redirect_uri": settings.META_REDIRECT_URI,
+        "scope": settings.meta_oauth_scopes,
+        "response_type": "code",
+    }
+
+    auth_url = (
+        f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?"
+        + urlencode(params)
+    )
+
+    return {
+        "auth_url": auth_url
+    }
+    
+
 @router.post("/auth/callback")
 async def instagram_auth_callback(request: InstagramAuthRequest):
     """
@@ -28,10 +49,6 @@ async def instagram_auth_callback(request: InstagramAuthRequest):
     """
     try:
         # Обмен кода на токен
-        # app_id = os.getenv("INSTAGRAM_APP_ID")
-        # app_secret = os.getenv("INSTAGRAM_APP_SECRET")
-        # redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
-
         app_id = settings.META_APP_ID
         app_secret = settings.META_APP_SECRET
         redirect_uri = settings.META_REDIRECT_URI
