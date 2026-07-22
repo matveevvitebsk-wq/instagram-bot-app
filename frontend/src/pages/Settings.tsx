@@ -63,7 +63,11 @@ const Settings: React.FC = () => {
       // const response = await api.get('/api/auth/meta/url');
       const response = await api.get('/api/instagram/meta/url');
 
+      console.log(response.data);
+
       const authUrl = response.data.auth_url;
+ 
+      console.log(authUrl);
 
       if (tg) {
         tg.openLink(authUrl);
