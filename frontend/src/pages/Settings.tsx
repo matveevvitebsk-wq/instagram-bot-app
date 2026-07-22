@@ -66,6 +66,7 @@ const Settings: React.FC = () => {
 
       if (tg) {
         tg.openLink(authUrl);
+        console.log(user);
       } else {
         window.open(authUrl, '_blank');
       }
