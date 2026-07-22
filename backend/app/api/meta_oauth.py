@@ -7,6 +7,7 @@ import jwt
 import json
 from datetime import datetime, timedelta
 from typing import Optional
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 
@@ -27,10 +28,14 @@ async def instagram_auth_callback(request: InstagramAuthRequest):
     """
     try:
         # Обмен кода на токен
-        app_id = os.getenv("INSTAGRAM_APP_ID")
-        app_secret = os.getenv("INSTAGRAM_APP_SECRET")
-        redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
-        
+        # app_id = os.getenv("INSTAGRAM_APP_ID")
+        # app_secret = os.getenv("INSTAGRAM_APP_SECRET")
+        # redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
+
+        app_id = settings.META_APP_ID
+        app_secret = settings.META_APP_SECRET
+        redirect_uri = settings.META_REDIRECT_URI
+
         if not all([app_id, app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
         

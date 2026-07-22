@@ -1,5 +1,4 @@
 services:
-
   # ─── FastAPI Backend ──────────────────────────────────────────────────────
   backend:
     build:
@@ -23,9 +22,9 @@ services:
       - N8N_BASE_URL=http://n8n:5678
       - N8N_API_KEY=${N8N_API_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS}
-      - INSTAGRAM_APP_ID=${INSTAGRAM_APP_ID}
-      - INSTAGRAM_APP_SECRET=${INSTAGRAM_APP_SECRET}
-      - INSTAGRAM_REDIRECT_URI=${INSTAGRAM_REDIRECT_URI}
+      - META_APP_ID=${META_APP_ID}
+      - META_APP_SECRET=${META_APP_SECRET}
+      - META_REDIRECT_URI=${META_REDIRECT_URI}
       - ENVIRONMENT=production
 
     networks:
