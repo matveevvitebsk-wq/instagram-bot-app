@@ -31,7 +31,7 @@ const Settings: React.FC = () => {
 
   const fetchAccountStatus = async () => {
     try {
-      const response = await api.get('/api/accounts/status');
+      const response = await api.get('/api/instagram/meta/url');
       setAccount(response.data);
     } catch (error) {
       console.error('Failed to fetch account status:', error);
