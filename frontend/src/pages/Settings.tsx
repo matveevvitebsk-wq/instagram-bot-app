@@ -58,20 +58,42 @@ const Settings: React.FC = () => {
   //   }
   // };
 
+  // const handleConnectInstagram = async () => {
+  //   try {
+  //     // const response = await api.get('/api/auth/meta/url');
+  //     const response = await api.get('/api/instagram/meta/url');
+
+  //     console.log(response.data + ' = response.data');
+
+  //     const authUrl = response.data.auth_url;
+
+  //     console.log(authUrl + ' = authUrl');
+  //     console.log(tg + ' = tg');
+  //     if (tg) {
+  //       tg.openLink(authUrl);
+  //       console.log(user);
+  //     } else {
+  //       window.open(authUrl, '_blank');
+  //     }
+  //   } catch (error) {
+  //     console.error('Instagram OAuth error:', error);
+  //   }
+  // };
+
   const handleConnectInstagram = async () => {
     try {
-      // const response = await api.get('/api/auth/meta/url');
-      const response = await api.get('/api/instagram/meta/url');
+      const telegramId = tg?.initDataUnsafe?.user?.id;
 
-      console.log(response.data);
+      const response = await api.get('/api/instagram/meta/url', {
+        params: {
+          telegram_id: telegramId,
+        },
+      });
 
       const authUrl = response.data.auth_url;
 
-      console.log(authUrl);
-
       if (tg) {
         tg.openLink(authUrl);
-        console.log(user);
       } else {
         window.open(authUrl, '_blank');
       }
