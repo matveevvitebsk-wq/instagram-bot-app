@@ -70,7 +70,7 @@ export default function App() {
       const apiUrl =
         import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
       const url =
-        `${apiUrl}/api/auth/meta/start-page` +
+        `${apiUrl}/api/instagram/meta/start-page` +
         `?initData=${encodeURIComponent(initData)}`;
 
       console.log('Запуск Instagram OAuth:', url);
