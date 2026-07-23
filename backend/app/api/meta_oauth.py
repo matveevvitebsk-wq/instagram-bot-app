@@ -10,6 +10,8 @@ from typing import Optional
 from app.core.config import settings
 from fastapi import Query
 from urllib.parse import urlencode
+from app.core.supabase import get_supabase
+
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 
