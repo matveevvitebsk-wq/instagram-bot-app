@@ -82,13 +82,30 @@ const Settings: React.FC = () => {
 
   const handleConnectInstagram = async () => {
     try {
-      const telegramId = tg?.initDataUnsafe?.user?.id;
+      console.log('tg');
+      console.log(tg);
+      console.log('user');
+      console.log(user);
+
+      const telegramId = user?.id;
+
+      console.log('telegramId = ', telegramId);
+
+      if (!telegramId) {
+        alert('Telegram ID not found');
+
+        return;
+      }
+
+      // const telegramId = tg?.initDataUnsafe?.user?.id;
 
       const response = await api.get('/api/instagram/meta/url', {
         params: {
           telegram_id: telegramId,
         },
       });
+
+      console.log(response.data);
 
       const authUrl = response.data.auth_url;
 
@@ -98,7 +115,7 @@ const Settings: React.FC = () => {
         window.open(authUrl, '_blank');
       }
     } catch (error) {
-      console.error('Instagram OAuth error:', error);
+      console.error('Instagram OAuth error: ', error);
     }
   };
 
