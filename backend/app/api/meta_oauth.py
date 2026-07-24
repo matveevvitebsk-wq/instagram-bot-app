@@ -62,11 +62,14 @@ async def auth_callback(
     state:str
 ):
     # ═══════════════════════════════════════════════════════════════════
-    # ИСПРАВЛЕНО (24.07.2026): Instagram Business API token exchange
+    # ИСПРАВЛЕНО (24.07.2026): Instagram Business Login token exchange
+    #
+    #   OAuth URL использует Instagram App ID (META_INSTAGRAM_APP_ID)
+    #   Token exchange использует Facebook App ID (META_APP_ID) через
+    #   Facebook Graph API — это правильный flow для Business Login.
     #
     #   Шаг 1: обмен code на short-lived token через Facebook Graph API
-    #           Использует Facebook App ID + Facebook App Secret
-    #           (META_APP_ID = 1530173274780778, META_APP_SECRET = секрет FB App)
+    #           (client_id = Facebook App ID, client_secret = Facebook App Secret)
     #
     #   Шаг 2: обмен short-lived на long-lived token (60 дней)
     #
@@ -75,11 +78,11 @@ async def auth_callback(
     telegram_id=state
 
     try:
-        app_id = settings.META_APP_ID          # Facebook App ID (для Graph API)
-        app_secret = settings.META_APP_SECRET  # Facebook App Secret
+        facebook_app_id = settings.META_APP_ID
+        facebook_app_secret = settings.META_APP_SECRET
         redirect_uri = settings.META_REDIRECT_URI
 
-        if not all([app_id, app_secret, redirect_uri]):
+        if not all([facebook_app_id, facebook_app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
         # Шаг 1: обмен code на short-lived token через Facebook Graph API
@@ -87,8 +90,8 @@ async def auth_callback(
             token_response = await client.get(
                 f"{settings.meta_graph_api}/oauth/access_token",
                 params={
-                    "client_id": app_id,
-                    "client_secret": app_secret,
+                    "client_id": facebook_app_id,
+                    "client_secret": facebook_app_secret,
                     "grant_type": "authorization_code",
                     "redirect_uri": redirect_uri,
                     "code": code
@@ -107,8 +110,8 @@ async def auth_callback(
                 f"{settings.meta_graph_api}/oauth/access_token",
                 params={
                     "grant_type": "fb_exchange_token",
-                    "client_id": app_id,
-                    "client_secret": app_secret,
+                    "client_id": facebook_app_id,
+                    "client_secret": facebook_app_secret,
                     "fb_exchange_token": short_lived_token
                 }
             )
@@ -147,7 +150,7 @@ async def auth_callback(
                 raise HTTPException(status_code=400, detail="No Instagram Business account connected to any Facebook Page")
 
         # Шаг 4: сохраняем в Supabase
-        sb=get_supabase()
+        sb = get_supabase()
         sb.table("customer_profiles").update({
             "instagram_connected": True,
             "instagram_username": instagram_username,
