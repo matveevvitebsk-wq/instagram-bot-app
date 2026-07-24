@@ -38,9 +38,7 @@ async def get_meta_url(
         "state": telegram_id
     }
     auth_url=(
-        f"https://www.facebook.com/"
-        f"{settings.META_API_VERSION}"
-        f"/dialog/oauth?"
+        f"{settings.meta_oauth_url}?"
         f"{urlencode(params)}"
     )
 
@@ -85,39 +83,83 @@ async def auth_callback(
 ):
     telegram_id=state
 
-    #  получить token
-    
-    # получить данные instagram пользователя
-    #
-    # сохранить в Supabase
-    sb=get_supabase()
-    sb.table(
-    "customer_profiles"
-    ).update({
-        "instagram_connected":  True,
-        "instagram_username":  "USERNAME",
-        "instagram_id":  "INSTAGRAM_ID"
-    }).eq(
-        "telegram_id",
-        telegram_id
-    ).execute()
+    # ИСПРАВЛЕНО (24.07.2026): реальный обмен code на access_token Instagram
+    try:
+        app_id = settings.META_APP_ID
+        app_secret = settings.META_APP_SECRET
+        redirect_uri = settings.META_REDIRECT_URI
 
-    return """
-        <html>
-        <body>
-            <h2>
-                Instagram подключен.
-            </h2>
-            <script>
-            setTimeout(()=>{
-                window.location.href=
-                "https://t.me/mediahave_bot";
-            },2000);
-            </script>
-        </body>
-    </html>
+        if not all([app_id, app_secret, redirect_uri]):
+            raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
-    """
+        # Шаг 1: обмен code на short-lived token
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://api.instagram.com/oauth/access_token",
+                data={
+                    "client_id": app_id,
+                    "client_secret": app_secret,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri,
+                    "code": code
+                }
+            )
+
+            if token_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to get access token")
+
+            token_data = token_response.json()
+
+            # Шаг 2: получаем данные пользователя Instagram
+            user_response = await client.get(
+                "https://graph.instagram.com/me",
+                params={
+                    "fields": "id,username,account_type,media_count",
+                    "access_token": token_data["access_token"]
+                }
+            )
+
+            if user_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to get user info")
+
+            user_data = user_response.json()
+
+        # Шаг 3: сохраняем в Supabase
+        sb=get_supabase()
+        sb.table("customer_profiles").update({
+            "instagram_connected": True,
+            "instagram_username": user_data["username"],
+            "instagram_id": user_data["id"],
+            "instagram_access_token": token_data["access_token"]
+        }).eq("telegram_id", telegram_id).execute()
+
+        return """
+            <html>
+            <body>
+                <h2>Instagram подключен.</h2>
+                <script>
+                setTimeout(()=>{
+                    window.location.href="https://t.me/mediahave_bot";
+                },2000);
+                </script>
+            </body>
+            </html>
+        """
+
+    except Exception as e:
+        return f"""
+            <html>
+            <body>
+                <h2>Ошибка подключения Instagram</h2>
+                <p>{str(e)}</p>
+                <script>
+                setTimeout(()=>{{
+                    window.location.href="https://t.me/mediahave_bot";
+                }},3000);
+                </script>
+            </body>
+            </html>
+        """
 # @router.post("/auth/callback")
 # async def instagram_auth_callback(request: InstagramAuthRequest):
 #     """
