@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from app.core.config import settings
 from fastapi import Query
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from app.core.supabase import get_supabase
 
 
@@ -85,7 +85,13 @@ async def auth_callback(
         if not all([facebook_app_id, facebook_app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
+        # ═══════════════════════════════════════════════════════════════════
         # Шаг 1: обмен code на short-lived token через Facebook Graph API
+        #
+        #   ВАЖНО: redirect_uri должен полностью совпадать с тем, что был
+        #   передан в OAuth URL. Так как urlencode кодирует спецсимволы,
+        #   передаём предварительно закодированную версию.
+        # ═══════════════════════════════════════════════════════════════════
         async with httpx.AsyncClient() as client:
             token_response = await client.get(
                 f"{settings.meta_graph_api}/oauth/access_token",
@@ -93,7 +99,7 @@ async def auth_callback(
                     "client_id": facebook_app_id,
                     "client_secret": facebook_app_secret,
                     "grant_type": "authorization_code",
-                    "redirect_uri": redirect_uri,
+                    "redirect_uri": quote(redirect_uri, safe=''),
                     "code": code
                 }
             )
