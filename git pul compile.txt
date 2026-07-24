@@ -115,7 +115,7 @@ docker ps
 docker exec nginx ls -la /usr/share/nginx/html
 docker exec nginx nginx -t
 
-
+docker-compose down && docker-compose up -d
 
 docker compose logs -f backend
 

@@ -97,30 +97,6 @@ async def auth_callback(
 
             if token_response.status_code != 200:
                 error_detail = token_response.text
-                # ═══════════════════════════════════════════════════════
-                # Проверка: пользователь не добавлен как тестировщик
-                # Если ошибка 101 или 190 — пользователь не имеет доступа
-                # ═══════════════════════════════════════════════════════
-                try:
-                    error_json = token_response.json()
-                    error_code = error_json.get("error", {}).get("code", 0)
-                    if error_code in (101, 190, 200):
-                        return """
-                            <html>
-                            <body>
-                                <h2>Вы не зарегистрированы администратором</h2>
-                                <p>Данный пользователь не добавлен как тестировщик в приложение n8n-call-api-IG.
-                                Обратитесь к администратору.</p>
-                                <script>
-                                setTimeout(()=>{
-                                    window.location.href="https://t.me/mediahave_bot";
-                                },3000);
-                                </script>
-                            </body>
-                            </html>
-                        """
-                except (json.JSONDecodeError, KeyError):
-                    pass
                 raise HTTPException(status_code=400, detail=f"Failed to get access token: {error_detail}")
 
             token_data = token_response.json()
