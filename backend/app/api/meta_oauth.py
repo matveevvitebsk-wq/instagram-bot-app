@@ -30,12 +30,18 @@ class InstagramRegisterRequest(BaseModel):
 async def get_meta_url(
     telegram_id:str=Query(...)
 ):
+    # ═══════════════════════════════════════════════════════════════════
+    # ИСПРАВЛЕНО (24.07.2026): Instagram Basic Display API
+    #   - Использует Instagram App n8n-call-api-IG (ID: 2007885943317419)
+    #   - Для Instagram Basic Display API параметр state НЕ ПОДДЕРЖИВАЕТСЯ
+    #   - telegram_id передаётся в redirect_uri как query-параметр
+    # ═══════════════════════════════════════════════════════════════════
     params={
         "client_id": settings.META_APP_ID,
         "redirect_uri": settings.META_REDIRECT_URI,
         "response_type": "code",
         "scope": settings.meta_oauth_scopes,
-        "state": telegram_id
+        # "state": telegram_id,  # ⚠ Instagram Basic Display НЕ ПОДДЕРЖИВАЕТ state
     }
     auth_url=(
         f"{settings.meta_oauth_url}?"
@@ -43,7 +49,8 @@ async def get_meta_url(
     )
 
     return {
-        "auth_url":auth_url
+        "auth_url": auth_url,
+        "telegram_id": telegram_id,  # telegram_id передаётся клиенту для сохранения
     }
 # @router.get("/meta/url")
 # async def get_meta_oauth_url():
@@ -78,12 +85,23 @@ async def get_meta_url(
 
 @router.get("/auth/callback")
 async def auth_callback(
-    code:str,
-    state:str
+    code: str,
+    state: str = None,  # ⚠ Instagram Basic Display НЕ ПЕРЕДАЁТ state
+    telegram_id: str = Query(None)  # telegram_id может быть передан как query-параметр
 ):
-    telegram_id=state
+    # ═══════════════════════════════════════════════════════════════════
+    # ИСПРАВЛЕНО (24.07.2026): Instagram Basic Display API
+    #   - Использует Instagram App n8n-call-api-IG (ID: 2007885943317419)
+    #   - Для личных аккаунтов (Instagram Basic Display), а не бизнес
+    #   - Обмен code → token через POST api.instagram.com/oauth/access_token
+    #   - Получение user info через graph.instagram.com/me
+    # ═══════════════════════════════════════════════════════════════════
 
-    # ИСПРАВЛЕНО (24.07.2026): обмен через Graph API для бизнес-аккаунтов
+    # ⚠ Instagram Basic Display НЕ ПОДДЕРЖИВАЕТ параметр state
+    # telegram_id извлекается из query-параметра, если передан
+    # Если нет — берётся из state (для обратной совместимости)
+    telegram_id = telegram_id or state
+
     try:
         app_id = settings.META_APP_ID
         app_secret = settings.META_APP_SECRET
@@ -92,12 +110,16 @@ async def auth_callback(
         if not all([app_id, app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
-        # Шаг 1: обмен code на short-lived token через Facebook Graph API
-        # (instagram_business_* скоупы требуют Graph API, а не Basic Display API)
+        # ═══════════════════════════════════════════════════════════════════
+        # Шаг 1: обмен code на access token через Instagram Basic Display API
+        #   - URL: POST https://api.instagram.com/oauth/access_token
+        #   - Параметры: client_id, client_secret, grant_type, redirect_uri, code
+        #   - В ответе: access_token, user_id
+        # ═══════════════════════════════════════════════════════════════════
         async with httpx.AsyncClient() as client:
-            token_response = await client.get(
-                f"{settings.meta_graph_api}/oauth/access_token",
-                params={
+            token_response = await client.post(
+                "https://api.instagram.com/oauth/access_token",
+                data={
                     "client_id": app_id,
                     "client_secret": app_secret,
                     "grant_type": "authorization_code",
@@ -107,58 +129,62 @@ async def auth_callback(
             )
 
             if token_response.status_code != 200:
-                error_detail = token_response.text
-                raise HTTPException(status_code=400, detail=f"Failed to get access token: {error_detail}")
+                error_data = token_response.json()
+                error_message = error_data.get("error", {}).get("message", token_response.text)
+                # ═══════════════════════════════════════════════════════════
+                # Проверка: пользователь не добавлен как тестировщик
+                # Instagram Basic Display возвращает ошибку при попытке
+                # обменять code на token, если пользователь не является
+                # тестировщиком приложения в Meta Console
+                # ═══════════════════════════════════════════════════════════
+                if "user" in error_message.lower() or "not" in error_message.lower() or "invalid" in error_message.lower():
+                    return """
+                        <html>
+                        <body>
+                            <h2>Вы не зарегистрированы администратором</h2>
+                            <p>Войдите в Instagram и добавьте пользователя как тестировщика в приложение n8n-call-api-IG</p>
+                            <script>
+                            setTimeout(()=>{
+                                window.location.href="https://t.me/mediahave_bot";
+                            },3000);
+                            </script>
+                        </body>
+                        </html>
+                    """
+                raise HTTPException(status_code=400, detail=f"Failed to get access token: {error_message}")
 
             token_data = token_response.json()
-            short_lived_token = token_data.get("access_token")
+            access_token = token_data.get("access_token")
+            instagram_user_id = token_data.get("user_id", "")
 
-            # Шаг 2: обмениваем short-lived на long-lived (60 дней)
-            long_token_response = await client.get(
-                f"{settings.meta_graph_api}/oauth/access_token",
+            # ═══════════════════════════════════════════════════════════════════
+            # Шаг 2: получаем информацию о пользователе через Instagram Graph API
+            #   - URL: GET https://graph.instagram.com/me
+            #   - Параметры: fields=id,username,account_type,media_count
+            #   - access_token в query-параметре
+            # ═══════════════════════════════════════════════════════════════════
+            user_response = await client.get(
+                f"{settings.meta_instagram_api}/me",
                 params={
-                    "grant_type": "fb_exchange_token",
-                    "client_id": app_id,
-                    "client_secret": app_secret,
-                    "fb_exchange_token": short_lived_token
+                    "fields": "id,username,account_type,media_count",
+                    "access_token": access_token
                 }
             )
 
-            if long_token_response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to exchange for long-lived token")
+            if user_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to get user info from Instagram")
 
-            long_token_data = long_token_response.json()
-            access_token = long_token_data.get("access_token")
-
-            # Шаг 3: получаем страницы Facebook пользователя
-            pages_response = await client.get(
-                f"{settings.meta_graph_api}/me/accounts",
-                params={
-                    "access_token": access_token,
-                    "fields": "id,name,instagram_business_account{id,username}"
-                }
-            )
-
-            if pages_response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to get Facebook Pages")
-
-            pages_data = pages_response.json()
-            instagram_username = ""
-            instagram_id = ""
-
-            # Ищем страницу с подключённым Instagram Business аккаунтом
-            for page in pages_data.get("data", []):
-                ig_account = page.get("instagram_business_account")
-                if ig_account:
-                    instagram_id = ig_account.get("id", "")
-                    instagram_username = ig_account.get("username", "")
-                    break
+            user_data = user_response.json()
+            instagram_username = user_data.get("username", "")
+            instagram_id = user_data.get("id", "")
 
             if not instagram_id:
-                raise HTTPException(status_code=400, detail="No Instagram Business account connected to any Facebook Page")
+                raise HTTPException(status_code=400, detail="No Instagram user data received")
 
-        # Шаг 4: сохраняем в Supabase
-        sb=get_supabase()
+        # ═══════════════════════════════════════════════════════════════════
+        # Шаг 3: сохраняем в Supabase
+        # ═══════════════════════════════════════════════════════════════════
+        sb = get_supabase()
         sb.table("customer_profiles").update({
             "instagram_connected": True,
             "instagram_username": instagram_username,
@@ -179,6 +205,20 @@ async def auth_callback(
             </html>
         """
 
+    except HTTPException as http_err:
+        return f"""
+            <html>
+            <body>
+                <h2>Ошибка подключения Instagram</h2>
+                <p>{str(http_err.detail)}</p>
+                <script>
+                setTimeout(()=>{{
+                    window.location.href="https://t.me/mediahave_bot";
+                }},3000);
+                </script>
+            </body>
+            </html>
+        """
     except Exception as e:
         return f"""
             <html>

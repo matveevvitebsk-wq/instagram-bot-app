@@ -57,38 +57,59 @@ class Settings(BaseSettings):
 
     @property
     def meta_oauth_scopes(self) -> str:
+        # ═══════════════════════════════════════════════════════════════════
+        # ИСПРАВЛЕНО (24.07.2026): Instagram Basic Display API
+        #   - Используется Instagram App n8n-call-api-IG (ID: 2007885943317419)
+        #   - Для личных аккаунтов (не бизнес)
+        #   - Требует добавления пользователя как тестировщика в Meta Console
+        #   - Скоупы: instagram_basic, pages_show_list
+        # ═══════════════════════════════════════════════════════════════════
         scopes = [
-            # "instagram_basic",
-            # "instagram_manage_messages",
-            # "pages_show_list",
-            # "pages_read_engagement",
-            "instagram_business_basic",
-            "instagram_business_manage_messages",
-            "instagram_business_manage_comments",
-            "instagram_business_content_publish",
-            "instagram_business_manage_insights"
+            "instagram_basic",          # Базовый доступ к профилю
+            "pages_show_list",          # Список страниц (требуется для IG)
         ]
-
-        if not self.DEVELOPMENT_MODE:
-            scopes.append("instagram_content_publish")
 
         return ",".join(scopes)
 
 
     @property
     def meta_oauth_url(self) -> str:
-        return "https://www.instagram.com/oauth/authorize"
-    #     return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
+        # ═══════════════════════════════════════════════════════════════════
+        # ИСПРАВЛЕНО (24.07.2026): Instagram Basic Display API
+        #   - Правильный URL для Instagram App (не Facebook)
+        #   - Использует api.instagram.com, а не www.instagram.com
+        # ═══════════════════════════════════════════════════════════════════
+        return "https://api.instagram.com/oauth/authorize"
+    #     return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"  # СТАРЫЙ (Facebook Business API)
 
 
     @property
     def meta_graph_api(self) -> str:
+        # ═══════════════════════════════════════════════════════════════════
+        # ВНИМАНИЕ: Это Facebook Graph API (для Business API)
+        #   НЕ ИСПОЛЬЗУЕТСЯ для Instagram Basic Display API
+        #   Оставлен для обратной совместимости
+        # ═══════════════════════════════════════════════════════════════════
         return f"https://graph.facebook.com/{self.META_API_VERSION}"
 
 
     @property
     def meta_api_base(self) -> str:
+        # ═══════════════════════════════════════════════════════════════════
+        # ВНИМАНИЕ: Это Facebook Graph API (для Business API)
+        #   НЕ ИСПОЛЬЗУЕТСЯ для Instagram Basic Display API
+        #   Оставлен для обратной совместимости
+        # ═══════════════════════════════════════════════════════════════════
         return f"https://graph.facebook.com/{self.META_API_VERSION}"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ДОБАВЛЕНО (24.07.2026): Instagram Graph API для Basic Display
+    #   - Используется для получения информации о пользователе
+    #   - Не требует версии API (в отличие от Facebook Graph API)
+    # ═══════════════════════════════════════════════════════════════════════
+    @property
+    def meta_instagram_api(self) -> str:
+        return "https://graph.instagram.com"
 
     # class Config:
     #     env_file = ".env"
