@@ -83,7 +83,7 @@ async def auth_callback(
 ):
     telegram_id=state
 
-    # ИСПРАВЛЕНО (24.07.2026): реальный обмен code на access_token Instagram
+    # ИСПРАВЛЕНО (24.07.2026): обмен через Graph API для бизнес-аккаунтов
     try:
         app_id = settings.META_APP_ID
         app_secret = settings.META_APP_SECRET
@@ -92,11 +92,12 @@ async def auth_callback(
         if not all([app_id, app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
-        # Шаг 1: обмен code на short-lived token
+        # Шаг 1: обмен code на short-lived token через Facebook Graph API
+        # (instagram_business_* скоупы требуют Graph API, а не Basic Display API)
         async with httpx.AsyncClient() as client:
-            token_response = await client.post(
-                "https://api.instagram.com/oauth/access_token",
-                data={
+            token_response = await client.get(
+                f"{settings.meta_graph_api}/oauth/access_token",
+                params={
                     "client_id": app_id,
                     "client_secret": app_secret,
                     "grant_type": "authorization_code",
@@ -106,31 +107,63 @@ async def auth_callback(
             )
 
             if token_response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to get access token")
+                error_detail = token_response.text
+                raise HTTPException(status_code=400, detail=f"Failed to get access token: {error_detail}")
 
             token_data = token_response.json()
+            short_lived_token = token_data.get("access_token")
 
-            # Шаг 2: получаем данные пользователя Instagram
-            user_response = await client.get(
-                "https://graph.instagram.com/me",
+            # Шаг 2: обмениваем short-lived на long-lived (60 дней)
+            long_token_response = await client.get(
+                f"{settings.meta_graph_api}/oauth/access_token",
                 params={
-                    "fields": "id,username,account_type,media_count",
-                    "access_token": token_data["access_token"]
+                    "grant_type": "fb_exchange_token",
+                    "client_id": app_id,
+                    "client_secret": app_secret,
+                    "fb_exchange_token": short_lived_token
                 }
             )
 
-            if user_response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to get user info")
+            if long_token_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to exchange for long-lived token")
 
-            user_data = user_response.json()
+            long_token_data = long_token_response.json()
+            access_token = long_token_data.get("access_token")
 
-        # Шаг 3: сохраняем в Supabase
+            # Шаг 3: получаем страницы Facebook пользователя
+            pages_response = await client.get(
+                f"{settings.meta_graph_api}/me/accounts",
+                params={
+                    "access_token": access_token,
+                    "fields": "id,name,instagram_business_account{id,username}"
+                }
+            )
+
+            if pages_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to get Facebook Pages")
+
+            pages_data = pages_response.json()
+            instagram_username = ""
+            instagram_id = ""
+
+            # Ищем страницу с подключённым Instagram Business аккаунтом
+            for page in pages_data.get("data", []):
+                ig_account = page.get("instagram_business_account")
+                if ig_account:
+                    instagram_id = ig_account.get("id", "")
+                    instagram_username = ig_account.get("username", "")
+                    break
+
+            if not instagram_id:
+                raise HTTPException(status_code=400, detail="No Instagram Business account connected to any Facebook Page")
+
+        # Шаг 4: сохраняем в Supabase
         sb=get_supabase()
         sb.table("customer_profiles").update({
             "instagram_connected": True,
-            "instagram_username": user_data["username"],
-            "instagram_id": user_data["id"],
-            "instagram_access_token": token_data["access_token"]
+            "instagram_username": instagram_username,
+            "instagram_id": instagram_id,
+            "instagram_access_token": access_token
         }).eq("telegram_id", telegram_id).execute()
 
         return """
