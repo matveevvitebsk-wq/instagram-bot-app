@@ -58,7 +58,8 @@ async def get_meta_url(
 
 @router.get("/auth/callback")
 async def auth_callback(
-    code:str,
+    # code:str,
+    code: Optional[str] = None,
     state:str
 ):
     # ═══════════════════════════════════════════════════════════════════
@@ -76,6 +77,19 @@ async def auth_callback(
     #   Шаг 3: получение Instagram Business аккаунта через Facebook Pages
     # ═══════════════════════════════════════════════════════════════════
     telegram_id=state
+    
+    if not code:
+        return """
+            <html><body>
+                <h2>Авторизация отменена</h2>
+                <p>Пожалуйста, попробуйте снова.</p>
+                <script>
+                setTimeout(()=>{
+                    window.location.href="https://t.me/mediahave_bot";
+                },3000);
+                </script>
+            </body></html>
+        """
 
     try:
         facebook_app_id = settings.META_APP_ID
@@ -99,7 +113,8 @@ async def auth_callback(
                     "client_id": facebook_app_id,
                     "client_secret": facebook_app_secret,
                     "grant_type": "authorization_code",
-                    "redirect_uri": quote(redirect_uri, safe=''),
+                    "redirect_uri": quote(redirect_uri),
+                    # "redirect_uri": quote(redirect_uri, safe=''),
                     "code": code
                 }
             )
