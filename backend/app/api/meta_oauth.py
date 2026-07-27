@@ -59,8 +59,8 @@ async def get_meta_url(
 @router.get("/auth/callback")
 async def auth_callback(
     # code:str,
-    code: Optional[str] = None,
-    state:str
+    code: Optional[str] = Query(None),
+    state: str = Query(...)
 ):
     # ═══════════════════════════════════════════════════════════════════
     # ИСПРАВЛЕНО (24.07.2026): Instagram Business Login token exchange
