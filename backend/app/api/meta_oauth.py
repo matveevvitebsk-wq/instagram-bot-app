@@ -46,8 +46,18 @@ async def get_meta_url(
     print("META_REDIRECT_URI =", settings.META_REDIRECT_URI)
     print("=" * 50)
 
+    # ═══════════════════════════════════════════════════════════════════
+    # ИСПРАВЛЕНО (28.07.2026): client_id = Facebook App ID (не Instagram)
+    #   Facebook Login OAuth требует Facebook App ID как client_id.
+    #   Instagram App ID (META_INSTAGRAM_APP_ID) НЕ является
+    #   зарегистрированным Facebook Login-приложением — выдаёт ошибку
+    #   "PLATFORM__INVALID_APP_ID".
+    #
+    #   Instagram App ID используется ТОЛЬКО внутри Facebook App
+    #   (в настройках Instagram App в Meta Developer Console).
+    # ═══════════════════════════════════════════════════════════════════
     params={
-        "client_id": settings.META_INSTAGRAM_APP_ID or settings.META_APP_ID,
+        "client_id": settings.META_APP_ID,
         "redirect_uri": settings.META_REDIRECT_URI,
         "response_type": "code",
         "scope": settings.meta_oauth_scopes,
