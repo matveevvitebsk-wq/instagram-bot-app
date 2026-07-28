@@ -50,6 +50,18 @@ async def get_meta_url(
     print("META_REDIRECT_URI =", settings.META_REDIRECT_URI)
     print("=" * 50)
 
+    # Используем Facebook OAuth URL
+    # Instagram Business API авторизуется через Facebook Login
+    params = {
+        "client_id": settings.META_APP_ID,  # ВАЖНО: Facebook App ID
+        "redirect_uri": settings.META_REDIRECT_URI,
+        "response_type": "code",
+        "scope": settings.meta_oauth_scopes,
+        "state": telegram_id,
+    }
+    
+    # Правильный endpoint для бизнес-аккаунтов
+    auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
     # ═══════════════════════════════════════════════════════════════════
     # ИСПРАВЛЕНО (28.07.2026): client_id = Facebook App ID (не Instagram)
     #   Facebook Login OAuth требует Facebook App ID как client_id.
@@ -60,17 +72,17 @@ async def get_meta_url(
     #   Instagram App ID используется ТОЛЬКО внутри Facebook App
     #   (в настройках Instagram App в Meta Developer Console).
     # ═══════════════════════════════════════════════════════════════════
-    params={
-        "client_id": settings.META_APP_ID,
-        "redirect_uri": settings.META_REDIRECT_URI,
-        "response_type": "code",
-        "scope": settings.meta_oauth_scopes,
-        "state": telegram_id,
-        # Опционально: запрашиваем доступ к страницам
-        "auth_type": "rerequest",
-    }
-    # Используем Facebook Graph API для OAuth
-    auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
+    # params={
+    #     "client_id": settings.META_APP_ID,
+    #     "redirect_uri": settings.META_REDIRECT_URI,
+    #     "response_type": "code",
+    #     "scope": settings.meta_oauth_scopes,
+    #     "state": telegram_id,
+    #     # Опционально: запрашиваем доступ к страницам
+    #     "auth_type": "rerequest",
+    # }
+    # # Используем Facebook Graph API для OAuth
+    # auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
 
 
     # auth_url=(
