@@ -116,14 +116,18 @@ async def auth_callback(
         # ═══════════════════════════════════════════════════════════════════
         # Шаг 1: обмен code на short-lived token через Facebook Graph API
         #
-        #   ВАЖНО: redirect_uri должен полностью совпадать с тем, что был
-        #   передан в OAuth URL. Так как urlencode кодирует спецсимволы,
-        #   передаём предварительно закодированную версию.
+        #   ИСПРАВЛЕНО (28.07.2026): GET → POST
+        #   Facebook Graph API требует POST-запрос с data (form-urlencoded),
+        #   а не GET с params. GET вызывает ошибку 36008 
+        #   "redirect_uri is not identical".
+        #
+        #   redirect_uri передаётся как есть (без quote/urlencode),
+        #   httpx сам корректно кодирует form-urlencoded.
         # ═══════════════════════════════════════════════════════════════════
         async with httpx.AsyncClient() as client:
-            token_response = await client.get(
+            token_response = await client.post(
                 f"{settings.meta_graph_api}/oauth/access_token",
-                params={
+                data={
                     "client_id": facebook_app_id,
                     "client_secret": facebook_app_secret,
                     "grant_type": "authorization_code",

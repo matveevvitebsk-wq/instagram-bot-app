@@ -90,13 +90,11 @@ class Settings(BaseSettings):
     @property
     def meta_oauth_url(self) -> str:
         # ═══════════════════════════════════════════════════════════════════
-        # Facebook Login OAuth URL для Instagram Business аккаунтов
+        # Instagram OAuth URL для бизнес-аккаунтов
         #   - Использует Instagram App ID (client_id), а не Facebook App ID
-        #   - Facebook покажет пользователю название "n8n-call-api-IG"
-        #   - Instagram Business аккаунты НЕ работают через
-        #     https://www.instagram.com/oauth/authorize (это Basic Display API)
+        #   - Чтобы Instagram показал пользователю название "n8n-call-api-IG"
         # ═══════════════════════════════════════════════════════════════════
-        return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
+        return "https://www.instagram.com/oauth/authorize"
 
 
     @property
