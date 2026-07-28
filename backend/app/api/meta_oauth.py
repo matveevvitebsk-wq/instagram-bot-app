@@ -28,7 +28,7 @@ class InstagramRegisterRequest(BaseModel):
 
 @router.get("/meta/url")
 async def get_meta_url(
-    telegram_id:str=Query(...)
+    telegram_id: str = Query(...)
 ):
     # ═══════════════════════════════════════════════════════════════════
     # ИСПРАВЛЕНО (24.07.2026): Instagram Business API OAuth URL
@@ -39,8 +39,8 @@ async def get_meta_url(
     #
     #   Параметр state передаёт telegram_id (поддерживается Instagram OAuth)
     # ═══════════════════════════════════════════════════════════════════
-
     print("=" * 50)
+    print("META_OAUTH_URL =", settings.meta_oauth_url)
     print("META_APP_ID =", settings.META_APP_ID)
     print("META_INSTAGRAM_APP_ID =", settings.META_INSTAGRAM_APP_ID)
     print("META_REDIRECT_URI =", settings.META_REDIRECT_URI)
