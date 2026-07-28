@@ -30,6 +30,10 @@ class InstagramRegisterRequest(BaseModel):
 async def get_meta_url(
     telegram_id: str = Query(...)
 ):
+    # """
+    # Генерирует URL для OAuth авторизации через Facebook.
+    # Использует Facebook OAuth диалог для получения доступа к Instagram Business API.
+    # """
     # ═══════════════════════════════════════════════════════════════════
     # ИСПРАВЛЕНО (24.07.2026): Instagram Business API OAuth URL
     #
@@ -62,16 +66,23 @@ async def get_meta_url(
         "response_type": "code",
         "scope": settings.meta_oauth_scopes,
         "state": telegram_id,
+        # Опционально: запрашиваем доступ к страницам
+        "auth_type": "rerequest",
     }
-    auth_url=(
-        f"{settings.meta_oauth_url}?"
-        f"{urlencode(params)}"
-    )
+    # Используем Facebook Graph API для OAuth
+    auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
+
+
+    # auth_url=(
+    #     f"{settings.meta_oauth_url}?"
+    #     f"{urlencode(params)}"
+    # )
     # ═══════════════════════════════════════════════════════════════════
     # DEBUG: сформированный OAuth URL для диагностики в логах
     # ═══════════════════════════════════════════════════════════════════
+    print("=" * 50)
     print("AUTH_URL =", auth_url)
-
+    print("=" * 50)
     return {
         "auth_url":auth_url
     }

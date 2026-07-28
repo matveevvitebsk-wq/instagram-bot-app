@@ -94,7 +94,9 @@ class Settings(BaseSettings):
         #   - Использует Instagram App ID (client_id), а не Facebook App ID
         #   - Чтобы Instagram показал пользователю название "n8n-call-api-IG"
         # ═══════════════════════════════════════════════════════════════════
-        return "https://www.instagram.com/oauth/authorize"
+        # return "https://www.instagram.com/oauth/authorize"
+        # Для Instagram Business API используем Facebook OAuth
+        return f"https://www.facebook.com/{self.META_API_VERSION}/dialog/oauth"
 
 
     @property
