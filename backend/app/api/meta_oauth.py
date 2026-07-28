@@ -113,8 +113,7 @@ async def auth_callback(
                     "client_id": facebook_app_id,
                     "client_secret": facebook_app_secret,
                     "grant_type": "authorization_code",
-                    "redirect_uri": quote(redirect_uri),
-                    # "redirect_uri": quote(redirect_uri, safe=''),
+                    "redirect_uri": redirect_uri,
                     "code": code
                 }
             )
