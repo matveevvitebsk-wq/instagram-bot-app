@@ -39,6 +39,13 @@ async def get_meta_url(
     #
     #   Параметр state передаёт telegram_id (поддерживается Instagram OAuth)
     # ═══════════════════════════════════════════════════════════════════
+
+    print("=" * 50)
+    print("META_APP_ID =", settings.META_APP_ID)
+    print("META_INSTAGRAM_APP_ID =", settings.META_INSTAGRAM_APP_ID)
+    print("META_REDIRECT_URI =", settings.META_REDIRECT_URI)
+    print("=" * 50)
+
     params={
         "client_id": settings.META_INSTAGRAM_APP_ID or settings.META_APP_ID,
         "redirect_uri": settings.META_REDIRECT_URI,
@@ -96,6 +103,13 @@ async def auth_callback(
         facebook_app_secret = settings.META_APP_SECRET
         redirect_uri = settings.META_REDIRECT_URI
 
+        print("=" * 50)
+        print("CODE =", code[:50])
+        print("META_APP_ID =", facebook_app_id)
+        print("META_APP_SECRET =", facebook_app_secret[:10] + "...")
+        print("META_REDIRECT_URI =", redirect_uri)
+        print("=" * 50)
+
         if not all([facebook_app_id, facebook_app_secret, redirect_uri]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
@@ -118,9 +132,18 @@ async def auth_callback(
                 }
             )
 
+            print("=" * 50)
+            print("STATUS =", token_response.status_code)
+            print("RESPONSE =", token_response.text)
+            print("=" * 50)
+
             if token_response.status_code != 200:
                 error_detail = token_response.text
-                raise HTTPException(status_code=400, detail=f"Failed to get access token: {error_detail}")
+                raise HTTPException(
+                    status_code=400, 
+                    # detail=f"Failed to get access token: {error_detail}"
+                    detail=token_response.text
+                )
 
             token_data = token_response.json()
             short_lived_token = token_data.get("access_token")
@@ -182,6 +205,7 @@ async def auth_callback(
             <html>
             <body>
                 <h2>Instagram подключен.</h2>
+
                 <script>
                 setTimeout(()=>{
                     window.location.href="https://t.me/mediahave_bot";
@@ -196,7 +220,7 @@ async def auth_callback(
             <html>
             <body>
                 <h2>Ошибка подключения Instagram</h2>
-                <p>{str(e)}</p>
+                # <p>{str(e)}</p>
                 <script>
                 setTimeout(()=>{{
                     window.location.href="https://t.me/mediahave_bot";
@@ -205,8 +229,20 @@ async def auth_callback(
             </body>
             </html>
         """
-
-
+    except HTTPException as e:
+        return f"""
+            <html>
+            <body>
+                <h2>Ошибка подключения Instagram</h2>
+                <p>{e.detail}</p>
+                <script>
+                setTimeout(()=>{{
+                    window.location.href="https://t.me/mediahave_bot";
+                }},5000);
+                </script>
+            </body>
+            </html>
+        """
 @router.post("/register")
 async def register_instagram_account(data: InstagramRegisterRequest):
     """
