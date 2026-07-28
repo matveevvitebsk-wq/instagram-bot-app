@@ -30,10 +30,6 @@ class InstagramRegisterRequest(BaseModel):
 async def get_meta_url(
     telegram_id: str = Query(...)
 ):
-    # """
-    # Генерирует URL для OAuth авторизации через Facebook.
-    # Использует Facebook OAuth диалог для получения доступа к Instagram Business API.
-    # """
     # ═══════════════════════════════════════════════════════════════════
     # ИСПРАВЛЕНО (24.07.2026): Instagram Business API OAuth URL
     #
@@ -50,52 +46,19 @@ async def get_meta_url(
     print("META_REDIRECT_URI =", settings.META_REDIRECT_URI)
     print("=" * 50)
 
-    # Используем Facebook OAuth URL
-    # Instagram Business API авторизуется через Facebook Login
-    params = {
-        "client_id": settings.META_APP_ID,  # ВАЖНО: Facebook App ID
+    params={
+        "client_id": settings.META_INSTAGRAM_APP_ID or settings.META_APP_ID,
         "redirect_uri": settings.META_REDIRECT_URI,
         "response_type": "code",
         "scope": settings.meta_oauth_scopes,
         "state": telegram_id,
     }
-    
-    # Правильный endpoint для бизнес-аккаунтов
-    auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
+    auth_url=(
+        f"{settings.meta_oauth_url}?"
+        f"{urlencode(params)}"
+    )
     # ═══════════════════════════════════════════════════════════════════
-    # ИСПРАВЛЕНО (28.07.2026): client_id = Facebook App ID (не Instagram)
-    #   Facebook Login OAuth требует Facebook App ID как client_id.
-    #   Instagram App ID (META_INSTAGRAM_APP_ID) НЕ является
-    #   зарегистрированным Facebook Login-приложением — выдаёт ошибку
-    #   "PLATFORM__INVALID_APP_ID".
-    #
-    #   Instagram App ID используется ТОЛЬКО внутри Facebook App
-    #   (в настройках Instagram App в Meta Developer Console).
-    # ═══════════════════════════════════════════════════════════════════
-    # params={
-    #     "client_id": settings.META_APP_ID,
-    #     "redirect_uri": settings.META_REDIRECT_URI,
-    #     "response_type": "code",
-    #     "scope": settings.meta_oauth_scopes,
-    #     "state": telegram_id,
-    #     # Опционально: запрашиваем доступ к страницам
-    #     "auth_type": "rerequest",
-    # }
-    # # Используем Facebook Graph API для OAuth
-    # auth_url = f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth?{urlencode(params)}"
-
-
-    # auth_url=(
-    #     f"{settings.meta_oauth_url}?"
-    #     f"{urlencode(params)}"
-    # )
-    # ═══════════════════════════════════════════════════════════════════
-    # DEBUG: сформированный OAuth URL для диагностики в логах
-    # ═══════════════════════════════════════════════════════════════════
-    print("=" * 50)
-    print("AUTH_URL =", auth_url)
-    print("=" * 50)
-    return {
+    # DEBUG: с
         "auth_url":auth_url
     }
 
