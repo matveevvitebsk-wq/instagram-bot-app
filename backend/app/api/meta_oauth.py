@@ -57,6 +57,10 @@ async def get_meta_url(
         f"{settings.meta_oauth_url}?"
         f"{urlencode(params)}"
     )
+    # ═══════════════════════════════════════════════════════════════════
+    # DEBUG: сформированный OAuth URL для диагностики в логах
+    # ═══════════════════════════════════════════════════════════════════
+    print("AUTH_URL =", auth_url)
 
     return {
         "auth_url":auth_url
