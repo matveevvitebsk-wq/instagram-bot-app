@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     META_APP_ID: str = ""                    # Facebook App ID (для Graph API)
     META_APP_SECRET: str = ""                # Facebook App Secret
     META_INSTAGRAM_APP_ID: str = ""          # Instagram App ID (для OAuth URL)
+    META_INSTAGRAM_APP_SECRET: str = ""      # Instagram App Secret
     META_WEBHOOK_VERIFY_TOKEN: str = ""
     META_REDIRECT_URI: str = "https://api.almarathon.com/api/instagram/auth/callback"
     

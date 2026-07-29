@@ -97,7 +97,7 @@ git pull origin main
 cd frontend
 npm install
 npm run build
-
+cd ..
 После этого появится:
 
 frontend/dist/
