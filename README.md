@@ -1,220 +1,398 @@
-# Instagram Automation — Telegram Mini App
+# MediaHave — Telegram Mini App для Instagram
 
-Полный стек: React + FastAPI + N8n + Supabase + Telegram WebApp API.
-Работает на всех платформах: iOS, Android, Windows, Linux, macOS.
+MediaHave — Telegram Mini App для подключения профессионального Instagram-
+аккаунта и автоматизации задач, лидов и воронок.
 
----
+Актуальное состояние: 2026-07-29.
+
+Подробная инструкция по сопровождению, серверу, Supabase и диагностике:
+[`SERVER_HANDOFF.md`](SERVER_HANDOFF.md).
+
+## Возможности
+
+- авторизация пользователя через Telegram WebApp `initData`;
+- JWT-сессия для защищённых backend API;
+- Instagram API with Instagram Login;
+- подключение Instagram Business или Creator аккаунта;
+- хранение Instagram-профиля и long-lived token в Supabase;
+- задачи автоматизации;
+- воронки;
+- аналитика Dashboard;
+- блокировка разделов до подключения Instagram;
+- автоматическое обновление интерфейса после OAuth;
+- отключение Instagram от MediaHave.
+
+Страница «Лиды» пока является заготовкой. Часть n8n-интеграций и миграций
+требует дополнительной проверки.
+
+## Технологии
+
+Frontend:
+
+- React 18;
+- TypeScript;
+- Vite;
+- Tailwind CSS;
+- Zustand;
+- Axios;
+- Telegram WebApp API;
+- Supabase Realtime для задач.
+
+Backend:
+
+- Python 3.13;
+- FastAPI;
+- Uvicorn;
+- HTTPX;
+- Supabase Python client;
+- python-jose.
+
+Infrastructure:
+
+- Docker Compose;
+- nginx;
+- Caddy;
+- n8n;
+- Supabase PostgreSQL.
 
 ## Структура проекта
 
-```
+```text
 instagram-bot-app/
-├── .vscode/
-│   ├── settings.json       # Настройки редактора (форматирование, линтинг)
-│   ├── extensions.json     # Рекомендуемые расширения
-│   ├── launch.json         # Debug конфигурации (F5)
-│   └── tasks.json          # Задачи (Ctrl+Shift+B)
-│
-├── frontend/               # React + Vite + Tailwind (Telegram Mini App)
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx    # Главный экран, статистика
-│   │   │   ├── Tasks.tsx        # Создание и управление задачами
-│   │   │   ├── Leads.tsx        # Лиды из Instagram
-│   │   │   ├── Funnels.tsx      # Управление воронками
-│   │   │   └── Settings.tsx     # Привязка аккаунта
-│   │   ├── components/
-│   │   │   ├── Layout.tsx       # Нижняя навигация (cross-platform)
-│   │   │   └── LoadingScreen.tsx
-│   │   ├── hooks/
-│   │   │   └── useTelegram.ts   # Обёртка Telegram WebApp API
-│   │   ├── store/
-│   │   │   └── authStore.ts     # Zustand: состояние авторизации
-│   │   ├── utils/
-│   │   │   └── api.ts           # Axios + JWT interceptor
-│   │   ├── App.tsx              # Роутер + auth guard
-│   │   ├── main.tsx             # Точка входа, init Telegram
-│   │   └── index.css            # Telegram CSS переменные
-│   ├── index.html               # ВАЖНО: telegram-web-app.js первым!
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
-│   └── package.json
-│
-├── backend/                # FastAPI (Python 3.12)
+├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── auth.py          # POST /api/auth/telegram
-│   │   │   ├── accounts.py      # CRUD Instagram аккаунтов
-│   │   │   ├── tasks.py         # Задачи автоматизации
-│   │   │   ├── webhooks.py      # Callbacks от N8n и Meta
-│   │   │   └── analytics.py     # Аналитика дашборда
-│   │   ├── core/
-│   │   │   ├── config.py        # Pydantic Settings (.env)
-│   │   │   ├── security.py      # Telegram verify + JWT
-│   │   │   └── supabase.py      # Supabase клиент
-│   │   └── main.py              # FastAPI app + роуты
+│   │   ├── api/             # API routers
+│   │   ├── core/            # config, auth, Supabase, cache
+│   │   └── main.py
 │   ├── Dockerfile
 │   └── requirements.txt
-│
-├── n8n/
-│   └── workflows/          # JSON экспорты N8n workflow
-│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── store/
+│   │   └── utils/
+│   ├── package.json
+│   └── vite.config.ts
 ├── nginx/
-│   └── nginx.conf          # Reverse proxy + SSL
-│
+│   └── nginx.conf
 ├── docs/
-│   └── supabase_migrations.sql  # SQL для Supabase
-│
+│   ├── supabase_migrations.sql
+│   ├── SERVER_ARCHITECTURE.md
+│   └── PROJECT_AUDIT_2026-07-29.md
 ├── docker-compose.yml
-├── .env.example
-└── .gitignore
+├── SERVER_HANDOFF.md
+└── README.md
 ```
 
----
+## Архитектура production
 
-## Шаг 1 — Установка инструментов (разовая настройка)
+Используются два независимых Compose-проекта.
 
-### Все платформы (Windows / Linux / macOS):
+MediaHave:
 
-1. **VS Code** — https://code.visualstudio.com/
-2. **Node.js 20 LTS** — https://nodejs.org/
-3. **Python 3.12** — https://www.python.org/
-4. **Docker Desktop** — https://www.docker.com/products/docker-desktop/
-5. **Git** — https://git-scm.com/
-
-После установки VS Code откройте проект и нажмите **"Install All"** во всплывающем
-уведомлении о рекомендуемых расширениях.
-
----
-
-## Шаг 2 — Первоначальная настройка
-
-```bash
-# Клонируем / переходим в папку
-cd instagram-bot-app
-
-# Копируем и заполняем .env
-cp .env.example .env
-# Откройте .env в VS Code и заполните все переменные
+```text
+/opt/instagram-bot/instagram-bot-app
 ```
 
----
+Сервисы:
 
-## Шаг 3 — Supabase
+- `backend` — FastAPI;
+- `nginx` — раздаёт собранный `frontend/dist`.
 
-1. Зарегистрируйтесь на https://supabase.com
-2. Создайте новый проект
-3. Скопируйте из Settings → API:
-   - Project URL → `SUPABASE_URL`
-   - `anon` key → `SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
-4. Откройте **SQL Editor** и выполните `docs/supabase_migrations.sql`
-5. Включите Realtime для таблицы `automation_tasks`:
-   Database → Replication → включите `automation_tasks`
+n8n и Caddy:
 
----
+```text
+/home/almat/n8n-docker-caddy
+```
 
-## Шаг 4 — Telegram Bot
+Схема маршрутизации:
 
-1. Откройте @BotFather в Telegram
-2. `/newbot` → дайте имя → получите токен → `BOT_TOKEN=...`
-3. `/newapp` → выберите бота → укажите URL вашего приложения → `WEBAPP_URL=...`
-4. Для локальной разработки используйте **ngrok**:
-   ```bash
-   # Windows:
-   choco install ngrok   # или скачайте с ngrok.com
-   ngrok http 3000
+```text
+Internet
+  → Caddy :80/:443
+      → almarathon.com      → nginx
+      → api.almarathon.com  → backend:8000
+      → n8n.almarathon.com  → n8n:5678
+```
 
-   # Linux/macOS:
-   brew install ngrok
-   ngrok http 3000
-   ```
-   Полученный `https://xxxx.ngrok.io` → установите как WEBAPP_URL в @BotFather
+В repository `docker-compose.yml` нет сервиса `frontend`. Frontend собирается
+на хосте и подключается к nginx через volume.
 
----
+## Переменные окружения
 
-## Шаг 5 — Локальная разработка
+Создайте `.env` на основе списка ниже. Не коммитьте реальные значения.
 
-### Вариант A — через VS Code Tasks (рекомендуется):
-- `Ctrl+Shift+B` → выберите нужную задачу
+```env
+# Telegram
+BOT_TOKEN=
+WEBAPP_URL=https://almarathon.com
+FRONTEND_URL=https://almarathon.com
+BACKEND_URL=https://api.almarathon.com
 
-### Вариант B — вручную в терминале:
+# JWT
+JWT_SECRET=
+
+# Supabase
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ANON_KEY=
+
+# Meta / Instagram
+META_APP_ID=
+META_APP_SECRET=
+META_INSTAGRAM_APP_ID=
+META_INSTAGRAM_APP_SECRET=
+META_WEBHOOK_VERIFY_TOKEN=
+META_REDIRECT_URI=https://api.almarathon.com/api/instagram/auth/callback
+
+# n8n
+N8N_URL=https://n8n.almarathon.com
+N8N_API_KEY=
+
+# Application
+DEVELOPMENT_MODE=true
+CORS_ORIGINS=https://almarathon.com,https://t.me
+
+# Frontend build-time
+VITE_API_URL=https://api.almarathon.com
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+`META_APP_SECRET` и `META_INSTAGRAM_APP_SECRET` — разные секреты.
+Instagram Login использует `META_INSTAGRAM_APP_ID` и
+`META_INSTAGRAM_APP_SECRET`.
+
+## Локальная разработка
+
+### Backend
 
 ```bash
-# Терминал 1 — Backend
 cd backend
 python -m venv .venv
+```
 
-# Windows:
+Windows:
+
+```powershell
 .venv\Scripts\activate
-# Linux/macOS:
-source .venv/bin/activate
+```
 
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Установка и запуск:
+
+```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+### Frontend
+
 ```bash
-# Терминал 2 — Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-Откройте http://localhost:3000 — вне Telegram увидите заглушку
-(нормально! Mini App работает только внутри Telegram).
+Frontend доступен на `http://localhost:3000`, backend — на
+`http://localhost:8000`.
 
-### Тестирование в Telegram (локально):
-1. Запустите ngrok: `ngrok http 3000`
-2. Установите полученный URL в @BotFather как WebApp URL
-3. Откройте бота в Telegram → кнопка открытия Mini App
+Полноценная Telegram-авторизация работает только внутри Telegram Mini App.
 
----
+## Проверка сборки
 
-## Шаг 6 — Деплой на DigitalOcean
+Backend:
 
 ```bash
-# На сервере DO:
-git clone <your-repo> && cd instagram-bot-app
-cp .env.example .env && nano .env  # заполните переменные
-
-# SSL сертификат (Let's Encrypt):
-apt install certbot -y
-certbot certonly --standalone -d your-domain.com
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem nginx/ssl/
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem nginx/ssl/
-
-# Сборка фронтенда:
-cd frontend && npm install && npm run build && cd ..
-
-# Запуск:
-docker compose up -d
-
-# Проверка логов:
-docker compose logs -f backend
+cd backend
+python -m compileall app
 ```
 
----
+Frontend:
 
-## Что было исправлено из вашего проекта
+```bash
+cd frontend
+npm run build
+```
 
-| Проблема | Решение |
-|---|---|
-| `verify_token` хардкодом в N8n If3 ноде | Вынесен в `.env` → `META_WEBHOOK_VERIFY_TOKEN` |
-| Нет авторизации через Telegram | Добавлена полная верификация `initData` по HMAC-SHA256 |
-| Нет таблицы `automation_tasks` | SQL миграция в `docs/supabase_migrations.sql` |
-| `customer_profiles` без `telegram_id` | `ALTER TABLE` добавляет нужные колонки |
-| Токен Instagram хранится открытым | Комментарий с pgcrypto шифрованием |
-| N8n доступен напрямую без auth | Nginx проксирует, N8n за Basic Auth |
-| Нет обратной связи N8n → Telegram | `POST /api/webhooks/n8n/callback` отправляет push |
+`npm run lint` сейчас требует миграции конфигурации на ESLint 9
+(`eslint.config.js` отсутствует).
 
----
+Автоматических тестов и CI пока нет.
 
-## Платформенная совместимость
+## Supabase
 
-Mini App корректно работает на всех платформах через:
-- `tg.expand()` — полноэкранный режим
-- `safe-area-inset-*` — учёт iPhone notch, Android навигации
-- CSS переменные `--tg-theme-*` — автоматическая тёмная/светлая тема
-- `-webkit-tap-highlight-color: transparent` — убирает flash на тапах
-- `user-scalable=no` в viewport — отключает пинч-зум (UX на мобильных)
+Основные таблицы:
+
+- `customer_profiles` — Telegram-пользователи;
+- `ig_accounts` — подключённые Instagram-аккаунты;
+- `automation_tasks` — задачи;
+- `automation_funnels` — воронки;
+- `users` — лиды;
+- `events` — события;
+- `ai_analytics_snapshots` — аналитические снимки.
+
+Частичная migration находится в:
+
+```text
+docs/supabase_migrations.sql
+```
+
+Она содержит `ig_accounts`, `automation_tasks` и расширение
+`customer_profiles`. Полную production-схему следует выгрузить из Supabase и
+добавить недостающие migrations.
+
+Экспорт структуры:
+
+```bash
+npx supabase login
+npx supabase init
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase db dump --linked --schema public -f docs/supabase_schema.sql
+```
+
+Основные поля `ig_accounts`:
+
+```text
+owner_id
+page_id
+username
+display_name
+profile_picture_url
+followers_count
+access_token
+token_expires_at
+is_active
+```
+
+`page_id` содержит Instagram professional account `user_id`, а не Facebook
+Page ID. `display_name` содержит полное имя профиля, а `username` — Instagram
+username.
+
+## Instagram OAuth
+
+Текущий поток:
+
+```text
+Settings
+  → GET /api/instagram/meta/url
+  → instagram.com/oauth/authorize
+  → GET /api/instagram/auth/callback
+  → short-lived token
+  → long-lived token
+  → Instagram profile
+  → Supabase
+  → главная страница Mini App
+```
+
+Scopes:
+
+```text
+instagram_business_basic
+instagram_business_manage_messages
+instagram_business_manage_comments
+instagram_business_content_publish
+instagram_business_manage_insights
+```
+
+В development mode подключаться могут только Instagram testers,
+администраторы и разработчики приложения, принявшие приглашение в Meta
+Dashboard.
+
+## Production deploy
+
+Выполняйте команды только из application repository:
+
+```bash
+cd /opt/instagram-bot/instagram-bot-app
+
+git status --short
+git fetch origin
+git log --oneline HEAD..origin/main
+git pull --ff-only origin main
+
+cd frontend
+npm install
+npm run build
+cd ..
+
+docker compose build --no-cache backend
+docker compose up -d --force-recreate --no-deps backend
+docker compose restart nginx
+docker compose ps
+```
+
+Не выполняйте:
+
+```bash
+cd /home/almat/n8n-docker-caddy
+docker compose up -d backend frontend
+```
+
+В этом Compose-проекте нет сервисов `backend` и `frontend`.
+
+## Проверка production
+
+```bash
+curl https://api.almarathon.com/health
+docker compose ps
+docker compose logs --since=5m backend
+docker exec nginx nginx -t
+docker exec nginx ls -la /usr/share/nginx/html
+```
+
+Проверка OAuth endpoint внутри backend:
+
+```bash
+docker exec backend python -c "from app.core.config import settings; print(settings.meta_oauth_url)"
+```
+
+Ожидается:
+
+```text
+https://www.instagram.com/oauth/authorize
+```
+
+## Безопасность
+
+- не коммитьте `.env`, access tokens, bot tokens и app secrets;
+- Supabase service-role key должен использоваться только backend;
+- Instagram access tokens сейчас хранятся открытым текстом;
+- `.env.example` содержит секретоподобные значения и требует очистки;
+- production secrets необходимо ротировать после любой утечки;
+- Meta webhook должен проверять подпись `X-Hub-Signature-256`.
+
+## Известные ограничения
+
+- страница Leads не завершена;
+- часть используемых таблиц отсутствует в migration-файле;
+- отсутствуют автоматические тесты и CI;
+- OAuth browser нельзя гарантированно закрыть программно;
+- endpoint `/api/instagram/meta/start-page`, упомянутый в старой документации,
+  не реализован;
+- токены Instagram требуют автоматического refresh до `token_expires_at`;
+- rate limiter и cache работают в памяти одного backend-процесса.
+
+## Документация
+
+- [`SERVER_HANDOFF.md`](SERVER_HANDOFF.md) — основной актуальный handoff;
+- [`docs/SERVER_ARCHITECTURE.md`](docs/SERVER_ARCHITECTURE.md) — схема сервера;
+- [`docs/supabase_migrations.sql`](docs/supabase_migrations.sql) — SQL;
+- [`docs/PROJECT_AUDIT_2026-07-29.md`](docs/PROJECT_AUDIT_2026-07-29.md) — аудит;
+- [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —
+  исторический OAuth design, частично устарел.
+
+## Формат изменений
+
+Комментарии и commit messages для проекта:
+
+```text
+YYYY-MM-DD cursor <краткий комментарий>
+```
