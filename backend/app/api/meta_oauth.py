@@ -1,6 +1,5 @@
 # backend/app/api/meta_oauth.py
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 import httpx
 import logging
@@ -15,12 +14,6 @@ from app.core.supabase import get_supabase
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 logger = logging.getLogger(__name__)
-
-
-def settings_redirect(result: str) -> RedirectResponse:
-    query = urlencode({"instagram": result})
-    url = f"{settings.FRONTEND_URL.rstrip('/')}/settings?{query}"
-    return RedirectResponse(url=url, status_code=303)
 
 class InstagramAuthRequest(BaseModel):
     code: str
@@ -74,7 +67,7 @@ async def auth_callback(
     state: str = Query(...)
 ):
     if not code:
-        return settings_redirect("cancelled")
+        return Response(status_code=204)
 
     try:
         state_data = jwt.decode(
@@ -201,7 +194,7 @@ async def auth_callback(
             }
         ).eq("telegram_id", telegram_id).execute()
 
-        return settings_redirect("connected")
+        return Response(status_code=204)
 
     except HTTPException as e:
         error_message = e.detail
@@ -212,7 +205,7 @@ async def auth_callback(
         error_message = "Не удалось подключить Instagram. Попробуйте снова."
 
     logger.warning("Instagram OAuth callback failed: %s", error_message)
-    return settings_redirect("error")
+    return Response(status_code=400)
 
 
 @router.post("/register")
