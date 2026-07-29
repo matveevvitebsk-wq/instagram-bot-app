@@ -1,4 +1,12 @@
-
+cd /opt/instagram-bot/instagram-bot-app
+git pull --ff-only origin main
+cd frontend
+npm install
+npm run build
+cd ..
+docker compose build --no-cache backend
+docker compose up -d --force-recreate --no-deps backend
+docker compose restart nginx
 
 # Перейти в каталог проекта
 cd /opt/instagram-bot/instagram-bot-app
