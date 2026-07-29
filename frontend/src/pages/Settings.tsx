@@ -7,39 +7,8 @@ interface InstagramAccount {
   id: string;
   username: string;
   connected: boolean;
-  status: 'active' | 'pending' | 'error';
+  status: 'active' | 'pending' | 'error' | 'disconnected';
 }
-
-const INSTAGRAM_APP_ID = '2007885943317419';
-const INSTAGRAM_OAUTH_REQUEST_ID = '7d2b7350-0f43-4008-9bdc-4e5b47fe4a68';
-
-const getExistingAccountLoginUrl = () => {
-  const state = JSON.stringify({
-    app_id: INSTAGRAM_APP_ID,
-    f3_request_id: INSTAGRAM_OAUTH_REQUEST_ID,
-    nonce: 'h9eWtJfCeo1Wh40o',
-    requested_permissions:
-      'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights',
-    user_id: '17841403480052658',
-  });
-  const authorizeParams = new URLSearchParams({
-    client_id: INSTAGRAM_APP_ID,
-    logger_id: INSTAGRAM_OAUTH_REQUEST_ID,
-    redirect_uri:
-      'https://developers.facebook.com/instagram/token_generator/oauth/',
-    response_type: 'code',
-    scope:
-      'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights',
-    state,
-    request_id: INSTAGRAM_OAUTH_REQUEST_ID,
-  });
-  const loginParams = new URLSearchParams({
-    force_authentication: 'true',
-    next: `/oauth/authorize/?${authorizeParams.toString()}`,
-  });
-
-  return `https://www.instagram.com/accounts/login/?${loginParams.toString()}`;
-};
 
 const Settings: React.FC = () => {
   const { tg, user } = useTelegram();
@@ -57,19 +26,24 @@ const Settings: React.FC = () => {
   >('initial');
 
   useEffect(() => {
-    fetchAccountStatus();
-  }, []);
-
-  const fetchAccountStatus = async () => {
-    try {
-      const response = await api.get('/api/instagram/meta/url');
-      setAccount(response.data);
-    } catch (error) {
-      console.error('Failed to fetch account status:', error);
-    } finally {
+    if (!user?.id) {
       setLoading(false);
+      return;
     }
-  };
+
+    const fetchAccountStatus = async () => {
+      try {
+        const response = await api.get(`/api/instagram/status/${user.id}`);
+        setAccount(response.data);
+      } catch (error) {
+        console.error('Failed to fetch account status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchAccountStatus();
+  }, [user?.id]);
 
   // const handleConnectInstagram = () => {
   //   // Открываем Instagram OAuth
@@ -113,37 +87,24 @@ const Settings: React.FC = () => {
 
   const handleConnectInstagram = async () => {
     try {
-      console.log('tg');
-      console.log(tg);
-      console.log('user');
-      console.log(user);
-
       const telegramId = user?.id;
-
-      console.log('telegramId = ', telegramId);
 
       if (!telegramId) {
         alert('Telegram ID not found');
-
         return;
       }
-
-      // const telegramId = tg?.initDataUnsafe?.user?.id;
 
       const response = await api.get('/api/instagram/meta/url', {
         params: {
           telegram_id: telegramId,
         },
       });
-
-      console.log(response.data);
-
       const authUrl = response.data.auth_url;
 
       if (tg) {
         tg.openLink(authUrl);
       } else {
-        window.open(authUrl, '_blank');
+        window.open(authUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
@@ -153,16 +114,6 @@ const Settings: React.FC = () => {
   const handleRegisterInstagram = () => {
     setShowRegistration(true);
     setRegStep('initial');
-  };
-
-  const handleSignInExistingAccount = () => {
-    const loginUrl = getExistingAccountLoginUrl();
-
-    if (tg) {
-      tg.openLink(loginUrl);
-    } else {
-      window.open(loginUrl, '_blank', 'noopener,noreferrer');
-    }
   };
 
   const handleSubmitRegistration = async (e: React.FormEvent) => {
@@ -241,7 +192,7 @@ const Settings: React.FC = () => {
 
             {/* Кнопка входа (существующий аккаунт) */}
             <button
-              onClick={handleSignInExistingAccount}
+              onClick={handleConnectInstagram}
               className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
             >
               🔑 Войти в существующий
