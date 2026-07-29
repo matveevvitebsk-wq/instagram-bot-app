@@ -201,7 +201,7 @@ async def auth_callback(
                 "owner_id": profile.data["id"],
                 "page_id": instagram_id,
                 "username": instagram_username,
-                "display_name": instagram_username,
+                "display_name": instagram.get("name"),
                 "profile_picture_url": instagram.get("profile_picture_url"),
                 "followers_count": instagram.get("followers_count", 0),
                 "access_token": access_token,

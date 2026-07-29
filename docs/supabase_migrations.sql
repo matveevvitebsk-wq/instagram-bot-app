@@ -27,8 +27,8 @@ ALTER TABLE ig_accounts
     ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMP WITH TIME ZONE;
 
 UPDATE ig_accounts
-SET display_name = username
-WHERE display_name IS NULL OR display_name = '';
+SET display_name = NULL
+WHERE display_name = username;
 
 -- ─── 2. Таблица задач автоматизации ─────────────────────────────
 CREATE TABLE IF NOT EXISTS automation_tasks (
