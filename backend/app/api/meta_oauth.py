@@ -152,7 +152,10 @@ async def auth_callback(
             profile_response = await client.get(
                 f"https://graph.instagram.com/{settings.META_API_VERSION}/me",
                 params={
-                    "fields": "id,user_id,username,account_type",
+                    "fields": (
+                        "id,user_id,username,name,account_type,"
+                        "profile_picture_url,followers_count"
+                    ),
                     "access_token": access_token,
                 },
             )
@@ -168,7 +171,7 @@ async def auth_callback(
                 )
             instagram = profile_response.json()
 
-        instagram_id = str(instagram.get("user_id") or instagram.get("id") or "")
+        instagram_id = str(instagram.get("user_id") or "")
         instagram_username = instagram.get("username")
         if not instagram_id or not instagram_username:
             raise HTTPException(
@@ -192,6 +195,9 @@ async def auth_callback(
                 "owner_id": profile.data["id"],
                 "page_id": instagram_id,
                 "username": instagram_username,
+                "display_name": instagram_username,
+                "profile_picture_url": instagram.get("profile_picture_url"),
+                "followers_count": instagram.get("followers_count", 0),
                 "access_token": access_token,
                 "is_active": True,
             },
