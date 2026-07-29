@@ -1,9 +1,8 @@
 # backend/app/api/meta_oauth.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 import httpx
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -18,32 +17,12 @@ router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 logger = logging.getLogger(__name__)
 
 
-def close_browser_response(success: bool) -> HTMLResponse:
-    status_code = 200 if success else 400
-    settings_url = json.dumps(f"{settings.FRONTEND_URL.rstrip('/')}/settings")
-    return HTMLResponse(
-        f"""
-        <!doctype html>
-        <html lang="ru">
-          <head>
-            <meta charset="utf-8">
-            <title>MediaHave</title>
-            <script src="https://telegram.org/js/telegram-web-app.js"></script>
-          </head>
-          <body>
-            <script>
-              if (window.Telegram?.WebApp?.initData) {{
-                window.location.replace({settings_url});
-              }} else {{
-                window.open('', '_self');
-                window.close();
-              }}
-            </script>
-          </body>
-        </html>
-        """,
-        status_code=status_code,
-    )
+def oauth_result_response(success: bool) -> RedirectResponse:
+    path = "" if success else "settings"
+    result = "connected" if success else "error"
+    query = urlencode({"instagram": result})
+    url = f"{settings.FRONTEND_URL.rstrip('/')}/{path}?{query}"
+    return RedirectResponse(url=url, status_code=303)
 
 
 class InstagramAuthRequest(BaseModel):
@@ -98,7 +77,7 @@ async def auth_callback(
     state: str = Query(...)
 ):
     if not code:
-        return close_browser_response(False)
+        return oauth_result_response(False)
 
     try:
         state_data = jwt.decode(
@@ -225,7 +204,7 @@ async def auth_callback(
             }
         ).eq("telegram_id", telegram_id).execute()
 
-        return close_browser_response(True)
+        return oauth_result_response(True)
 
     except HTTPException as e:
         error_message = e.detail
@@ -236,7 +215,7 @@ async def auth_callback(
         error_message = "Не удалось подключить Instagram. Попробуйте снова."
 
     logger.warning("Instagram OAuth callback failed: %s", error_message)
-    return close_browser_response(False)
+    return oauth_result_response(False)
 
 
 @router.post("/register")
