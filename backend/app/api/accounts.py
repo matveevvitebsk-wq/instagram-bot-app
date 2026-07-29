@@ -65,4 +65,18 @@ async def unlink_account(
     sb.table("ig_accounts").update({"is_active": False}).eq(
         "id", account_id
     ).eq("owner_id", profile.data["id"]).execute()
+
+    active_accounts = sb.table("ig_accounts").select("id").eq(
+        "owner_id", profile.data["id"]
+    ).eq("is_active", True).limit(1).execute()
+    if not active_accounts.data:
+        sb.table("customer_profiles").update({
+            "instagram_page_id": None,
+            "instagram_access_token": None,
+            "instagram_id": None,
+            "instagram_username": None,
+            "instagram_connected": False,
+            "instagram_connected_at": None,
+        }).eq("id", profile.data["id"]).execute()
+
     return {"message": "Аккаунт отвязан"}

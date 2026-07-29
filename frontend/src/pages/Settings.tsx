@@ -112,11 +112,36 @@ const Settings: React.FC = () => {
     setRegStep('initial');
   };
 
+  const disconnectInstagram = async () => {
+    if (!account?.id) return;
+
+    try {
+      await api.delete(`/api/accounts/${account.id}`);
+      setAccount(null);
+      setShowRegistration(false);
+      setRegStep('initial');
+      setRegForm({
+        username: '',
+        email: '',
+        password: '',
+        fullName: '',
+      });
+    } catch (error) {
+      console.error('Failed to disconnect Instagram account:', error);
+      alert('Не удалось отключить Instagram аккаунт');
+    }
+  };
+
   const handleFinish = () => {
+    const message =
+      'Отключить Instagram аккаунт от MediaHave и удалить сохранённый токен?';
+
     if (tg) {
-      tg.close();
-    } else {
-      window.close();
+      tg.showConfirm(message, (confirmed) => {
+        if (confirmed) void disconnectInstagram();
+      });
+    } else if (window.confirm(message)) {
+      void disconnectInstagram();
     }
   };
 
