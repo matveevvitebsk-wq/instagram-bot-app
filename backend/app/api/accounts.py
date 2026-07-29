@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
-from app.core.cache import cached
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,25 +13,17 @@ class LinkAccountRequest(BaseModel):
     username: str
 
 @router.get("/")
-@cached(ttl=30)
-
-@router.get("/")
-async def get_accounts(current_user: dict = Depends(get_current_user)):
-    print(f"📁 Accounts called for user: {current_user}")
-
 async def list_accounts(current_user: dict = Depends(get_current_user)):
     sb = get_supabase()
     profile = sb.table("customer_profiles").select("id").eq(
         "telegram_id", current_user["telegram_id"]
     ).single().execute()
     result = sb.table("ig_accounts").select(
-        "id,username,display_name,page_id,is_active,created_at,"
-        "profile_picture_url,followers_count,mode"
+        "id,username,page_id,is_active,created_at"
     ).eq(
         "owner_id", profile.data["id"]
     ).eq("is_active", True).execute()
     logger.info(f"[ACCOUNTS] Returning: {result.data}")
-    print(f"[ACCOUNTS] Returning: {result.data}", flush=True)
     return result.data
 
 @router.post("/")
