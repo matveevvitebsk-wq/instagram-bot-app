@@ -42,7 +42,20 @@ const Settings: React.FC = () => {
   }, [user?.id]);
 
   useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchAccountStatus();
+      }
+    };
+
     void fetchAccountStatus();
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchAccountStatus]);
 
   // const handleConnectInstagram = () => {

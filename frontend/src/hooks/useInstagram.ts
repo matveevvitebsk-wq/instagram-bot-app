@@ -1,21 +1,42 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/utils/api";
 
 export const useInstagram = () => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api.get("/api/accounts/")
-      .then((res) => {
-        const accounts = res.data.accounts ?? res.data ?? [];
-        setConnected(accounts.filter((a: any) => a.is_active).length > 0);
-      })
-      .catch(() => setConnected(false))
-      .finally(() => setLoading(false));
+  const refetch = useCallback(async () => {
+    try {
+      const response = await api.get("/api/accounts/");
+      const accounts = response.data?.accounts ?? response.data ?? [];
+      setConnected(
+        Array.isArray(accounts) && accounts.some((account) => account.is_active)
+      );
+    } catch {
+      setConnected(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { connected, loading };
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refetch();
+      }
+    };
+
+    void refetch();
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refetch]);
+
+  return { connected, loading, refetch };
 };
 
 

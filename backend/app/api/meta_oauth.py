@@ -1,5 +1,6 @@
 # backend/app/api/meta_oauth.py
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import httpx
 import logging
@@ -14,6 +15,32 @@ from app.core.supabase import get_supabase
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 logger = logging.getLogger(__name__)
+
+
+def close_browser_response(success: bool) -> HTMLResponse:
+    message = (
+        "Instagram подключен. Это окно можно закрыть."
+        if success
+        else "Не удалось подключить Instagram. Закройте это окно и повторите попытку."
+    )
+    status_code = 200 if success else 400
+    return HTMLResponse(
+        f"""
+        <!doctype html>
+        <html lang="ru">
+          <head><meta charset="utf-8"><title>MediaHave</title></head>
+          <body>
+            <p>{message}</p>
+            <script>
+              window.open('', '_self');
+              window.close();
+            </script>
+          </body>
+        </html>
+        """,
+        status_code=status_code,
+    )
+
 
 class InstagramAuthRequest(BaseModel):
     code: str
@@ -67,7 +94,7 @@ async def auth_callback(
     state: str = Query(...)
 ):
     if not code:
-        return Response(status_code=204)
+        return close_browser_response(False)
 
     try:
         state_data = jwt.decode(
@@ -194,7 +221,7 @@ async def auth_callback(
             }
         ).eq("telegram_id", telegram_id).execute()
 
-        return Response(status_code=204)
+        return close_browser_response(True)
 
     except HTTPException as e:
         error_message = e.detail
@@ -205,7 +232,7 @@ async def auth_callback(
         error_message = "Не удалось подключить Instagram. Попробуйте снова."
 
     logger.warning("Instagram OAuth callback failed: %s", error_message)
-    return Response(status_code=400)
+    return close_browser_response(False)
 
 
 @router.post("/register")
