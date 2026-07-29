@@ -45,6 +45,28 @@ const Settings: React.FC = () => {
     void fetchAccountStatus();
   }, [user?.id]);
 
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get('instagram');
+    if (!result) return;
+
+    const messages: Record<string, string> = {
+      connected: 'Instagram успешно подключен.',
+      cancelled: 'Подключение Instagram отменено.',
+      error: 'Не удалось подключить Instagram. Проверьте журнал backend.',
+    };
+    const message = messages[result];
+
+    if (message) {
+      if (tg) {
+        tg.showAlert(message);
+      } else {
+        alert(message);
+      }
+    }
+
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [tg]);
+
   // const handleConnectInstagram = () => {
   //   // Открываем Instagram OAuth
   //   const clientId = import.meta.env.META_APP_ID;
@@ -101,11 +123,7 @@ const Settings: React.FC = () => {
       });
       const authUrl = response.data.auth_url;
 
-      if (tg) {
-        tg.openLink(authUrl);
-      } else {
-        window.open(authUrl, '_blank', 'noopener,noreferrer');
-      }
+      window.location.assign(authUrl);
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     }

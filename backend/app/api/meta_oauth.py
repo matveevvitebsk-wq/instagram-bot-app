@@ -1,8 +1,9 @@
 # backend/app/api/meta_oauth.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 import httpx
+import logging
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from typing import Optional
@@ -13,6 +14,13 @@ from app.core.supabase import get_supabase
 
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
+logger = logging.getLogger(__name__)
+
+
+def settings_redirect(result: str) -> RedirectResponse:
+    query = urlencode({"instagram": result})
+    url = f"{settings.FRONTEND_URL.rstrip('/')}/settings?{query}"
+    return RedirectResponse(url=url, status_code=303)
 
 class InstagramAuthRequest(BaseModel):
     code: str
@@ -66,17 +74,7 @@ async def auth_callback(
     state: str = Query(...)
 ):
     if not code:
-        return HTMLResponse("""
-        <html><body>
-            <h2>Авторизация отменена</h2>
-            <p>Пожалуйста, попробуйте снова.</p>
-            <script>
-            setTimeout(() => {
-                window.location.href = "https://t.me/mediahave_bot";
-            }, 3000);
-            </script>
-        </body></html>
-        """)
+        return settings_redirect("cancelled")
 
     try:
         state_data = jwt.decode(
@@ -98,13 +96,18 @@ async def auth_callback(
                 "https://api.instagram.com/oauth/access_token",
                 data={
                     "client_id": settings.META_INSTAGRAM_APP_ID,
-                    "client_secret": settings.META_APP_SECRET,
+                    "client_secret": settings.META_INSTAGRAM_APP_SECRET,
                     "grant_type": "authorization_code",
                     "redirect_uri": settings.META_REDIRECT_URI,
                     "code": code,
                 },
             )
             if token_response.status_code != 200:
+                logger.error(
+                    "Instagram authorization-code exchange failed: status=%s response=%s",
+                    token_response.status_code,
+                    token_response.text[:1000],
+                )
                 raise HTTPException(
                     status_code=400,
                     detail="Instagram rejected the authorization code",
@@ -121,11 +124,16 @@ async def auth_callback(
                 "https://graph.instagram.com/access_token",
                 params={
                     "grant_type": "ig_exchange_token",
-                    "client_secret": settings.META_APP_SECRET,
+                    "client_secret": settings.META_INSTAGRAM_APP_SECRET,
                     "access_token": short_lived_token,
                 },
             )
             if long_token_response.status_code != 200:
+                logger.error(
+                    "Instagram long-lived token exchange failed: status=%s response=%s",
+                    long_token_response.status_code,
+                    long_token_response.text[:1000],
+                )
                 raise HTTPException(
                     status_code=400,
                     detail="Failed to exchange for a long-lived Instagram token",
@@ -146,6 +154,11 @@ async def auth_callback(
                 },
             )
             if profile_response.status_code != 200:
+                logger.error(
+                    "Instagram profile request failed: status=%s response=%s",
+                    profile_response.status_code,
+                    profile_response.text[:1000],
+                )
                 raise HTTPException(
                     status_code=400,
                     detail="Failed to retrieve the Instagram account",
@@ -188,36 +201,18 @@ async def auth_callback(
             }
         ).eq("telegram_id", telegram_id).execute()
 
-        return HTMLResponse("""
-        <html><body>
-            <h2>Instagram подключен.</h2>
-            <p>Можно вернуться в Telegram.</p>
-            <script>
-            setTimeout(() => {
-                window.location.href = "https://t.me/mediahave_bot";
-            }, 2000);
-            </script>
-        </body></html>
-        """)
+        return settings_redirect("connected")
 
     except HTTPException as e:
         error_message = e.detail
     except JWTError:
         error_message = "Ссылка авторизации истекла. Начните подключение заново."
     except Exception:
+        logger.exception("Unexpected Instagram OAuth callback failure")
         error_message = "Не удалось подключить Instagram. Попробуйте снова."
 
-    return HTMLResponse(f"""
-    <html><body>
-        <h2>Ошибка подключения Instagram</h2>
-        <p>{error_message}</p>
-        <script>
-        setTimeout(() => {{
-            window.location.href = "https://t.me/mediahave_bot";
-        }}, 5000);
-        </script>
-    </body></html>
-    """, status_code=400)
+    logger.warning("Instagram OAuth callback failed: %s", error_message)
+    return settings_redirect("error")
 
 
 @router.post("/register")
