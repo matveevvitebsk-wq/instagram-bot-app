@@ -35,7 +35,7 @@ async def get_meta_url(
 
     if not all([
         settings.META_INSTAGRAM_APP_ID,
-        settings.META_APP_SECRET,
+        settings.META_INSTAGRAM_APP_SECRET,
         settings.META_REDIRECT_URI,
     ]):
         raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
@@ -88,7 +88,7 @@ async def auth_callback(
 
         if not all([
             settings.META_INSTAGRAM_APP_ID,
-            settings.META_APP_SECRET,
+            settings.META_INSTAGRAM_APP_SECRET,
             settings.META_REDIRECT_URI,
         ]):
             raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
