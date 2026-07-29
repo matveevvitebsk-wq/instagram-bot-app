@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import httpx
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -18,22 +19,25 @@ logger = logging.getLogger(__name__)
 
 
 def close_browser_response(success: bool) -> HTMLResponse:
-    message = (
-        "Instagram подключен. Это окно можно закрыть."
-        if success
-        else "Не удалось подключить Instagram. Закройте это окно и повторите попытку."
-    )
     status_code = 200 if success else 400
+    settings_url = json.dumps(f"{settings.FRONTEND_URL.rstrip('/')}/settings")
     return HTMLResponse(
         f"""
         <!doctype html>
         <html lang="ru">
-          <head><meta charset="utf-8"><title>MediaHave</title></head>
+          <head>
+            <meta charset="utf-8">
+            <title>MediaHave</title>
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
+          </head>
           <body>
-            <p>{message}</p>
             <script>
-              window.open('', '_self');
-              window.close();
+              if (window.Telegram?.WebApp?.initData) {{
+                window.location.replace({settings_url});
+              }} else {{
+                window.open('', '_self');
+                window.close();
+              }}
             </script>
           </body>
         </html>

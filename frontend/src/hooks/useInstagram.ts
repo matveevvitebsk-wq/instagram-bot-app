@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "@/utils/api";
+import { useAuthStore } from "@/store/authStore";
 
 export const useInstagram = () => {
+  const token = useAuthStore((state) => state.token);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
+    if (!token) {
+      setConnected(false);
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await api.get("/api/accounts/");
       const accounts = response.data?.accounts ?? response.data ?? [];
@@ -17,7 +25,7 @@ export const useInstagram = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {
