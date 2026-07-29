@@ -10,6 +10,37 @@ interface InstagramAccount {
   status: 'active' | 'pending' | 'error';
 }
 
+const INSTAGRAM_APP_ID = '2007885943317419';
+const INSTAGRAM_OAUTH_REQUEST_ID = '7d2b7350-0f43-4008-9bdc-4e5b47fe4a68';
+
+const getExistingAccountLoginUrl = () => {
+  const state = JSON.stringify({
+    app_id: INSTAGRAM_APP_ID,
+    f3_request_id: INSTAGRAM_OAUTH_REQUEST_ID,
+    nonce: 'h9eWtJfCeo1Wh40o',
+    requested_permissions:
+      'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights',
+    user_id: '17841403480052658',
+  });
+  const authorizeParams = new URLSearchParams({
+    client_id: INSTAGRAM_APP_ID,
+    logger_id: INSTAGRAM_OAUTH_REQUEST_ID,
+    redirect_uri:
+      'https://developers.facebook.com/instagram/token_generator/oauth/',
+    response_type: 'code',
+    scope:
+      'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights',
+    state,
+    request_id: INSTAGRAM_OAUTH_REQUEST_ID,
+  });
+  const loginParams = new URLSearchParams({
+    force_authentication: 'true',
+    next: `/oauth/authorize/?${authorizeParams.toString()}`,
+  });
+
+  return `https://www.instagram.com/accounts/login/?${loginParams.toString()}`;
+};
+
 const Settings: React.FC = () => {
   const { tg, user } = useTelegram();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
@@ -124,6 +155,16 @@ const Settings: React.FC = () => {
     setRegStep('initial');
   };
 
+  const handleSignInExistingAccount = () => {
+    const loginUrl = getExistingAccountLoginUrl();
+
+    if (tg) {
+      tg.openLink(loginUrl);
+    } else {
+      window.open(loginUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleSubmitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegStep('instagram');
@@ -200,7 +241,7 @@ const Settings: React.FC = () => {
 
             {/* Кнопка входа (существующий аккаунт) */}
             <button
-              onClick={handleConnectInstagram}
+              onClick={handleSignInExistingAccount}
               className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
             >
               🔑 Войти в существующий
