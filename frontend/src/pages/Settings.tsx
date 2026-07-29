@@ -1,5 +1,5 @@
 // frontend/src/pages/Settings.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 
@@ -25,47 +25,25 @@ const Settings: React.FC = () => {
     'initial' | 'instagram' | 'verification'
   >('initial');
 
-  useEffect(() => {
+  const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
       return;
     }
 
-    const fetchAccountStatus = async () => {
-      try {
-        const response = await api.get(`/api/instagram/status/${user.id}`);
-        setAccount(response.data);
-      } catch (error) {
-        console.error('Failed to fetch account status:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void fetchAccountStatus();
+    try {
+      const response = await api.get(`/api/instagram/status/${user.id}`);
+      setAccount(response.data);
+    } catch (error) {
+      console.error('Failed to fetch account status:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.id]);
 
   useEffect(() => {
-    const result = new URLSearchParams(window.location.search).get('instagram');
-    if (!result) return;
-
-    const messages: Record<string, string> = {
-      connected: 'Instagram успешно подключен.',
-      cancelled: 'Подключение Instagram отменено.',
-      error: 'Не удалось подключить Instagram. Проверьте журнал backend.',
-    };
-    const message = messages[result];
-
-    if (message) {
-      if (tg) {
-        tg.showAlert(message);
-      } else {
-        alert(message);
-      }
-    }
-
-    window.history.replaceState({}, '', window.location.pathname);
-  }, [tg]);
+    void fetchAccountStatus();
+  }, [fetchAccountStatus]);
 
   // const handleConnectInstagram = () => {
   //   // Открываем Instagram OAuth
@@ -134,6 +112,14 @@ const Settings: React.FC = () => {
     setRegStep('initial');
   };
 
+  const handleFinish = () => {
+    if (tg) {
+      tg.close();
+    } else {
+      window.close();
+    }
+  };
+
   const handleSubmitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegStep('instagram');
@@ -186,12 +172,20 @@ const Settings: React.FC = () => {
                   {account.status === 'active' ? '✓ Активен' : '⏳ На проверке'}
                 </p>
               </div>
-              <button
-                onClick={handleConnectInstagram}
-                className='px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700'
-              >
-                Обновить
-              </button>
+              <div className='flex gap-2'>
+                <button
+                  onClick={() => void fetchAccountStatus()}
+                  className='px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700'
+                >
+                  Обновить
+                </button>
+                <button
+                  onClick={handleFinish}
+                  className='px-4 py-2 bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-600'
+                >
+                  Завершить
+                </button>
+              </div>
             </div>
           </div>
         ) : (
