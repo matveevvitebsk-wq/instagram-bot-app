@@ -148,6 +148,12 @@ async def auth_callback(
                     status_code=400,
                     detail="Instagram did not return a long-lived access token",
                 )
+            expires_in = int(long_token_response.json().get("expires_in", 0))
+            token_expires_at = (
+                datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+                if expires_in > 0
+                else None
+            )
 
             profile_response = await client.get(
                 f"https://graph.instagram.com/{settings.META_API_VERSION}/me",
@@ -199,6 +205,9 @@ async def auth_callback(
                 "profile_picture_url": instagram.get("profile_picture_url"),
                 "followers_count": instagram.get("followers_count", 0),
                 "access_token": access_token,
+                "token_expires_at": (
+                    token_expires_at.isoformat() if token_expires_at else None
+                ),
                 "is_active": True,
             },
             on_conflict="page_id",

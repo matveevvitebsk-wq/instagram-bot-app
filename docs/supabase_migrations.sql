@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS ig_accounts (
     display_name VARCHAR(100),
     profile_picture_url TEXT,
     followers_count BIGINT NOT NULL DEFAULT 0,
+    token_expires_at TIMESTAMP WITH TIME ZONE,
     -- ВАЖНО: в production шифруйте токен через pgcrypto
     -- access_token = pgp_sym_encrypt(token, current_setting('app.encryption_key'))
     access_token TEXT NOT NULL,
@@ -22,7 +23,8 @@ CREATE TABLE IF NOT EXISTS ig_accounts (
 ALTER TABLE ig_accounts
     ADD COLUMN IF NOT EXISTS display_name VARCHAR(100),
     ADD COLUMN IF NOT EXISTS profile_picture_url TEXT,
-    ADD COLUMN IF NOT EXISTS followers_count BIGINT NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS followers_count BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMP WITH TIME ZONE;
 
 UPDATE ig_accounts
 SET display_name = username
