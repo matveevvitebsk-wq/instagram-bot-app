@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timezone
 import httpx
 
 from app.core.security import get_current_user
@@ -17,6 +18,10 @@ class CreateTaskRequest(BaseModel):
     ig_account_id: str      # UUID из таблицы ig_accounts
     payload: dict           # Параметры задачи (зависят от типа)
     schedule_at: Optional[str] = None  # ISO 8601 или null для немедленного запуска
+
+
+class UpdateTaskRequest(BaseModel):
+    payload: dict
 
 
 class TaskResponse(BaseModel):
@@ -39,6 +44,17 @@ TASK_WEBHOOK_MAP = {
 
 # ─── Endpoints ────────────────────────────────────────────────────────────
 
+
+def get_profile_id(sb, current_user: dict) -> str:
+    profile = sb.table("customer_profiles").select("id").eq(
+        "telegram_id", current_user["telegram_id"]
+    ).single().execute()
+
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Профиль не найден")
+    return profile.data["id"]
+
+
 @router.get("/")
 async def list_tasks(
     current_user: dict = Depends(get_current_user),
@@ -47,18 +63,10 @@ async def list_tasks(
 ):
     """Список задач текущего пользователя."""
     sb = get_supabase()
-    telegram_id = current_user["telegram_id"]
-
-    # Получаем profile_id по telegram_id
-    profile = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", telegram_id
-    ).single().execute()
-
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Профиль не найден")
+    profile_id = get_profile_id(sb, current_user)
 
     result = sb.table("automation_tasks").select("*").eq(
-        "owner_id", profile.data["id"]
+        "owner_id", profile_id
     ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
 
     return {"tasks": result.data, "total": len(result.data)}
@@ -76,17 +84,11 @@ async def create_task(
     """
     sb = get_supabase()
     telegram_id = current_user["telegram_id"]
-
-    profile = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", telegram_id
-    ).single().execute()
-
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Профиль не найден")
+    profile_id = get_profile_id(sb, current_user)
 
     # Создаём запись задачи в Supabase
     task_record = {
-        "owner_id": profile.data["id"],
+        "owner_id": profile_id,
         "ig_account_id": body.ig_account_id,
         "task_type": body.task_type,
         "status": "pending",
@@ -123,22 +125,46 @@ async def create_task(
     return task
 
 
-@router.delete("/{task_id}")
+@router.patch("/{task_id}")
+async def update_task(
+    task_id: str,
+    body: UpdateTaskRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Редактирует данные ещё не выполненной задачи."""
+    sb = get_supabase()
+    profile_id = get_profile_id(sb, current_user)
+
+    result = sb.table("automation_tasks").update({
+        "payload": body.payload,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", task_id).eq("owner_id", profile_id).in_(
+        "status", ["pending", "cancelled", "failed"]
+    ).execute()
+
+    if not result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="Можно редактировать только необработанную задачу"
+        )
+    return result.data[0]
+
+
+@router.patch("/{task_id}/cancel")
 async def cancel_task(
     task_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """Отменяет задачу (только если status=pending)."""
     sb = get_supabase()
-    telegram_id = current_user["telegram_id"]
-
-    profile = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", telegram_id
-    ).single().execute()
+    profile_id = get_profile_id(sb, current_user)
 
     result = sb.table("automation_tasks").update(
-        {"status": "cancelled"}
-    ).eq("id", task_id).eq("owner_id", profile.data["id"]).eq(
+        {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).eq("id", task_id).eq("owner_id", profile_id).eq(
         "status", "pending"
     ).execute()
 
@@ -146,3 +172,24 @@ async def cancel_task(
         raise HTTPException(status_code=404, detail="Задача не найдена или уже запущена")
 
     return {"message": "Задача отменена"}
+
+
+@router.delete("/{task_id}")
+async def delete_task(
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Безвозвратно удаляет не выполняющуюся задачу из automation_tasks."""
+    sb = get_supabase()
+    profile_id = get_profile_id(sb, current_user)
+
+    result = sb.table("automation_tasks").delete().eq(
+        "id", task_id
+    ).eq("owner_id", profile_id).neq("status", "running").execute()
+
+    if not result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="Выполняющуюся задачу нельзя удалить"
+        )
+    return {"success": True}
