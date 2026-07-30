@@ -2,19 +2,28 @@ import { useEffect, useState } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import api from '@/utils/api';
 
-interface AutoReplyRule {
+interface AutoReplyTask {
   id: string;
-  trigger_keyword: string;
-  reply_text: string;
-  content_type: string;
-  media_link: string | null;
-  is_active: boolean;
+  task_type: 'keyword_funnel' | 'dm_reply';
+  status: string;
+  payload: {
+    trigger_keyword?: string;
+    reply_text?: string;
+    content_type?: string;
+    media_link?: string | null;
+    is_active?: boolean;
+    [key: string]: unknown;
+  };
   created_at: string;
+}
+
+function isAutoReplyActive(task: AutoReplyTask) {
+  return task.payload?.is_active ?? task.status !== 'cancelled';
 }
 
 export default function AutoReplyDM() {
   const { tg } = useTelegram();
-  const [autoReplies, setAutoReplies] = useState<AutoReplyRule[]>([]);
+  const [autoReplies, setAutoReplies] = useState<AutoReplyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,8 +53,8 @@ export default function AutoReplyDM() {
 
   async function loadAutoReplies() {
     try {
-      const res = await api.get('/api/funnels/');
-      setAutoReplies(res.data);
+      const res = await api.get('/api/tasks/?auto_reply_only=true');
+      setAutoReplies(res.data?.tasks ?? []);
     } catch {
       setError('Не удалось загрузить авто-ответы');
     } finally {
@@ -72,10 +81,10 @@ export default function AutoReplyDM() {
     setError(null);
   }
 
-  function openEditForm(rule: AutoReplyRule) {
-    setKeyword(rule.trigger_keyword);
-    setReplyText(rule.reply_text);
-    setEditingId(rule.id);
+  function openEditForm(task: AutoReplyTask) {
+    setKeyword(task.payload?.trigger_keyword ?? '');
+    setReplyText(task.payload?.reply_text ?? '');
+    setEditingId(task.id);
     setShowForm(true);
     setError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -92,14 +101,22 @@ export default function AutoReplyDM() {
 
     try {
       if (editingId) {
-        const res = await api.patch(`/api/funnels/${editingId}`, payload);
+        const currentTask = autoReplies.find((task) => task.id === editingId);
+        const res = await api.patch(`/api/tasks/${editingId}`, {
+          payload: { ...currentTask?.payload, ...payload },
+        });
         setAutoReplies((previous) =>
-          previous.map((rule) => (rule.id === editingId ? res.data : rule)),
+          previous.map((task) => (task.id === editingId ? res.data : task)),
         );
       } else {
-        const res = await api.post('/api/funnels/', {
-          ...payload,
+        const res = await api.post('/api/tasks/', {
+          task_type: 'dm_reply',
           ig_account_id: igAccountId,
+          payload: {
+            ...payload,
+            content_type: 'ALL',
+            is_active: true,
+          },
         });
         setAutoReplies((previous) => [res.data, ...previous]);
       }
@@ -118,11 +135,9 @@ export default function AutoReplyDM() {
     setTogglingId(id);
     setError(null);
     try {
-      const res = await api.patch(`/api/funnels/${id}/toggle`);
+      const res = await api.patch(`/api/tasks/${id}/toggle`);
       setAutoReplies((previous) =>
-        previous.map((rule) =>
-          rule.id === id ? { ...rule, is_active: res.data.is_active } : rule,
-        ),
+        previous.map((task) => (task.id === id ? res.data : task)),
       );
     } catch (requestError: any) {
       setError(requestError?.response?.data?.detail || 'Не удалось изменить статус');
@@ -131,9 +146,9 @@ export default function AutoReplyDM() {
     }
   }
 
-  function confirmDelete(rule: AutoReplyRule) {
-    const message = `Удалить авто-ответ для ключевого слова «${rule.trigger_keyword}»?`;
-    const remove = () => void deleteAutoReply(rule.id);
+  function confirmDelete(task: AutoReplyTask) {
+    const message = `Удалить авто-ответ для ключевого слова «${task.payload?.trigger_keyword ?? ''}»?`;
+    const remove = () => void deleteAutoReply(task.id);
 
     if (tg) {
       tg.showConfirm(message, (confirmed) => {
@@ -148,8 +163,8 @@ export default function AutoReplyDM() {
     setDeletingId(id);
     setError(null);
     try {
-      await api.delete(`/api/funnels/${id}`);
-      setAutoReplies((previous) => previous.filter((rule) => rule.id !== id));
+      await api.delete(`/api/tasks/${id}`);
+      setAutoReplies((previous) => previous.filter((task) => task.id !== id));
       if (editingId === id) resetForm();
     } catch (requestError: any) {
       setError(requestError?.response?.data?.detail || 'Не удалось удалить авто-ответ');
@@ -317,7 +332,7 @@ export default function AutoReplyDM() {
               className='p-4 rounded-xl'
               style={{
                 background: 'var(--tg-theme-secondary-bg-color)',
-                opacity: rule.is_active ? 1 : 0.65,
+                opacity: isAutoReplyActive(rule) ? 1 : 0.65,
               }}
             >
               <div className='flex items-center justify-between mb-2'>
@@ -329,9 +344,9 @@ export default function AutoReplyDM() {
                       color: 'var(--tg-theme-button-text-color)',
                     }}
                   >
-                    {rule.trigger_keyword}
+                    {rule.payload?.trigger_keyword ?? 'Без ключевого слова'}
                   </span>
-                  {!rule.is_active && (
+                  {!isAutoReplyActive(rule) && (
                     <span
                       className='text-xs'
                       style={{ color: 'var(--tg-theme-hint-color)' }}
@@ -343,11 +358,11 @@ export default function AutoReplyDM() {
                 <button
                   onClick={() => void toggleAutoReply(rule.id)}
                   disabled={togglingId === rule.id}
-                  aria-label={`${rule.is_active ? 'Выключить' : 'Включить'} авто-ответ`}
-                  aria-pressed={rule.is_active}
+                  aria-label={`${isAutoReplyActive(rule) ? 'Выключить' : 'Включить'} авто-ответ`}
+                  aria-pressed={isAutoReplyActive(rule)}
                   className='relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50'
                   style={{
-                    background: rule.is_active
+                    background: isAutoReplyActive(rule)
                       ? 'var(--tg-theme-button-color)'
                       : 'var(--tg-theme-hint-color)',
                   }}
@@ -355,7 +370,7 @@ export default function AutoReplyDM() {
                   <span
                     className='inline-block h-4 w-4 transform rounded-full bg-white transition-transform'
                     style={{
-                      transform: rule.is_active
+                      transform: isAutoReplyActive(rule)
                         ? 'translateX(24px)'
                         : 'translateX(4px)',
                     }}
@@ -366,14 +381,16 @@ export default function AutoReplyDM() {
                 className='text-sm mb-3 leading-relaxed'
                 style={{ color: 'var(--tg-theme-text-color)' }}
               >
-                {rule.reply_text}
+                {rule.payload?.reply_text ?? ''}
               </p>
               <div className='flex items-end justify-between gap-3'>
                 <span
                   className='text-xs'
                   style={{ color: 'var(--tg-theme-hint-color)' }}
                 >
-                  {rule.content_type === 'ALL' ? 'Все типы контента' : rule.content_type}
+                  {(rule.payload?.content_type ?? 'ALL') === 'ALL'
+                    ? 'Все типы контента'
+                    : rule.payload?.content_type}
                 </span>
                 <div className='flex items-center gap-2 shrink-0'>
                   <button
