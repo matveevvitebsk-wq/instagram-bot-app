@@ -386,7 +386,7 @@ export default function Landing() {
           </h1>
 
           <p className='subtitle'>
-            Автоматизируйте Instagram: воронки, ответы в Direct, публикации и
+            Автоматизируйте Instagram: авто-ответы в DM, публикации и
             аналитику — всё через Telegram бот. Скоро больше платформ.
           </p>
 
@@ -410,13 +410,13 @@ export default function Landing() {
         <div className='features'>
           {[
             {
-              icon: '🎯',
-              title: 'Ключевые воронки',
+              icon: '💬',
+              title: 'Авто-ответ в DM',
               desc: 'Пользователь пишет слово — бот автоматически отправляет нужный материал в Direct',
             },
             {
               icon: '💬',
-              title: 'Авто-ответы в DM',
+              title: 'Ответы на входящие DM',
               desc: 'Отвечайте на сообщения 24/7 без участия менеджера',
             },
             {
@@ -427,7 +427,7 @@ export default function Landing() {
             {
               icon: '📊',
               title: 'Аналитика с AI',
-              desc: 'Инсайты по аудитории и эффективности воронок каждую неделю',
+              desc: 'Инсайты по аудитории и эффективности автоматизации каждую неделю',
             },
           ].map((f) => (
             <div key={f.title} className='feature-card'>

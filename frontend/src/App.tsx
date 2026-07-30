@@ -7,7 +7,7 @@ import { useTrack } from '@/hooks/useTrack';
 import Dashboard from '@/pages/Dashboard';
 import Tasks from '@/pages/Tasks';
 import Leads from '@/pages/Leads';
-import Funnels from '@/pages/Funnels';
+import AutoReplyDM from '@/pages/AutoReplyDM';
 import Settings from '@/pages/Settings';
 import Layout from '@/components/Layout';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -100,7 +100,8 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path='tasks' element={<Tasks />} />
           <Route path='leads' element={<Leads />} />
-          <Route path='funnels' element={<Funnels />} />
+          <Route path='auto-reply-dm' element={<AutoReplyDM />} />
+          <Route path='funnels' element={<Navigate to='/auto-reply-dm' replace />} />
           <Route path='settings' element={<Settings />} />
         </Route>
         <Route path='/privacy' element={<Privacy />} />
