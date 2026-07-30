@@ -16,6 +16,13 @@ interface DashboardData {
   }>;
 }
 
+const EMPTY_DASHBOARD_DATA: DashboardData = {
+  subscription: 'free',
+  total_leads: 0,
+  tasks: {},
+  weekly_snapshots: [],
+};
+
 export default function Dashboard() {
   const { user } = useTelegram();
   const { connected, loading: igLoading } = useInstagram();
@@ -24,12 +31,29 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (igLoading) return;
+    if (!connected) {
+      setData(EMPTY_DASHBOARD_DATA);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
     api
       .get('/api/analytics/dashboard')
-      .then((res) => setData(res.data))
+      .then((res) => {
+        if (active) setData(res.data);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [connected, igLoading]);
 
   const firstName = user?.first_name || 'Пользователь';
   const userInitial = firstName.charAt(0).toUpperCase();

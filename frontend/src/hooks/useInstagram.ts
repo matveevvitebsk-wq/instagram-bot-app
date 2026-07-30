@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "@/utils/api";
 import { useAuthStore } from "@/store/authStore";
+import { INSTAGRAM_CONNECTION_EVENT } from "@/utils/instagramConnection";
 
 export const useInstagram = () => {
   const token = useAuthStore((state) => state.token);
@@ -43,6 +44,26 @@ export const useInstagram = () => {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refetch]);
+
+  useEffect(() => {
+    const handleConnectionChange = (event: Event) => {
+      const connectedNow = (event as CustomEvent<{ connected: boolean }>).detail
+        ?.connected;
+      setConnected(Boolean(connectedNow));
+      setLoading(false);
+    };
+
+    window.addEventListener(
+      INSTAGRAM_CONNECTION_EVENT,
+      handleConnectionChange,
+    );
+    return () => {
+      window.removeEventListener(
+        INSTAGRAM_CONNECTION_EVENT,
+        handleConnectionChange,
+      );
+    };
+  }, []);
 
   return { connected, loading, refetch };
 };

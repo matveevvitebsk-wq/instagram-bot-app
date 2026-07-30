@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
+from app.core.cache import cache
 import logging
 
 logger = logging.getLogger(__name__)
@@ -70,4 +71,5 @@ async def unlink_account(
             "instagram_connected_at": None,
         }).eq("id", profile.data["id"]).execute()
 
+    cache.clear()
     return {"message": "Аккаунт отвязан"}
