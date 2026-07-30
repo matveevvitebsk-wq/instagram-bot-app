@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import api from '@/utils/api';
@@ -60,17 +60,26 @@ export default function Tasks() {
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deletedTaskIds = useRef(new Set<string>());
+  const latestTaskRequest = useRef(0);
 
-  const fetchTasks = useCallback((silent = false) => {
+  const fetchTasks = useCallback(async (silent = false) => {
+    const requestId = ++latestTaskRequest.current;
     if (!silent) setLoading(true);
-    api
-      .get('/api/tasks/')
-      .then((response) => setTasks(response.data?.tasks ?? []))
-      .catch((requestError) => {
-        console.error('Ошибка загрузки задач:', requestError);
-        setError('Не удалось загрузить задачи');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const response = await api.get('/api/tasks/');
+      if (requestId !== latestTaskRequest.current) return;
+      const loadedTasks: Task[] = response.data?.tasks ?? [];
+      setTasks(
+        loadedTasks.filter((task) => !deletedTaskIds.current.has(task.id)),
+      );
+    } catch (requestError) {
+      if (requestId !== latestTaskRequest.current) return;
+      console.error('Ошибка загрузки задач:', requestError);
+      setError('Не удалось загрузить задачи');
+    } finally {
+      if (requestId === latestTaskRequest.current) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,7 +91,7 @@ export default function Tasks() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'automation_tasks' },
-        () => fetchTasks(true),
+        () => void fetchTasks(true),
       )
       .subscribe();
 
@@ -194,12 +203,17 @@ export default function Tasks() {
   async function deleteTask(taskId: string) {
     setDeletingTaskId(taskId);
     setError(null);
+    deletedTaskIds.current.add(taskId);
+    setTasks((previous) => previous.filter((task) => task.id !== taskId));
+    if (editingTaskId === taskId) setEditingTaskId(null);
+
     try {
       await api.delete(`/api/tasks/${taskId}`);
-      setTasks((previous) => previous.filter((task) => task.id !== taskId));
-      if (editingTaskId === taskId) setEditingTaskId(null);
+      await fetchTasks(true);
       hapticFeedback('success');
     } catch (requestError: any) {
+      deletedTaskIds.current.delete(taskId);
+      await fetchTasks(true);
       setError(requestError?.response?.data?.detail || 'Не удалось удалить задачу');
       hapticFeedback('error');
     } finally {
