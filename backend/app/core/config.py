@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # N8n
     N8N_URL: str = "https://n8n.almarathon.com"
+    N8N_BASE_URL: str = ""
     N8N_API_KEY: str = ""
 
     # Debug
@@ -65,6 +66,17 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
+
+
+    @property
+    def n8n_base_url(self) -> str:
+        """Supports both the legacy N8N_URL and Docker's N8N_BASE_URL."""
+        return (self.N8N_BASE_URL or self.N8N_URL).rstrip("/")
+
+
+    @property
+    def n8n_api_key(self) -> str:
+        return self.N8N_API_KEY
 
 
     @property
