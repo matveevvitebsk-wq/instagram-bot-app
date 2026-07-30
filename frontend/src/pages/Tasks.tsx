@@ -7,6 +7,7 @@ import { supabase } from '@/utils/supabase';
 interface TaskPayload {
   trigger_keyword?: string;
   reply_text?: string;
+  is_active?: boolean;
   [key: string]: unknown;
 }
 
@@ -44,6 +45,10 @@ const CREATE_TASK_TYPES = [
 const AUTO_REPLY_TYPES = new Set(['keyword_funnel', 'dm_reply']);
 const EDITABLE_STATUSES = new Set(['pending', 'cancelled', 'failed']);
 
+function isAutoReplyActive(task: Task) {
+  return task.payload?.is_active ?? task.status !== 'cancelled';
+}
+
 export default function Tasks() {
   const navigate = useNavigate();
   const { tg, hapticFeedback } = useTelegram();
@@ -59,6 +64,7 @@ export default function Tasks() {
   const [editReplyText, setEditReplyText] = useState('');
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deletedTaskIds = useRef(new Set<string>());
   const latestTaskRequest = useRef(0);
@@ -152,6 +158,23 @@ export default function Tasks() {
       );
     } catch (requestError: any) {
       setError(requestError?.response?.data?.detail || 'Не удалось отменить задачу');
+    }
+  }
+
+  async function toggleAutoReply(taskId: string) {
+    setTogglingTaskId(taskId);
+    setError(null);
+    try {
+      const response = await api.patch(`/api/tasks/${taskId}/toggle`);
+      setTasks((previous) =>
+        previous.map((task) => (task.id === taskId ? response.data : task)),
+      );
+      hapticFeedback('light');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.detail || 'Не удалось изменить статус');
+      hapticFeedback('error');
+    } finally {
+      setTogglingTaskId(null);
     }
   }
 
@@ -372,37 +395,67 @@ export default function Tasks() {
             return (
               <div
                 key={task.id}
-                className='rounded-2xl p-4'
+                className='rounded-2xl p-4 min-h-[104px]'
                 style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
               >
-                <div className='flex items-start justify-between gap-3'>
-                  <div className='flex items-center gap-3 min-w-0'>
-                    <span className='text-xl'>{typeConfig.emoji}</span>
-                    <div className='min-w-0'>
+                <div className='grid grid-cols-[28px_minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-2.5 min-h-[72px]'>
+                  <span className='text-xl row-span-2 self-center w-7 text-center'>
+                    {typeConfig.emoji}
+                  </span>
+
+                  <div className='row-span-2 min-w-0 self-center'>
+                    <p
+                      className='text-sm font-medium leading-[18px]'
+                      style={{ color: 'var(--tg-theme-text-color)' }}
+                    >
+                      {typeConfig.label}
+                    </p>
+                    {task.payload?.trigger_keyword && (
                       <p
-                        className='text-sm font-medium'
-                        style={{ color: 'var(--tg-theme-text-color)' }}
+                        className='text-xs truncate mt-0.5'
+                        style={{ color: 'var(--tg-theme-hint-color)' }}
                       >
-                        {typeConfig.label}
+                        {task.payload.trigger_keyword}
                       </p>
-                      {task.payload?.trigger_keyword && (
-                        <p
-                          className='text-xs truncate'
-                          style={{ color: 'var(--tg-theme-hint-color)' }}
-                        >
-                          {task.payload.trigger_keyword}
-                        </p>
-                      )}
-                      <p className='text-xs' style={{ color: statusConfig.color }}>
-                        {statusConfig.emoji} {statusConfig.label}
-                      </p>
-                    </div>
+                    )}
+                    <p
+                      className='text-xs leading-4'
+                      style={{ color: statusConfig.color }}
+                    >
+                      {statusConfig.emoji} {statusConfig.label}
+                    </p>
                   </div>
-                  <div className='flex flex-wrap justify-end gap-1.5'>
-                    {task.status === 'pending' && (
+
+                  {AUTO_REPLY_TYPES.has(task.task_type) && (
+                    <button
+                      onClick={() => void toggleAutoReply(task.id)}
+                      disabled={togglingTaskId === task.id}
+                      aria-label={`${isAutoReplyActive(task) ? 'Выключить' : 'Включить'} авто-ответ`}
+                      aria-pressed={isAutoReplyActive(task)}
+                      className='relative w-11 h-5 rounded-full justify-self-end disabled:opacity-50 transition-colors'
+                      style={{
+                        background: isAutoReplyActive(task)
+                          ? 'var(--tg-theme-button-color)'
+                          : 'var(--tg-theme-hint-color)',
+                      }}
+                    >
+                      <span
+                        className='absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform'
+                        style={{
+                          transform: isAutoReplyActive(task)
+                            ? 'translateX(24px)'
+                            : 'translateX(0)',
+                        }}
+                      />
+                    </button>
+                  )}
+
+                  <div className='col-start-3 row-start-2 flex items-end justify-end gap-2 self-end'>
+                    {task.status === 'pending' &&
+                      !AUTO_REPLY_TYPES.has(task.task_type) && (
                       <button
                         onClick={() => void handleCancel(task.id)}
-                        className='text-xs px-2.5 py-1.5 rounded-lg'
+                        className='h-6 min-w-[72px] px-3 rounded-lg text-[11px] font-medium'
                         style={{
                           border: '1px solid var(--tg-theme-hint-color)',
                           color: 'var(--tg-theme-text-color)',
@@ -416,7 +469,7 @@ export default function Tasks() {
                         onClick={() =>
                           isEditing ? setEditingTaskId(null) : startEditing(task)
                         }
-                        className='text-xs px-2.5 py-1.5 rounded-lg font-medium'
+                        className='h-6 min-w-[82px] px-3 rounded-lg text-[11px] font-medium'
                         style={{
                           color: 'var(--tg-theme-button-color)',
                           border: '1px solid var(--tg-theme-button-color)',
@@ -429,7 +482,7 @@ export default function Tasks() {
                       <button
                         onClick={() => confirmDelete(task)}
                         disabled={deletingTaskId === task.id}
-                        className='text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50'
+                        className='h-6 min-w-[72px] px-3 rounded-lg text-[11px] font-medium disabled:opacity-50'
                         style={{
                           color: '#ff3b30',
                           border: '1px solid rgba(255,59,48,0.45)',
