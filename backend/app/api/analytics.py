@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
-from app.core.cache import cached
 
 router = APIRouter()
 
 
 @router.get("/dashboard")
-@cached(ttl=30)
 async def get_dashboard(current_user: dict = Depends(get_current_user)):
     """Сводная статистика для главного экрана Mini App."""
     sb = get_supabase()
