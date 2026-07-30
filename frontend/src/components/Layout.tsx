@@ -7,7 +7,7 @@ const navItems = [
   { path: '/', label: 'Главная', icon: '🏠', locked: false },
   { path: '/tasks', label: 'Задачи', icon: '⚡', locked: true },
   { path: '/leads', label: 'Лиды', icon: '👥', locked: true },
-  { path: '/funnels', label: 'Воронки', icon: '🎯', locked: true },
+  { path: '/auto-reply-dm', label: 'Авто-ответ в DM', icon: '💬', locked: true },
   { path: '/settings', label: 'Настройки', icon: '⚙️', locked: false },
 ];
 
@@ -58,7 +58,7 @@ export default function Layout() {
                 style={{ color: 'var(--tg-theme-button-color)' }}
               >
                 <span className='text-lg leading-none mb-0.5'>{icon}</span>
-                <span>{label}</span>
+                <span className='text-[10px] leading-tight text-center'>{label}</span>
                 {isBlocked && (
                   <span className='absolute top-0 right-2 text-[10px]'>🔒</span>
                 )}

@@ -10,7 +10,7 @@ export default function Terms() {
 
         {[
           { title: "1. Acceptance of Terms", content: "By using MediaHave, you agree to these Terms of Service and our Privacy Policy. If you do not agree, do not use the service." },
-          { title: "2. Service Description", content: "MediaHave is an Instagram automation service accessible via Telegram Mini App. It provides automated Direct Message responses, scheduled publishing, keyword funnels, and AI analytics for Instagram Business accounts." },
+          { title: "2. Service Description", content: "MediaHave is an Instagram automation service accessible via Telegram Mini App. It provides keyword-triggered Direct Message auto-replies, scheduled publishing, and AI analytics for Instagram Business accounts." },
           { title: "3. Eligibility", content: "You must have a valid Instagram Business or Creator account and comply with Meta\'s Terms of Service and Community Guidelines." },
           { title: "4. Acceptable Use", content: "You agree NOT to use MediaHave to send spam or unsolicited messages, violate Instagram\'s Community Guidelines, harass or harm other users, or engage in any illegal activity." },
           { title: "5. Account Responsibility", content: "You are responsible for all activity on your account and for maintaining the security of your Telegram account." },
