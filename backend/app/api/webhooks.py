@@ -95,7 +95,7 @@ async def meta_webhook_event(request: Request):
     body = await request.json()
     sb = get_supabase()
 
-    # Пересылаем в N8n webhook для обработки по воронкам
+    # Пересылаем в N8n webhook для обработки правил авто-ответа в DM
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(

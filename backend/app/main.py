@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import get_settings
@@ -29,19 +29,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.middleware("http")
-async def options_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        return Response(
-            status_code=200,
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-        )
-    return await call_next(request)
-
 # Rate limiter — не более 120 запросов в минуту с одного IP
 app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
 
@@ -53,7 +40,7 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(meta_oauth.router, tags=["Meta OAuth"])
 app.include_router(telegram_webhook.router, prefix="/api/webhooks", tags=["Telegram"])
-app.include_router(funnels.router, prefix="/api/funnels", tags=["Funnels"])
+app.include_router(funnels.router, prefix="/api/funnels", tags=["Auto-Reply in DM"])
 
 @app.get("/health")
 async def health_check():
