@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import api from '@/utils/api';
 import { supabase } from '@/utils/supabase';
+
+interface TaskPayload {
+  trigger_keyword?: string;
+  reply_text?: string;
+  [key: string]: unknown;
+}
 
 interface Task {
   id: string;
   task_type: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  payload: Record<string, any>;
+  payload: TaskPayload;
   created_at: string;
 }
 
@@ -22,70 +29,83 @@ const STATUS_CONFIG: Record<
   cancelled: { label: 'Отменено', color: '#8e8e93', emoji: '🚫' },
 };
 
-const TASK_TYPES = [
-  { value: 'publish_post', label: 'Публикация поста', emoji: '📸' },
-  { value: 'keyword_funnel', label: 'Авто-ответ в DM', emoji: '💬' },
-  { value: 'dm_reply', label: 'Авто-ответ в DM', emoji: '💬' },
-  { value: 'analytics', label: 'Сбор аналитики', emoji: '📊' },
+const TASK_TYPE_CONFIG: Record<string, { label: string; emoji: string }> = {
+  publish_post: { label: 'Публикация поста', emoji: '📸' },
+  keyword_funnel: { label: 'Авто-ответ в DM', emoji: '💬' },
+  dm_reply: { label: 'Авто-ответ в DM', emoji: '💬' },
+  analytics: { label: 'Сбор аналитики', emoji: '📊' },
+};
+
+const CREATE_TASK_TYPES = [
+  { value: 'publish_post', ...TASK_TYPE_CONFIG.publish_post },
+  { value: 'analytics', ...TASK_TYPE_CONFIG.analytics },
 ];
 
+const AUTO_REPLY_TYPES = new Set(['keyword_funnel', 'dm_reply']);
+const EDITABLE_STATUSES = new Set(['pending', 'cancelled', 'failed']);
+
 export default function Tasks() {
-  const { hapticFeedback } = useTelegram();
+  const navigate = useNavigate();
+  const { tg, hapticFeedback } = useTelegram();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [selectedType, setSelectedType] = useState('keyword_funnel');
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [keyword, setKeyword] = useState('');
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editKeyword, setEditKeyword] = useState('');
+  const [editReplyText, setEditReplyText] = useState('');
+  const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Оптимизировано: загрузка ставится в true только ОДИН раз при старте,
-  // чтобы Realtime-обновления не вызывали мигание и зацикливание экрана.
-  const fetchTasks = (silent = false) => {
+  const fetchTasks = useCallback((silent = false) => {
     if (!silent) setLoading(true);
     api
       .get('/api/tasks/')
-      .then((res) => {
-        if (res.data && res.data.tasks) {
-          setTasks(res.data.tasks);
-        }
+      .then((response) => setTasks(response.data?.tasks ?? []))
+      .catch((requestError) => {
+        console.error('Ошибка загрузки задач:', requestError);
+        setError('Не удалось загрузить задачи');
       })
-      .catch((err) => console.error('Ошибка загрузки задач:', err))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
-    // 1. Первичная загрузка
-    fetchTasks(false);
+    fetchTasks();
 
-    // Проверяем, инициализирован ли supabase, чтобы избежать падения
-    if (!supabase) {
-      console.warn('Клиент Supabase отсутствует. Realtime отключен.');
-      return;
-    }
-
-    // 2. Подписка на изменения
+    if (!supabase) return;
     const channel = supabase
       .channel('tasks-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'automation_tasks' },
-        () => {
-          // silent = true: обновляем данные в фоне, не включая скелетон загрузки
-          fetchTasks(true);
-        },
+        () => fetchTasks(true),
       )
       .subscribe();
 
-    // 3. Очистка подписки
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchTasks]);
 
-  const handleCreate = async () => {
-    if (!keyword.trim()) return;
+  function toggleCreateForm() {
+    setShowForm((visible) => !visible);
+    setSelectedType(null);
+    setError(null);
+  }
+
+  function openAutoReplyTab() {
+    setShowForm(false);
+    navigate('/auto-reply-dm');
+  }
+
+  async function handleCreate() {
+    if (!selectedType || !keyword.trim()) return;
     setSubmitting(true);
+    setError(null);
     hapticFeedback('medium');
 
     try {
@@ -93,35 +113,102 @@ export default function Tasks() {
         task_type: selectedType,
         ig_account_id: 'default',
         payload: {
-          trigger_keyword: keyword.toLowerCase(),
-          reply_text: replyText,
+          trigger_keyword: keyword.trim().toLowerCase(),
+          reply_text: replyText.trim(),
         },
       });
       hapticFeedback('success');
       setKeyword('');
       setReplyText('');
+      setSelectedType(null);
       setShowForm(false);
       fetchTasks(true);
-    } catch (err) {
-      console.error(err);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.detail || 'Не удалось создать задачу');
       hapticFeedback('error');
     } finally {
       setSubmitting(false);
     }
-  };
+  }
 
-  const handleCancel = async (taskId: string) => {
+  async function handleCancel(taskId: string) {
+    setError(null);
     try {
       hapticFeedback('light');
-      await api.delete(`/api/tasks/${taskId}`);
-      fetchTasks(true);
-    } catch (err) {
-      console.error(err);
+      await api.patch(`/api/tasks/${taskId}/cancel`);
+      setTasks((previous) =>
+        previous.map((task) =>
+          task.id === taskId ? { ...task, status: 'cancelled' } : task,
+        ),
+      );
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.detail || 'Не удалось отменить задачу');
     }
-  };
+  }
+
+  function startEditing(task: Task) {
+    setEditingTaskId(task.id);
+    setEditKeyword(task.payload?.trigger_keyword ?? '');
+    setEditReplyText(task.payload?.reply_text ?? '');
+    setError(null);
+  }
+
+  async function saveTask(task: Task) {
+    if (!editKeyword.trim()) return;
+    setSavingTaskId(task.id);
+    setError(null);
+    const payload = {
+      ...task.payload,
+      trigger_keyword: editKeyword.trim().toLowerCase(),
+      reply_text: editReplyText.trim(),
+    };
+
+    try {
+      const response = await api.patch(`/api/tasks/${task.id}`, { payload });
+      setTasks((previous) =>
+        previous.map((item) => (item.id === task.id ? response.data : item)),
+      );
+      setEditingTaskId(null);
+      hapticFeedback('success');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.detail || 'Не удалось изменить задачу');
+      hapticFeedback('error');
+    } finally {
+      setSavingTaskId(null);
+    }
+  }
+
+  function confirmDelete(task: Task) {
+    const message = 'Удалить задачу без возможности восстановления?';
+    const remove = () => void deleteTask(task.id);
+
+    if (tg) {
+      tg.showConfirm(message, (confirmed) => {
+        if (confirmed) remove();
+      });
+    } else if (window.confirm(message)) {
+      remove();
+    }
+  }
+
+  async function deleteTask(taskId: string) {
+    setDeletingTaskId(taskId);
+    setError(null);
+    try {
+      await api.delete(`/api/tasks/${taskId}`);
+      setTasks((previous) => previous.filter((task) => task.id !== taskId));
+      if (editingTaskId === taskId) setEditingTaskId(null);
+      hapticFeedback('success');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.detail || 'Не удалось удалить задачу');
+      hapticFeedback('error');
+    } finally {
+      setDeletingTaskId(null);
+    }
+  }
 
   return (
-    <div className='p-4 space-y-4'>
+    <div className='p-4 pb-24 space-y-4'>
       <div className='flex items-center justify-between pt-2'>
         <h1
           className='text-xl font-semibold'
@@ -130,7 +217,7 @@ export default function Tasks() {
           ⚡ Задачи
         </h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={toggleCreateForm}
           className='px-4 py-1.5 rounded-full text-sm font-medium transition-opacity active:opacity-70'
           style={{
             background: 'var(--tg-theme-button-color)',
@@ -141,7 +228,15 @@ export default function Tasks() {
         </button>
       </div>
 
-      {/* Форма создания задачи */}
+      {error && (
+        <div
+          className='p-3 rounded-xl text-sm'
+          style={{ background: '#fee2e2', color: '#dc2626' }}
+        >
+          {error}
+        </div>
+      )}
+
       {showForm && (
         <div
           className='rounded-2xl p-4 space-y-3'
@@ -154,74 +249,86 @@ export default function Tasks() {
             Тип задачи
           </p>
           <div className='grid grid-cols-2 gap-2'>
-            {TASK_TYPES.map((t) => (
+            <button
+              onClick={openAutoReplyTab}
+              className='p-3 rounded-xl text-left text-sm transition-all'
+              style={{
+                background: 'var(--tg-theme-bg-color)',
+                color: 'var(--tg-theme-text-color)',
+              }}
+            >
+              <span className='text-lg block mb-1'>💬</span>
+              Авто-ответ в DM
+            </button>
+            {CREATE_TASK_TYPES.map((type) => (
               <button
-                key={t.value}
-                onClick={() => setSelectedType(t.value)}
+                key={type.value}
+                onClick={() => setSelectedType(type.value)}
                 className='p-3 rounded-xl text-left text-sm transition-all'
                 style={{
                   background:
-                    selectedType === t.value
+                    selectedType === type.value
                       ? 'var(--tg-theme-button-color)'
                       : 'var(--tg-theme-bg-color)',
                   color:
-                    selectedType === t.value
+                    selectedType === type.value
                       ? 'var(--tg-theme-button-text-color)'
                       : 'var(--tg-theme-text-color)',
                 }}
               >
-                <span className='text-lg block mb-1'>{t.emoji}</span>
-                {t.label}
+                <span className='text-lg block mb-1'>{type.emoji}</span>
+                {type.label}
               </button>
             ))}
           </div>
 
-          <input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder='Ключевое слово (напр. ГАЙД)'
-            className='w-full rounded-xl px-3 py-2.5 text-sm outline-none'
-            style={{
-              background: 'var(--tg-theme-bg-color)',
-              color: 'var(--tg-theme-text-color)',
-              border: '1px solid var(--tg-theme-hint-color)',
-            }}
-          />
-
-          <textarea
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder='Текст ответа в Direct...'
-            rows={3}
-            className='w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none'
-            style={{
-              background: 'var(--tg-theme-bg-color)',
-              color: 'var(--tg-theme-text-color)',
-              border: '1px solid var(--tg-theme-hint-color)',
-            }}
-          />
-
-          <button
-            onClick={handleCreate}
-            disabled={submitting || !keyword.trim()}
-            className='w-full py-3 rounded-xl font-medium text-sm transition-opacity disabled:opacity-50'
-            style={{
-              background: 'var(--tg-theme-button-color)',
-              color: 'var(--tg-theme-button-text-color)',
-            }}
-          >
-            {submitting ? 'Создаём...' : 'Запустить задачу'}
-          </button>
+          {selectedType && (
+            <>
+              <input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder='Параметр задачи'
+                className='w-full rounded-xl px-3 py-2.5 text-sm outline-none'
+                style={{
+                  background: 'var(--tg-theme-bg-color)',
+                  color: 'var(--tg-theme-text-color)',
+                  border: '1px solid var(--tg-theme-hint-color)',
+                }}
+              />
+              <textarea
+                value={replyText}
+                onChange={(event) => setReplyText(event.target.value)}
+                placeholder='Описание задачи...'
+                rows={3}
+                className='w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none'
+                style={{
+                  background: 'var(--tg-theme-bg-color)',
+                  color: 'var(--tg-theme-text-color)',
+                  border: '1px solid var(--tg-theme-hint-color)',
+                }}
+              />
+              <button
+                onClick={() => void handleCreate()}
+                disabled={submitting || !keyword.trim()}
+                className='w-full py-3 rounded-xl font-medium text-sm disabled:opacity-50'
+                style={{
+                  background: 'var(--tg-theme-button-color)',
+                  color: 'var(--tg-theme-button-text-color)',
+                }}
+              >
+                {submitting ? 'Создаём...' : 'Запустить задачу'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {/* Список задач */}
       {loading ? (
         <div className='space-y-2'>
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3].map((item) => (
             <div
-              key={i}
-              className='h-16 rounded-2xl animate-pulse'
+              key={item}
+              className='h-20 rounded-2xl animate-pulse'
               style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
             />
           ))}
@@ -237,39 +344,125 @@ export default function Tasks() {
       ) : (
         <div className='space-y-2'>
           {tasks.map((task) => {
-            const cfg = STATUS_CONFIG[task.status] ?? STATUS_CONFIG.pending;
-            const type = TASK_TYPES.find((t) => t.value === task.task_type);
+            const statusConfig = STATUS_CONFIG[task.status] ?? STATUS_CONFIG.pending;
+            const typeConfig = TASK_TYPE_CONFIG[task.task_type] ?? {
+              label: task.task_type,
+              emoji: '⚡',
+            };
+            const canEdit =
+              AUTO_REPLY_TYPES.has(task.task_type) &&
+              EDITABLE_STATUSES.has(task.status);
+            const canDelete = task.status !== 'running';
+            const isEditing = editingTaskId === task.id;
+
             return (
               <div
                 key={task.id}
-                className='rounded-2xl p-4 flex items-center justify-between'
+                className='rounded-2xl p-4'
                 style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
               >
-                <div className='flex items-center gap-3'>
-                  <span className='text-xl'>{type?.emoji ?? '⚡'}</span>
-                  <div>
-                    <p
-                      className='text-sm font-medium'
-                      style={{ color: 'var(--tg-theme-text-color)' }}
-                    >
-                      {type?.label ?? task.task_type}
-                    </p>
-                    <p className='text-xs' style={{ color: cfg.color }}>
-                      {cfg.emoji} {cfg.label}
-                    </p>
+                <div className='flex items-start justify-between gap-3'>
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <span className='text-xl'>{typeConfig.emoji}</span>
+                    <div className='min-w-0'>
+                      <p
+                        className='text-sm font-medium'
+                        style={{ color: 'var(--tg-theme-text-color)' }}
+                      >
+                        {typeConfig.label}
+                      </p>
+                      {task.payload?.trigger_keyword && (
+                        <p
+                          className='text-xs truncate'
+                          style={{ color: 'var(--tg-theme-hint-color)' }}
+                        >
+                          {task.payload.trigger_keyword}
+                        </p>
+                      )}
+                      <p className='text-xs' style={{ color: statusConfig.color }}>
+                        {statusConfig.emoji} {statusConfig.label}
+                      </p>
+                    </div>
+                  </div>
+                  <div className='flex flex-wrap justify-end gap-1.5'>
+                    {task.status === 'pending' && (
+                      <button
+                        onClick={() => void handleCancel(task.id)}
+                        className='text-xs px-2.5 py-1.5 rounded-lg'
+                        style={{
+                          border: '1px solid var(--tg-theme-hint-color)',
+                          color: 'var(--tg-theme-text-color)',
+                        }}
+                      >
+                        Отмена
+                      </button>
+                    )}
+                    {canEdit && (
+                      <button
+                        onClick={() =>
+                          isEditing ? setEditingTaskId(null) : startEditing(task)
+                        }
+                        className='text-xs px-2.5 py-1.5 rounded-lg font-medium'
+                        style={{
+                          color: 'var(--tg-theme-button-color)',
+                          border: '1px solid var(--tg-theme-button-color)',
+                        }}
+                      >
+                        {isEditing ? 'Закрыть' : 'Изменить'}
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => confirmDelete(task)}
+                        disabled={deletingTaskId === task.id}
+                        className='text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50'
+                        style={{
+                          color: '#ff3b30',
+                          border: '1px solid rgba(255,59,48,0.45)',
+                          background: 'rgba(255,59,48,0.08)',
+                        }}
+                      >
+                        {deletingTaskId === task.id ? '...' : 'Удалить'}
+                      </button>
+                    )}
                   </div>
                 </div>
-                {task.status === 'pending' && (
-                  <button
-                    onClick={() => handleCancel(task.id)}
-                    className='text-xs font-medium px-3 py-1.5 rounded-xl border transition-opacity active:opacity-60'
-                    style={{
-                      borderColor: 'var(--tg-theme-hint-color)',
-                      color: 'var(--tg-theme-text-color)',
-                    }}
-                  >
-                    Отмена
-                  </button>
+
+                {isEditing && (
+                  <div className='mt-3 pt-3 space-y-2 border-t border-black/10'>
+                    <input
+                      value={editKeyword}
+                      onChange={(event) => setEditKeyword(event.target.value)}
+                      placeholder='Ключевое слово'
+                      className='w-full rounded-lg px-3 py-2 text-sm outline-none'
+                      style={{
+                        background: 'var(--tg-theme-bg-color)',
+                        color: 'var(--tg-theme-text-color)',
+                      }}
+                    />
+                    <textarea
+                      value={editReplyText}
+                      onChange={(event) => setEditReplyText(event.target.value)}
+                      placeholder='Текст ответа в DM'
+                      rows={3}
+                      className='w-full rounded-lg px-3 py-2 text-sm outline-none resize-none'
+                      style={{
+                        background: 'var(--tg-theme-bg-color)',
+                        color: 'var(--tg-theme-text-color)',
+                      }}
+                    />
+                    <button
+                      onClick={() => void saveTask(task)}
+                      disabled={savingTaskId === task.id || !editKeyword.trim()}
+                      className='w-full py-2 rounded-lg text-sm font-medium disabled:opacity-50'
+                      style={{
+                        background: 'var(--tg-theme-button-color)',
+                        color: 'var(--tg-theme-button-text-color)',
+                      }}
+                    >
+                      {savingTaskId === task.id ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                  </div>
                 )}
               </div>
             );
@@ -279,267 +472,3 @@ export default function Tasks() {
     </div>
   );
 }
-
-// import { useEffect, useState } from 'react';
-// import { useTelegram } from '@/hooks/useTelegram';
-// import api from '@/utils/api';
-// import { supabase } from '@/utils/supabase';
-
-// interface Task {
-//   id: string;
-//   task_type: string;
-//   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-//   payload: Record<string, any>;
-//   created_at: string;
-// }
-
-// const STATUS_CONFIG: Record<
-//   string,
-//   { label: string; color: string; emoji: string }
-// > = {
-//   pending: { label: 'В очереди', color: '#ff9500', emoji: '⏳' },
-//   running: { label: 'Выполняется', color: '#007aff', emoji: '🔄' },
-//   completed: { label: 'Готово', color: '#34c759', emoji: '✅' },
-//   failed: { label: 'Ошибка', color: '#ff3b30', emoji: '❌' },
-//   cancelled: { label: 'Отменено', color: '#8e8e93', emoji: '🚫' },
-// };
-
-// const TASK_TYPES = [
-//   { value: 'publish_post', label: 'Публикация поста', emoji: '📸' },
-//   { value: 'keyword_funnel', label: 'Авто-ответ в DM', emoji: '💬' },
-//   { value: 'dm_reply', label: 'Авто-ответ в DM', emoji: '💬' },
-//   { value: 'analytics', label: 'Сбор аналитики', emoji: '📊' },
-// ];
-
-// export default function Tasks() {
-//   const { hapticFeedback } = useTelegram();
-//   const [tasks, setTasks] = useState<Task[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [showForm, setShowForm] = useState(false);
-//   const [selectedType, setSelectedType] = useState('keyword_funnel');
-//   const [keyword, setKeyword] = useState('');
-//   const [replyText, setReplyText] = useState('');
-//   const [submitting, setSubmitting] = useState(false);
-
-//   const fetchTasks = () => {
-//     setLoading(true);
-//     api
-//       .get('/api/tasks/')
-//       .then((res) => setTasks(res.data.tasks))
-//       .finally(() => setLoading(false));
-//   };
-
-//   useEffect(() => {
-//     // 1. Первичная загрузка данных при старте
-//     fetchTasks();
-
-//     // 2. Создание канала для отслеживания изменений в реальном времени
-//     const channel = supabase
-//       .channel('tasks-changes')
-//       .on(
-//         'postgres_changes',
-//         { event: '*', schema: 'public', table: 'automation_tasks' },
-//         () => {
-//           // Перезагружаем список при любом событии (INSERT, UPDATE, DELETE)
-//           fetchTasks();
-//         },
-//       )
-//       .subscribe();
-
-//     // 3. Очистка подписки при размонтировании компонента
-//     return () => {
-//       supabase.removeChannel(channel);
-//     };
-//   }, []);
-
-//   const handleCreate = async () => {
-//     if (!keyword.trim()) return;
-//     setSubmitting(true);
-//     hapticFeedback('medium');
-
-//     try {
-//       await api.post('/api/tasks/', {
-//         task_type: selectedType,
-//         ig_account_id: 'default', // TODO: выбор аккаунта
-//         payload: {
-//           trigger_keyword: keyword.toLowerCase(),
-//           reply_text: replyText,
-//         },
-//       });
-//       hapticFeedback('success');
-//       setKeyword('');
-//       setReplyText('');
-//       setShowForm(false);
-//       fetchTasks();
-//     } catch {
-//       hapticFeedback('error');
-//     } finally {
-//       setSubmitting(false);
-//     }
-//   };
-
-//   const handleCancel = async (taskId: string) => {
-//     hapticFeedback('light');
-//     await api.delete(`/api/tasks/${taskId}`);
-//     fetchTasks();
-//   };
-
-//   return (
-//     <div className='p-4 space-y-4'>
-//       <div className='flex items-center justify-between pt-2'>
-//         <h1
-//           className='text-xl font-semibold'
-//           style={{ color: 'var(--tg-theme-text-color)' }}
-//         >
-//           ⚡ Задачи
-//         </h1>
-//         <button
-//           onClick={() => setShowForm(!showForm)}
-//           className='px-4 py-1.5 rounded-full text-sm font-medium transition-opacity active:opacity-70'
-//           style={{
-//             background: 'var(--tg-theme-button-color)',
-//             color: 'var(--tg-theme-button-text-color)',
-//           }}
-//         >
-//           {showForm ? 'Отмена' : '+ Создать'}
-//         </button>
-//       </div>
-
-//       {/* Форма создания задачи */}
-//       {showForm && (
-//         <div
-//           className='rounded-2xl p-4 space-y-3'
-//           style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-//         >
-//           <p
-//             className='text-sm font-medium'
-//             style={{ color: 'var(--tg-theme-text-color)' }}
-//           >
-//             Тип задачи
-//           </p>
-//           <div className='grid grid-cols-2 gap-2'>
-//             {TASK_TYPES.map((t) => (
-//               <button
-//                 key={t.value}
-//                 onClick={() => setSelectedType(t.value)}
-//                 className='p-3 rounded-xl text-left text-sm transition-all'
-//                 style={{
-//                   background:
-//                     selectedType === t.value
-//                       ? 'var(--tg-theme-button-color)'
-//                       : 'var(--tg-theme-bg-color)',
-//                   color:
-//                     selectedType === t.value
-//                       ? 'var(--tg-theme-button-text-color)'
-//                       : 'var(--tg-theme-text-color)',
-//                 }}
-//               >
-//                 <span className='text-lg block mb-1'>{t.emoji}</span>
-//                 {t.label}
-//               </button>
-//             ))}
-//           </div>
-
-//           <input
-//             value={keyword}
-//             onChange={(e) => setKeyword(e.target.value)}
-//             placeholder='Ключевое слово (напр. ГАЙД)'
-//             className='w-full rounded-xl px-3 py-2.5 text-sm outline-none'
-//             style={{
-//               background: 'var(--tg-theme-bg-color)',
-//               color: 'var(--tg-theme-text-color)',
-//               border: '1px solid var(--tg-theme-hint-color)',
-//             }}
-//           />
-
-//           <textarea
-//             value={replyText}
-//             onChange={(e) => setReplyText(e.target.value)}
-//             placeholder='Текст ответа в Direct...'
-//             rows={3}
-//             className='w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none'
-//             style={{
-//               background: 'var(--tg-theme-bg-color)',
-//               color: 'var(--tg-theme-text-color)',
-//               border: '1px solid var(--tg-theme-hint-color)',
-//             }}
-//           />
-
-//           <button
-//             onClick={handleCreate}
-//             disabled={submitting || !keyword.trim()}
-//             className='w-full py-3 rounded-xl font-medium text-sm transition-opacity disabled:opacity-50'
-//             style={{
-//               background: 'var(--tg-theme-button-color)',
-//               color: 'var(--tg-theme-button-text-color)',
-//             }}
-//           >
-//             {submitting ? 'Создаём...' : 'Запустить задачу'}
-//           </button>
-//         </div>
-//       )}
-
-//       {/* Список задач */}
-//       {loading ? (
-//         <div className='space-y-2'>
-//           {[1, 2, 3].map((i) => (
-//             <div
-//               key={i}
-//               className='h-16 rounded-2xl animate-pulse'
-//               style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-//             />
-//           ))}
-//         </div>
-//       ) : tasks.length === 0 ? (
-//         <div
-//           className='text-center py-12'
-//           style={{ color: 'var(--tg-theme-hint-color)' }}
-//         >
-//           <p className='text-4xl mb-3'>⚡</p>
-//           <p>Задач пока нет</p>
-//         </div>
-//       ) : (
-//         <div className='space-y-2'>
-//           {tasks.map((task) => {
-//             const cfg = STATUS_CONFIG[task.status] ?? STATUS_CONFIG.pending;
-//             const type = TASK_TYPES.find((t) => t.value === task.task_type);
-//             return (
-//               <div
-//                 key={task.id}
-//                 className='rounded-2xl p-4 flex items-center justify-between'
-//                 style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-//               >
-//                 <div className='flex items-center gap-3'>
-//                   <span className='text-xl'>{type?.emoji ?? '⚡'}</span>
-//                   <div>
-//                     <p
-//                       className='text-sm font-medium'
-//                       style={{ color: 'var(--tg-theme-text-color)' }}
-//                     >
-//                       {type?.label ?? task.task_type}
-//                     </p>
-//                     <p className='text-xs' style={{ color: cfg.color }}>
-//                       {cfg.emoji} {cfg.label}
-//                     </p>
-//                   </div>
-//                 </div>
-//                 {task.status === 'pending' && (
-//                   <button
-//                     onClick={() => handleCancel(task.id)}
-//                     className='text-xs px-3 py-1.5 rounded-full'
-//                     style={{
-//                       color: '#ff3b30',
-//                       background: 'rgba(255,59,48,0.1)',
-//                     }}
-//                   >
-//                     Отмена
-//                   </button>
-//                 )}
-//               </div>
-//             );
-//           })}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
