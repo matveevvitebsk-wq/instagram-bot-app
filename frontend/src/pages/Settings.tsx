@@ -19,16 +19,6 @@ const Settings: React.FC = () => {
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showRegistration, setShowRegistration] = useState(false);
-  const [regForm, setRegForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    fullName: '',
-  });
-  const [regStep, setRegStep] = useState<
-    'initial' | 'instagram' | 'verification'
-  >('initial');
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -126,25 +116,12 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleRegisterInstagram = () => {
-    setShowRegistration(true);
-    setRegStep('initial');
-  };
-
   const disconnectInstagram = async () => {
     if (!account?.id) return;
 
     try {
       await api.delete(`/api/accounts/${account.id}`);
       setAccount(null);
-      setShowRegistration(false);
-      setRegStep('initial');
-      setRegForm({
-        username: '',
-        email: '',
-        password: '',
-        fullName: '',
-      });
       notifyInstagramConnection(false);
       navigate('/', { replace: true });
     } catch (error) {
@@ -163,28 +140,6 @@ const Settings: React.FC = () => {
       });
     } else if (window.confirm(message)) {
       void disconnectInstagram();
-    }
-  };
-
-  const handleSubmitRegistration = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegStep('instagram');
-
-    // Имитация открытия Instagram
-    setTimeout(() => {
-      setRegStep('verification');
-    }, 2000);
-  };
-
-  const handleStartInstagramAuth = () => {
-    // Здесь начинается процесс регистрации через Instagram
-    // Открываем Instagram для регистрации
-    const instagramUrl = 'https://www.instagram.com/accounts/emailsignup/';
-
-    if (tg) {
-      tg.openLink(instagramUrl);
-    } else {
-      window.open(instagramUrl, '_blank');
     }
   };
 
@@ -293,16 +248,8 @@ const Settings: React.FC = () => {
         ) : (
           <div className='space-y-3'>
             <p className='text-gray-600 dark:text-gray-400 text-sm'>
-              Подключите Instagram Business или Creator аккаунт.
+              Подключите Instagram, если у вас есть аккаунт Business или Creator.
             </p>
-
-            {/* Кнопка регистрации */}
-            <button
-              onClick={handleRegisterInstagram}
-              className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all'
-            >
-              📸 Создать Instagram аккаунт
-            </button>
 
             {/* Кнопка входа (существующий аккаунт) */}
             <button
@@ -327,132 +274,6 @@ const Settings: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Модальное окно регистрации */}
-      {showRegistration && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
-          <div className='bg-white dark:bg-gray-800 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto'>
-            <div className='p-6'>
-              <div className='flex justify-between items-start mb-4'>
-                <h3 className='text-xl font-bold'>Создать Instagram аккаунт</h3>
-                <button
-                  onClick={() => setShowRegistration(false)}
-                  className='text-gray-500 hover:text-gray-700'
-                >
-                  ✕
-                </button>
-              </div>
-
-              {regStep === 'initial' && (
-                <form onSubmit={handleSubmitRegistration}>
-                  <div className='space-y-3'>
-                    <div>
-                      <label className='block text-sm font-medium mb-1'>
-                        Имя пользователя
-                      </label>
-                      <input
-                        type='text'
-                        value={regForm.username}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, username: e.target.value })
-                        }
-                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
-                        placeholder='username'
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-1'>
-                        Email
-                      </label>
-                      <input
-                        type='email'
-                        value={regForm.email}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, email: e.target.value })
-                        }
-                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
-                        placeholder='email@example.com'
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-1'>
-                        Пароль
-                      </label>
-                      <input
-                        type='password'
-                        value={regForm.password}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, password: e.target.value })
-                        }
-                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
-                        placeholder='••••••••'
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-1'>
-                        Полное имя
-                      </label>
-                      <input
-                        type='text'
-                        value={regForm.fullName}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, fullName: e.target.value })
-                        }
-                        className='w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600'
-                        placeholder='John Doe'
-                      />
-                    </div>
-
-                    <button
-                      type='submit'
-                      className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all mt-2'
-                    >
-                      Продолжить
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {regStep === 'instagram' && (
-                <div className='text-center py-8'>
-                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
-                  <p className='text-lg font-medium'>Открываем Instagram...</p>
-                  <p className='text-gray-500 text-sm mt-2'>
-                    Пожалуйста, подождите
-                  </p>
-                </div>
-              )}
-
-              {regStep === 'verification' && (
-                <div className='text-center py-8'>
-                  <div className='text-6xl mb-4'>📸</div>
-                  <h4 className='text-xl font-bold mb-2'>Почти готово!</h4>
-                  <p className='text-gray-600 dark:text-gray-400 mb-4'>
-                    Для завершения регистрации откройте Instagram и подтвердите
-                    аккаунт.
-                  </p>
-                  <button
-                    onClick={handleStartInstagramAuth}
-                    className='w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all'
-                  >
-                    📱 Открыть Instagram
-                  </button>
-                  <button
-                    onClick={() => setShowRegistration(false)}
-                    className='w-full py-2 text-gray-500 hover:text-gray-700 text-sm mt-2'
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Telegram bot info */}
       <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-4'>
