@@ -78,7 +78,7 @@ export default function Dashboard() {
             ⚠️ Подключите Instagram
           </p>
           <p className='text-xs mt-1' style={{ color: 'var(--tg-theme-hint-color)' }}>
-            Чтобы пользоваться задачами, воронками и лидами — привяжите бизнес-аккаунт в Настройках
+            Чтобы пользоваться задачами, авто-ответами в DM и лидами — привяжите бизнес-аккаунт в Настройках
           </p>
         </Link>
       )}
@@ -144,7 +144,7 @@ export default function Dashboard() {
       {/* Быстрые действия */}
       <div className='grid grid-cols-2 gap-3'>
         <QuickAction to='/tasks' emoji='⚡' label='Новая задача' locked={!connected} onLockedClick={handleLockedClick} />
-        <QuickAction to='/funnels' emoji='🎯' label='Воронки' locked={!connected} onLockedClick={handleLockedClick} />
+        <QuickAction to='/auto-reply-dm' emoji='💬' label='Авто-ответ в DM' locked={!connected} onLockedClick={handleLockedClick} />
         <QuickAction to='/leads' emoji='👥' label='База лидов' locked={!connected} onLockedClick={handleLockedClick} />
         <QuickAction to='/settings' emoji='⚙️' label='Аккаунты' locked={false} onLockedClick={handleLockedClick} />
       </div>

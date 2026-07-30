@@ -24,7 +24,7 @@ const STATUS_CONFIG: Record<
 
 const TASK_TYPES = [
   { value: 'publish_post', label: 'Публикация поста', emoji: '📸' },
-  { value: 'keyword_funnel', label: 'Ключевая воронка', emoji: '🎯' },
+  { value: 'keyword_funnel', label: 'Авто-ответ в DM', emoji: '💬' },
   { value: 'dm_reply', label: 'Авто-ответ в DM', emoji: '💬' },
   { value: 'analytics', label: 'Сбор аналитики', emoji: '📊' },
 ];
@@ -306,7 +306,7 @@ export default function Tasks() {
 
 // const TASK_TYPES = [
 //   { value: 'publish_post', label: 'Публикация поста', emoji: '📸' },
-//   { value: 'keyword_funnel', label: 'Ключевая воронка', emoji: '🎯' },
+//   { value: 'keyword_funnel', label: 'Авто-ответ в DM', emoji: '💬' },
 //   { value: 'dm_reply', label: 'Авто-ответ в DM', emoji: '💬' },
 //   { value: 'analytics', label: 'Сбор аналитики', emoji: '📊' },
 // ];
