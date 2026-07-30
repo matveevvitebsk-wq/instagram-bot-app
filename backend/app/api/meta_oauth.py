@@ -279,7 +279,7 @@ async def get_instagram_status(
 
         accounts = (
             sb.table("ig_accounts")
-            .select("id,username,is_active")
+            .select("id,username,display_name,profile_picture_url,is_active")
             .eq("owner_id", profiles.data[0]["id"])
             .eq("is_active", True)
             .limit(1)
@@ -291,6 +291,8 @@ async def get_instagram_status(
                 "id": account["id"],
                 "connected": True,
                 "username": account["username"],
+                "display_name": account.get("display_name"),
+                "profile_picture_url": account.get("profile_picture_url"),
                 "status": "active",
             }
 
