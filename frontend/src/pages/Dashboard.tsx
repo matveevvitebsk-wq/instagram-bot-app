@@ -32,6 +32,7 @@ export default function Dashboard() {
   }, []);
 
   const firstName = user?.first_name || 'Пользователь';
+  const userInitial = firstName.charAt(0).toUpperCase();
 
   const handleLockedClick = (label: string) => {
     track('locked_button_clicked', { button: label });
@@ -40,23 +41,44 @@ export default function Dashboard() {
   return (
     <div className='p-4 space-y-4'>
       {/* Шапка */}
-      <div className='flex items-center justify-between pt-2'>
-        <div>
-          <h1
-            className='text-xl font-semibold'
-            style={{ color: 'var(--tg-theme-text-color)' }}
-          >
-            Привет, {firstName} 👋
-          </h1>
-          <p
-            className='text-sm'
-            style={{ color: 'var(--tg-theme-hint-color)' }}
-          >
-            Instagram Automation
-          </p>
+      <div className='flex items-center justify-between gap-3 pt-2'>
+        <div className='flex items-center gap-3 min-w-0'>
+          {user?.photo_url ? (
+            <img
+              src={user.photo_url}
+              alt={`Аватар ${firstName}`}
+              className='w-12 h-12 rounded-full object-cover shrink-0'
+              referrerPolicy='no-referrer'
+            />
+          ) : (
+            <div
+              className='w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold shrink-0'
+              style={{
+                background: 'var(--tg-theme-button-color)',
+                color: 'var(--tg-theme-button-text-color)',
+              }}
+              aria-hidden='true'
+            >
+              {userInitial}
+            </div>
+          )}
+          <div className='min-w-0'>
+            <h1
+              className='text-xl font-semibold truncate'
+              style={{ color: 'var(--tg-theme-text-color)' }}
+            >
+              Привет, {firstName} 👋
+            </h1>
+            <p
+              className='text-sm'
+              style={{ color: 'var(--tg-theme-hint-color)' }}
+            >
+              Instagram Automation
+            </p>
+          </div>
         </div>
         <span
-          className='text-xs px-2 py-1 rounded-full font-medium'
+          className='text-xs px-2 py-1 rounded-full font-medium shrink-0'
           style={{
             background: 'var(--tg-theme-button-color)',
             color: 'var(--tg-theme-button-text-color)',
@@ -84,6 +106,12 @@ export default function Dashboard() {
       )}
 
       {/* Карточки статистики */}
+      <p
+        className='text-xs font-semibold uppercase tracking-wide'
+        style={{ color: 'var(--tg-theme-hint-color)' }}
+      >
+        Сводка
+      </p>
       {loading ? (
         <div className='grid grid-cols-2 gap-3'>
           {[1, 2, 3, 4].map((i) => (
@@ -142,6 +170,12 @@ export default function Dashboard() {
       )}
 
       {/* Быстрые действия */}
+      <p
+        className='text-xs font-semibold uppercase tracking-wide pt-1'
+        style={{ color: 'var(--tg-theme-hint-color)' }}
+      >
+        Действия
+      </p>
       <div className='grid grid-cols-2 gap-3'>
         <QuickAction to='/tasks' emoji='⚡' label='Новая задача' locked={!connected} onLockedClick={handleLockedClick} />
         <QuickAction to='/auto-reply-dm' emoji='💬' label='Авто-ответ в DM' locked={!connected} onLockedClick={handleLockedClick} />
@@ -165,18 +199,32 @@ function StatCard({
 }) {
   return (
     <div
-      className='rounded-2xl p-4'
-      style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+      className='rounded-2xl p-4 min-h-28'
+      style={{
+        background: 'var(--tg-theme-secondary-bg-color)',
+        border: '1px solid rgba(127,127,127,0.14)',
+      }}
     >
-      <p className='text-2xl mb-1'>{emoji}</p>
+      <div className='flex items-start justify-between gap-2'>
+        <p
+          className='text-xs font-medium'
+          style={{ color: 'var(--tg-theme-hint-color)' }}
+        >
+          {label}
+        </p>
+        <span
+          className='w-8 h-8 rounded-lg flex items-center justify-center text-lg'
+          style={{ background: 'rgba(127,127,127,0.12)' }}
+          aria-hidden='true'
+        >
+          {emoji}
+        </span>
+      </div>
       <p
-        className='text-2xl font-bold'
+        className='text-3xl font-bold mt-2'
         style={{ color: danger ? '#ff3b30' : 'var(--tg-theme-text-color)' }}
       >
         {value}
-      </p>
-      <p className='text-xs' style={{ color: 'var(--tg-theme-hint-color)' }}>
-        {label}
       </p>
     </div>
   );
@@ -199,16 +247,19 @@ function QuickAction({
     return (
       <button
         onClick={() => onLockedClick(label)}
-        className='rounded-2xl p-4 flex items-center gap-3 relative opacity-50 active:opacity-40 transition-opacity'
-        style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+        className='rounded-xl p-3 min-h-16 flex items-center gap-3 relative opacity-45 active:opacity-35 transition-opacity text-left shadow-sm'
+        style={{
+          background: 'var(--tg-theme-button-color)',
+          color: 'var(--tg-theme-button-text-color)',
+        }}
       >
-        <span className='text-2xl'>{emoji}</span>
         <span
-          className='text-sm font-medium'
-          style={{ color: 'var(--tg-theme-text-color)' }}
+          className='w-9 h-9 rounded-lg flex items-center justify-center text-xl shrink-0'
+          style={{ background: 'rgba(255,255,255,0.18)' }}
         >
-          {label}
+          {emoji}
         </span>
+        <span className='text-sm font-semibold leading-tight flex-1'>{label}</span>
         <span className='absolute top-2 right-2 text-xs'>🔒</span>
       </button>
     );
@@ -217,15 +268,21 @@ function QuickAction({
   return (
     <Link
       to={to}
-      className='rounded-2xl p-4 flex items-center gap-3 active:opacity-70 transition-opacity'
-      style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+      className='rounded-xl p-3 min-h-16 flex items-center gap-3 active:opacity-70 transition-opacity shadow-sm'
+      style={{
+        background: 'var(--tg-theme-button-color)',
+        color: 'var(--tg-theme-button-text-color)',
+      }}
     >
-      <span className='text-2xl'>{emoji}</span>
       <span
-        className='text-sm font-medium'
-        style={{ color: 'var(--tg-theme-text-color)' }}
+        className='w-9 h-9 rounded-lg flex items-center justify-center text-xl shrink-0'
+        style={{ background: 'rgba(255,255,255,0.18)' }}
       >
-        {label}
+        {emoji}
+      </span>
+      <span className='text-sm font-semibold leading-tight flex-1'>{label}</span>
+      <span className='text-base opacity-75' aria-hidden='true'>
+        ›
       </span>
     </Link>
   );

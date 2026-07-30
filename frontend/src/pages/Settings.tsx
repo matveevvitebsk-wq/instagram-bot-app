@@ -6,6 +6,8 @@ import api from '../utils/api';
 interface InstagramAccount {
   id: string;
   username: string;
+  display_name?: string | null;
+  profile_picture_url?: string | null;
   connected: boolean;
   status: 'active' | 'pending' | 'error' | 'disconnected';
 }
@@ -191,39 +193,95 @@ const Settings: React.FC = () => {
     );
   }
 
+  const accountInitial = (account?.display_name || account?.username || 'I')
+    .charAt(0)
+    .toUpperCase();
+
   return (
     <div className='p-4 pb-20'>
       <h2 className='text-xl font-semibold mb-4'>Настройки</h2>
 
       {/* Instagram Account Section */}
-      <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4'>
+      <div
+        className='rounded-2xl p-4 mb-4'
+        style={{
+          background: 'var(--tg-theme-secondary-bg-color)',
+          border: '1px solid rgba(127,127,127,0.16)',
+        }}
+      >
         <h3 className='text-lg font-medium mb-3'>Instagram аккаунт</h3>
 
         {account?.connected ? (
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='font-medium'>@{account.username}</p>
+          <div>
+            <div className='flex items-center gap-3 min-w-0'>
+              {account.profile_picture_url ? (
+                <img
+                  src={account.profile_picture_url}
+                  alt={`Аватар @${account.username}`}
+                  className='w-14 h-14 rounded-full object-cover shrink-0'
+                  referrerPolicy='no-referrer'
+                />
+              ) : (
+                <div
+                  className='w-14 h-14 rounded-full flex items-center justify-center text-xl font-semibold shrink-0'
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)',
+                    color: '#fff',
+                  }}
+                  aria-hidden='true'
+                >
+                  {accountInitial}
+                </div>
+              )}
+              <div className='min-w-0'>
+                {account.display_name && (
+                  <p
+                    className='font-semibold break-words'
+                    style={{ color: 'var(--tg-theme-text-color)' }}
+                  >
+                    {account.display_name}
+                  </p>
+                )}
+                <p
+                  className='font-medium break-all'
+                  style={{ color: 'var(--tg-theme-text-color)' }}
+                >
+                  @{account.username}
+                </p>
                 <p
                   className={`text-sm ${account.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}
                 >
                   {account.status === 'active' ? '✓ Активен' : '⏳ На проверке'}
                 </p>
               </div>
-              <div className='flex gap-2'>
-                <button
-                  onClick={() => void fetchAccountStatus()}
-                  className='px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700'
-                >
-                  Обновить
-                </button>
-                <button
-                  onClick={handleFinish}
-                  className='px-4 py-2 bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-600'
-                >
-                  Завершить
-                </button>
-              </div>
+            </div>
+
+            <div
+              className='grid grid-cols-2 gap-2 mt-4 pt-4'
+              style={{ borderTop: '1px solid rgba(127,127,127,0.18)' }}
+            >
+              <button
+                onClick={() => void fetchAccountStatus()}
+                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
+                style={{
+                  background: 'var(--tg-theme-button-color)',
+                  color: 'var(--tg-theme-button-text-color)',
+                }}
+              >
+                Обновить
+              </button>
+              <button
+                onClick={handleFinish}
+                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
+                style={{
+                  color: '#ff3b30',
+                  border: '1px solid rgba(255,59,48,0.45)',
+                  background: 'rgba(255,59,48,0.08)',
+                }}
+              >
+                Отключить
+              </button>
             </div>
           </div>
         ) : (
