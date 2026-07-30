@@ -1,7 +1,9 @@
 // frontend/src/pages/Settings.tsx
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
+import { notifyInstagramConnection } from '../utils/instagramConnection';
 
 interface InstagramAccount {
   id: string;
@@ -14,6 +16,7 @@ interface InstagramAccount {
 
 const Settings: React.FC = () => {
   const { tg, user } = useTelegram();
+  const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRegistration, setShowRegistration] = useState(false);
@@ -36,6 +39,7 @@ const Settings: React.FC = () => {
     try {
       const response = await api.get(`/api/instagram/status/${user.id}`);
       setAccount(response.data);
+      notifyInstagramConnection(Boolean(response.data?.connected));
     } catch (error) {
       console.error('Failed to fetch account status:', error);
     } finally {
@@ -141,6 +145,8 @@ const Settings: React.FC = () => {
         password: '',
         fullName: '',
       });
+      notifyInstagramConnection(false);
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Failed to disconnect Instagram account:', error);
       alert('Не удалось отключить Instagram аккаунт');

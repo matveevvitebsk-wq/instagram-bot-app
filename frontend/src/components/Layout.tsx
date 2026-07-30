@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useInstagram } from '@/hooks/useInstagram';
@@ -13,10 +14,21 @@ const navItems = [
 
 export default function Layout() {
   const { colorScheme, showAlert } = useTelegram();
-  const { connected } = useInstagram();
+  const { connected, loading } = useInstagram();
   const { track } = useTrack();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const protectedPaths = ['/tasks', '/leads', '/auto-reply-dm', '/funnels'];
+    if (
+      !loading &&
+      !connected &&
+      protectedPaths.some((path) => location.pathname.startsWith(path))
+    ) {
+      navigate('/', { replace: true });
+    }
+  }, [connected, loading, location.pathname, navigate]);
 
   const handleNavClick = (e: React.MouseEvent, locked: boolean, label: string) => {
     if (locked && !connected) {
