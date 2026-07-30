@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
+import logging
 import httpx
 
 from app.core.security import get_current_user
@@ -10,6 +11,7 @@ from app.core.config import get_settings
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # ─── Schemas ──────────────────────────────────────────────────────────────
 
@@ -112,7 +114,7 @@ async def create_task(
     if webhook_id:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                await client.post(
+                response = await client.post(
                     f"{settings.n8n_base_url}/webhook/{webhook_id}",
                     json={
                         "task_id": task["id"],
@@ -123,9 +125,15 @@ async def create_task(
                     },
                     headers={"Authorization": f"Bearer {settings.n8n_api_key}"}
                 )
-        except httpx.RequestError:
-            # N8n недоступен — задача остаётся в pending, ретрай будет позже
-            pass
+                response.raise_for_status()
+        except Exception:
+            # Запись уже сохранена: сбой отправки не должен превращать
+            # успешное создание в HTTP 500 и провоцировать дубликаты.
+            logger.warning(
+                "Task %s was created, but N8n dispatch failed",
+                task["id"],
+                exc_info=True,
+            )
 
     return task
 
