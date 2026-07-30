@@ -15,7 +15,7 @@ settings = get_settings()
 
 class CreateTaskRequest(BaseModel):
     task_type: str          # "publish_post" | "keyword_funnel" | "dm_reply" | "analytics"
-    ig_account_id: str      # UUID из таблицы ig_accounts
+    ig_account_id: Optional[str] = None
     payload: dict           # Параметры задачи (зависят от типа)
     schedule_at: Optional[str] = None  # ISO 8601 или null для немедленного запуска
 
@@ -28,7 +28,7 @@ class TaskResponse(BaseModel):
     id: str
     task_type: str
     status: str
-    ig_account_id: str
+    ig_account_id: Optional[str]
     payload: dict
     created_at: str
 
@@ -59,15 +59,20 @@ def get_profile_id(sb, current_user: dict) -> str:
 async def list_tasks(
     current_user: dict = Depends(get_current_user),
     limit: int = 20,
-    offset: int = 0
+    offset: int = 0,
+    auto_reply_only: bool = False,
 ):
     """Список задач текущего пользователя."""
     sb = get_supabase()
     profile_id = get_profile_id(sb, current_user)
 
-    result = sb.table("automation_tasks").select("*").eq(
-        "owner_id", profile_id
-    ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    query = sb.table("automation_tasks").select("*").eq("owner_id", profile_id)
+    if auto_reply_only:
+        query = query.in_("task_type", ["keyword_funnel", "dm_reply"])
+
+    result = query.order("created_at", desc=True).range(
+        offset, offset + limit - 1
+    ).execute()
 
     return {"tasks": result.data, "total": len(result.data)}
 
@@ -138,15 +143,51 @@ async def update_task(
     result = sb.table("automation_tasks").update({
         "payload": body.payload,
         "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", task_id).eq("owner_id", profile_id).in_(
-        "status", ["pending", "cancelled", "failed"]
+    }).eq("id", task_id).eq("owner_id", profile_id).neq(
+        "status", "running"
     ).execute()
 
     if not result.data:
         raise HTTPException(
             status_code=409,
-            detail="Можно редактировать только необработанную задачу"
+            detail="Выполняющуюся задачу нельзя редактировать"
         )
+    return result.data[0]
+
+
+@router.patch("/{task_id}/toggle")
+async def toggle_auto_reply_task(
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Включает или выключает правило авто-ответа в automation_tasks."""
+    sb = get_supabase()
+    profile_id = get_profile_id(sb, current_user)
+
+    current = sb.table("automation_tasks").select(
+        "status,payload,task_type"
+    ).eq("id", task_id).eq("owner_id", profile_id).single().execute()
+
+    if not current.data or current.data["task_type"] not in {
+        "keyword_funnel", "dm_reply"
+    }:
+        raise HTTPException(status_code=404, detail="Авто-ответ не найден")
+
+    payload = current.data.get("payload") or {}
+    is_active = payload.get(
+        "is_active", current.data.get("status") != "cancelled"
+    )
+    new_state = not bool(is_active)
+    payload["is_active"] = new_state
+
+    result = sb.table("automation_tasks").update({
+        "payload": payload,
+        "status": "pending" if new_state else "cancelled",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", task_id).eq("owner_id", profile_id).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Авто-ответ не найден")
     return result.data[0]
 
 
