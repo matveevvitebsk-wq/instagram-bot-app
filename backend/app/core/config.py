@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     META_INSTAGRAM_APP_SECRET: str = ""      # Instagram App Secret
     META_WEBHOOK_VERIFY_TOKEN: str = ""
     META_REDIRECT_URI: str = "https://api.almarathon.com/api/instagram/auth/callback"
+    META_FACEBOOK_CONFIG_ID: str = ""
     META_FACEBOOK_REDIRECT_URI: str = (
         "https://api.almarathon.com/api/instagram/facebook/callback"
     )

@@ -106,9 +106,12 @@ async def get_facebook_url(
         "client_id": settings.META_APP_ID,
         "redirect_uri": settings.META_FACEBOOK_REDIRECT_URI,
         "response_type": "code",
-        "scope": settings.facebook_oauth_scopes,
         "state": state,
     }
+    if settings.META_FACEBOOK_CONFIG_ID:
+        params["config_id"] = settings.META_FACEBOOK_CONFIG_ID
+    else:
+        params["scope"] = settings.facebook_oauth_scopes
     return {
         "auth_url": (
             f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth"
@@ -151,7 +154,14 @@ async def facebook_auth_callback(
         if not short_token:
             raise FacebookTokenError("Facebook did not return an access token")
 
-        long_token = (await exchange_facebook_token(short_token))["access_token"]
+        # Facebook Login for Business can return the configured System User
+        # token directly. Standard Facebook Login returns a short-lived User
+        # token which must be exchanged.
+        facebook_token = short_token
+        if not settings.META_FACEBOOK_CONFIG_ID:
+            facebook_token = (
+                await exchange_facebook_token(short_token)
+            )["access_token"]
         sb = get_supabase()
         profile = (
             sb.table("customer_profiles")
@@ -162,7 +172,9 @@ async def facebook_auth_callback(
         )
         if not profile.data:
             raise FacebookTokenError("Telegram profile not found")
-        await attach_facebook_token_to_owner(sb, profile.data["id"], long_token)
+        await attach_facebook_token_to_owner(
+            sb, profile.data["id"], facebook_token
+        )
         return facebook_oauth_result_response(True)
     except Exception:
         logger.exception("Facebook OAuth callback failed")
