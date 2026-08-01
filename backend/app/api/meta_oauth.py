@@ -11,6 +11,11 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from urllib.parse import urlencode
 from app.core.supabase import get_supabase
+from app.services.facebook_tokens import (
+    FacebookTokenError,
+    attach_facebook_token_to_owner,
+    exchange_facebook_token,
+)
 
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
@@ -22,6 +27,13 @@ def oauth_result_response(success: bool) -> RedirectResponse:
     result = "connected" if success else "error"
     query = urlencode({"instagram": result})
     url = f"{settings.FRONTEND_URL.rstrip('/')}/{path}?{query}"
+    return RedirectResponse(url=url, status_code=303)
+
+
+def facebook_oauth_result_response(success: bool) -> RedirectResponse:
+    result = "connected" if success else "error"
+    query = urlencode({"facebook": result})
+    url = f"{settings.FRONTEND_URL.rstrip('/')}/settings?{query}"
     return RedirectResponse(url=url, status_code=303)
 
 
@@ -69,6 +81,92 @@ async def get_meta_url(
     auth_url = f"{settings.meta_oauth_url}?{urlencode(params)}"
 
     return {"auth_url": auth_url}
+
+
+@router.get("/facebook/url")
+async def get_facebook_url(
+    telegram_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    if str(current_user["telegram_id"]) != telegram_id:
+        raise HTTPException(status_code=403, detail="Telegram user mismatch")
+    if not settings.META_APP_ID or not settings.META_APP_SECRET:
+        raise HTTPException(status_code=500, detail="Facebook OAuth not configured")
+
+    state = jwt.encode(
+        {
+            "telegram_id": telegram_id,
+            "provider": "facebook",
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+        },
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    params = {
+        "client_id": settings.META_APP_ID,
+        "redirect_uri": settings.META_FACEBOOK_REDIRECT_URI,
+        "response_type": "code",
+        "scope": settings.facebook_oauth_scopes,
+        "state": state,
+    }
+    return {
+        "auth_url": (
+            f"https://www.facebook.com/{settings.META_API_VERSION}/dialog/oauth"
+            f"?{urlencode(params)}"
+        )
+    }
+
+
+@router.get("/facebook/callback")
+async def facebook_auth_callback(
+    code: Optional[str] = Query(None),
+    state: str = Query(...),
+):
+    if not code:
+        return facebook_oauth_result_response(False)
+
+    try:
+        state_data = jwt.decode(
+            state,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if state_data.get("provider") != "facebook":
+            raise HTTPException(status_code=400, detail="Invalid OAuth provider")
+        telegram_id = str(state_data["telegram_id"])
+
+        async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as client:
+            response = await client.get(
+                f"{settings.meta_api_base}/oauth/access_token",
+                params={
+                    "client_id": settings.META_APP_ID,
+                    "client_secret": settings.META_APP_SECRET,
+                    "redirect_uri": settings.META_FACEBOOK_REDIRECT_URI,
+                    "code": code,
+                },
+            )
+        if response.status_code != 200:
+            raise FacebookTokenError("Facebook rejected the authorization code")
+        short_token = response.json().get("access_token")
+        if not short_token:
+            raise FacebookTokenError("Facebook did not return an access token")
+
+        long_token = (await exchange_facebook_token(short_token))["access_token"]
+        sb = get_supabase()
+        profile = (
+            sb.table("customer_profiles")
+            .select("id")
+            .eq("telegram_id", telegram_id)
+            .single()
+            .execute()
+        )
+        if not profile.data:
+            raise FacebookTokenError("Telegram profile not found")
+        await attach_facebook_token_to_owner(sb, profile.data["id"], long_token)
+        return facebook_oauth_result_response(True)
+    except Exception:
+        logger.exception("Facebook OAuth callback failed")
+        return facebook_oauth_result_response(False)
 
 
 @router.get("/auth/callback")
@@ -279,7 +377,11 @@ async def get_instagram_status(
 
         accounts = (
             sb.table("ig_accounts")
-            .select("id,username,display_name,profile_picture_url,is_active")
+            .select(
+                "id,username,display_name,profile_picture_url,is_active,"
+                "facebook_token_is_valid,facebook_token_refresh_required,"
+                "facebook_token_expires_at,facebook_token_last_checked_at"
+            )
             .eq("owner_id", profiles.data[0]["id"])
             .eq("is_active", True)
             .limit(1)
@@ -293,6 +395,18 @@ async def get_instagram_status(
                 "username": account["username"],
                 "display_name": account.get("display_name"),
                 "profile_picture_url": account.get("profile_picture_url"),
+                "facebook_token_is_valid": account.get(
+                    "facebook_token_is_valid", False
+                ),
+                "facebook_token_refresh_required": account.get(
+                    "facebook_token_refresh_required", False
+                ),
+                "facebook_token_expires_at": account.get(
+                    "facebook_token_expires_at"
+                ),
+                "facebook_token_last_checked_at": account.get(
+                    "facebook_token_last_checked_at"
+                ),
                 "status": "active",
             }
 

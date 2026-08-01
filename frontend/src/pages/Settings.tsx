@@ -12,6 +12,10 @@ interface InstagramAccount {
   profile_picture_url?: string | null;
   connected: boolean;
   status: 'active' | 'pending' | 'error' | 'disconnected';
+  facebook_token_is_valid?: boolean;
+  facebook_token_refresh_required?: boolean;
+  facebook_token_expires_at?: string | null;
+  facebook_token_last_checked_at?: string | null;
 }
 
 const Settings: React.FC = () => {
@@ -113,6 +117,22 @@ const Settings: React.FC = () => {
       window.location.assign(authUrl);
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
+    }
+  };
+
+  const handleConnectFacebook = async () => {
+    try {
+      if (!user?.id) {
+        alert('Telegram ID not found');
+        return;
+      }
+      const response = await api.get('/api/instagram/facebook/url', {
+        params: { telegram_id: user.id },
+      });
+      window.location.assign(response.data.auth_url);
+    } catch (error) {
+      console.error('Facebook OAuth error:', error);
+      alert('Не удалось начать подключение Facebook');
     }
   };
 
@@ -242,6 +262,28 @@ const Settings: React.FC = () => {
                 }}
               >
                 Отключить
+              </button>
+              <button
+                onClick={() => void handleConnectFacebook()}
+                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
+                style={{
+                  color: account.facebook_token_is_valid
+                    ? '#22c55e'
+                    : 'var(--tg-theme-button-color)',
+                  border: `1px solid ${
+                    account.facebook_token_is_valid
+                      ? 'rgba(34,197,94,0.45)'
+                      : 'var(--tg-theme-button-color)'
+                  }`,
+                  background: account.facebook_token_is_valid
+                    ? 'rgba(34,197,94,0.08)'
+                    : 'transparent',
+                }}
+              >
+                {account.facebook_token_is_valid &&
+                !account.facebook_token_refresh_required
+                  ? '✓ Facebook API подключён — обновить'
+                  : 'Подключить Facebook для комментариев'}
               </button>
             </div>
           </div>
