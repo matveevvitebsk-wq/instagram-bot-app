@@ -38,25 +38,22 @@ async def auth_telegram(body: TelegramAuthRequest):
     telegram_id = str(user_data["id"])
     sb = get_supabase()
 
-    # Upsert профиля в Supabase
+    # Telegram is the source of truth for profile identity fields.
+    # Re-authentication updates renamed usernames and changed profile details.
     profile_data = {
         "telegram_id": telegram_id,
         "first_name": user_data.get("first_name", ""),
-        "last_name": user_data.get("last_name", ""),
-        "username": user_data.get("username", ""),
+        "last_name": user_data.get("last_name"),
+        "username": user_data.get("username"),
         "language_code": user_data.get("language_code", "ru"),
-        "photo_url": user_data.get("photo_url", ""),
+        "photo_url": user_data.get("photo_url"),
     }
 
-    # Вместо upsert
-    existing = sb.table("customer_profiles").select("*").eq("telegram_id", telegram_id).execute()
-    print("existing  ", existing)
-    if existing.data:
-        # Обновляем
-        result = sb.table("customer_profiles").update(profile_data).eq("telegram_id", telegram_id).execute()
-    else:
-        # Создаём
-        result = sb.table("customer_profiles").insert(profile_data).execute()
+    result = (
+        sb.table("customer_profiles")
+        .upsert(profile_data, on_conflict="telegram_id")
+        .execute()
+    )
 
     if not result.data:
         raise HTTPException(
