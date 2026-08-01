@@ -41,10 +41,10 @@ export default function App() {
   const isPublicPath = PUBLIC_PATHS.includes(window.location.pathname);
 
   useEffect(() => {
-    if (isReady && initData && !isAuthenticated) {
+    if (isReady && initData) {
       login(initData);
     }
-  }, [isReady, initData, isAuthenticated, login]);
+  }, [isReady, initData, login]);
 
   useEffect(() => {
     if (isAuthenticated) {
