@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     META_INSTAGRAM_APP_SECRET: str = ""      # Instagram App Secret
     META_WEBHOOK_VERIFY_TOKEN: str = ""
     META_REDIRECT_URI: str = "https://api.almarathon.com/api/instagram/auth/callback"
+    META_FACEBOOK_REDIRECT_URI: str = (
+        "https://api.almarathon.com/api/instagram/facebook/callback"
+    )
     
     META_API_VERSION: str = "v23.0"
 
@@ -98,6 +101,19 @@ class Settings(BaseSettings):
             scopes.append("instagram_content_publish")
 
         return ",".join(scopes)
+
+
+    @property
+    def facebook_oauth_scopes(self) -> str:
+        return ",".join(
+            [
+                "pages_show_list",
+                "pages_read_engagement",
+                "pages_manage_metadata",
+                "instagram_basic",
+                "instagram_manage_comments",
+            ]
+        )
 
 
     @property
