@@ -120,22 +120,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleConnectFacebook = async () => {
-    try {
-      if (!user?.id) {
-        alert('Telegram ID not found');
-        return;
-      }
-      const response = await api.get('/api/instagram/facebook/url', {
-        params: { telegram_id: user.id },
-      });
-      window.location.assign(response.data.auth_url);
-    } catch (error) {
-      console.error('Facebook OAuth error:', error);
-      alert('Не удалось начать подключение Facebook');
-    }
-  };
-
   const disconnectInstagram = async () => {
     if (!account?.id) return;
 
@@ -264,26 +248,19 @@ const Settings: React.FC = () => {
                 Отключить
               </button>
               <button
-                onClick={() => void handleConnectFacebook()}
-                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
+                type='button'
+                disabled
+                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium cursor-not-allowed opacity-60'
                 style={{
-                  color: account.facebook_token_is_valid
-                    ? '#22c55e'
-                    : 'var(--tg-theme-button-color)',
-                  border: `1px solid ${
-                    account.facebook_token_is_valid
-                      ? 'rgba(34,197,94,0.45)'
-                      : 'var(--tg-theme-button-color)'
-                  }`,
-                  background: account.facebook_token_is_valid
-                    ? 'rgba(34,197,94,0.08)'
-                    : 'transparent',
+                  color: 'var(--tg-theme-hint-color)',
+                  border: '1px solid var(--tg-theme-hint-color)',
+                  background: 'rgba(127,127,127,0.08)',
                 }}
               >
                 {account.facebook_token_is_valid &&
                 !account.facebook_token_refresh_required
-                  ? '✓ Facebook API подключён — обновить'
-                  : 'Подключить Facebook для комментариев'}
+                  ? '✓ Facebook API подключён'
+                  : 'Facebook для комментариев — временно недоступен'}
               </button>
             </div>
           </div>
