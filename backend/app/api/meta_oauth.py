@@ -15,7 +15,9 @@ from app.services.facebook_tokens import (
     FacebookTokenError,
     attach_facebook_token_to_owner,
     exchange_facebook_token,
+    maintain_owner_facebook_tokens,
 )
+from app.services.instagram_tokens import maintain_owner_instagram_tokens
 
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
@@ -363,6 +365,101 @@ async def register_instagram_account(data: InstagramRegisterRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _instagram_status_payload(sb, telegram_id: str) -> dict:
+    profiles = (
+        sb.table("customer_profiles")
+        .select("id")
+        .eq("telegram_id", telegram_id)
+        .limit(1)
+        .execute()
+    )
+    if not profiles.data:
+        return {
+            "connected": False,
+            "username": None,
+            "status": "disconnected",
+        }
+
+    accounts = (
+        sb.table("ig_accounts")
+        .select(
+            "id,username,display_name,profile_picture_url,is_active,"
+            "token_expires_at,"
+            "facebook_token_is_valid,facebook_token_refresh_required,"
+            "facebook_token_expires_at,facebook_token_last_checked_at"
+        )
+        .eq("owner_id", profiles.data[0]["id"])
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    if accounts.data:
+        account = accounts.data[0]
+        return {
+            "id": account["id"],
+            "connected": True,
+            "username": account["username"],
+            "display_name": account.get("display_name"),
+            "profile_picture_url": account.get("profile_picture_url"),
+            "token_expires_at": account.get("token_expires_at"),
+            "facebook_token_is_valid": account.get(
+                "facebook_token_is_valid", False
+            ),
+            "facebook_token_refresh_required": account.get(
+                "facebook_token_refresh_required", False
+            ),
+            "facebook_token_expires_at": account.get(
+                "facebook_token_expires_at"
+            ),
+            "facebook_token_last_checked_at": account.get(
+                "facebook_token_last_checked_at"
+            ),
+            "facebook_comments_available": False,
+            "status": "active",
+        }
+
+    return {
+        "connected": False,
+        "username": None,
+        "status": "disconnected",
+        "facebook_comments_available": False,
+    }
+
+
+@router.post("/tokens/refresh")
+async def refresh_meta_tokens(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Validate/refresh stored IGAA and EAAV for the current owner.
+
+    Used by Settings → «Обновить». Never returns bearer tokens to the client.
+    """
+    telegram_id = str(current_user["telegram_id"])
+    sb = get_supabase()
+    profiles = (
+        sb.table("customer_profiles")
+        .select("id")
+        .eq("telegram_id", telegram_id)
+        .limit(1)
+        .execute()
+    )
+    if not profiles.data:
+        raise HTTPException(status_code=404, detail="Telegram profile not found")
+
+    owner_id = profiles.data[0]["id"]
+    instagram = await maintain_owner_instagram_tokens(sb, owner_id)
+    await maintain_owner_facebook_tokens(sb, owner_id)
+    status_payload = _instagram_status_payload(sb, telegram_id)
+
+    return {
+        "ok": True,
+        "instagram": instagram,
+        "facebook_comments_available": False,
+        "account": status_payload,
+    }
+
+
 @router.get("/status/{user_id}")
 async def get_instagram_status(
     user_id: str,
@@ -373,59 +470,6 @@ async def get_instagram_status(
 
     try:
         sb = get_supabase()
-        profiles = (
-            sb.table("customer_profiles")
-            .select("id")
-            .eq("telegram_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not profiles.data:
-            return {
-                "connected": False,
-                "username": None,
-                "status": "disconnected",
-            }
-
-        accounts = (
-            sb.table("ig_accounts")
-            .select(
-                "id,username,display_name,profile_picture_url,is_active,"
-                "facebook_token_is_valid,facebook_token_refresh_required,"
-                "facebook_token_expires_at,facebook_token_last_checked_at"
-            )
-            .eq("owner_id", profiles.data[0]["id"])
-            .eq("is_active", True)
-            .limit(1)
-            .execute()
-        )
-        if accounts.data:
-            account = accounts.data[0]
-            return {
-                "id": account["id"],
-                "connected": True,
-                "username": account["username"],
-                "display_name": account.get("display_name"),
-                "profile_picture_url": account.get("profile_picture_url"),
-                "facebook_token_is_valid": account.get(
-                    "facebook_token_is_valid", False
-                ),
-                "facebook_token_refresh_required": account.get(
-                    "facebook_token_refresh_required", False
-                ),
-                "facebook_token_expires_at": account.get(
-                    "facebook_token_expires_at"
-                ),
-                "facebook_token_last_checked_at": account.get(
-                    "facebook_token_last_checked_at"
-                ),
-                "status": "active",
-            }
-
-        return {
-            "connected": False,
-            "username": None,
-            "status": "disconnected",
-        }
+        return _instagram_status_payload(sb, user_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
