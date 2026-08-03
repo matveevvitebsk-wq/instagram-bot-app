@@ -1,3 +1,24 @@
+# В случае ошибки на сервере
+
+     error: Your local changes to the following files would be overwritten by merge:
+            .env.example
+            backend/app/api/auth.py
+            backend/app/api/meta_oauth.py
+            backend/app/core/config.py
+            docker-compose.yml
+            docs/git pul compile.txt
+            frontend/src/App.tsx
+            frontend/src/pages/Settings.tsx
+    Please commit your changes or stash them before you merge.
+    error: The following untracked working tree files would be overwritten by merge:
+            backend/app/services/__init__.py
+            backend/app/services/facebook_tokens.py
+            backend/migrations/20260801_add_facebook_token_fields.sql
+            docs/github instruction.md
+            docs/user tables task.md
+    Please move or remove them before you merge.
+    Aborting
+
 # Восстановление `git pull` на production-сервере
 
 Эта инструкция применяется, когда обновление production-копии
