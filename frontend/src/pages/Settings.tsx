@@ -12,17 +12,23 @@ interface InstagramAccount {
   profile_picture_url?: string | null;
   connected: boolean;
   status: 'active' | 'pending' | 'error' | 'disconnected';
+  token_expires_at?: string | null;
   facebook_token_is_valid?: boolean;
   facebook_token_refresh_required?: boolean;
   facebook_token_expires_at?: string | null;
   facebook_token_last_checked_at?: string | null;
+  facebook_comments_available?: boolean;
 }
+
+const FACEBOOK_COMMENTS_DISABLED_MESSAGE =
+  'Подключить Facebook для комментариев — временно не работает';
 
 const Settings: React.FC = () => {
   const { tg, user } = useTelegram();
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -58,46 +64,6 @@ const Settings: React.FC = () => {
     };
   }, [fetchAccountStatus]);
 
-  // const handleConnectInstagram = () => {
-  //   // Открываем Instagram OAuth
-  //   const clientId = import.meta.env.META_APP_ID;
-  //   const redirectUri = import.meta.env.META_REDIRECT_URI;
-  //   const scope =
-  //     'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
-
-  //   const authUrl = `https://www.facebook.com/v23.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
-
-  //   // Открываем в новом окне или в Telegram WebView
-  //   if (tg) {
-  //     tg.openLink(authUrl);
-  //     console.log(user);
-  //   } else {
-  //     window.open(authUrl, '_blank');
-  //   }
-  // };
-
-  // const handleConnectInstagram = async () => {
-  //   try {
-  //     // const response = await api.get('/api/auth/meta/url');
-  //     const response = await api.get('/api/instagram/meta/url');
-
-  //     console.log(response.data + ' = response.data');
-
-  //     const authUrl = response.data.auth_url;
-
-  //     console.log(authUrl + ' = authUrl');
-  //     console.log(tg + ' = tg');
-  //     if (tg) {
-  //       tg.openLink(authUrl);
-  //       console.log(user);
-  //     } else {
-  //       window.open(authUrl, '_blank');
-  //     }
-  //   } catch (error) {
-  //     console.error('Instagram OAuth error:', error);
-  //   }
-  // };
-
   const handleConnectInstagram = async () => {
     try {
       const telegramId = user?.id;
@@ -117,6 +83,53 @@ const Settings: React.FC = () => {
       window.location.assign(authUrl);
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
+    }
+  };
+
+  const handleRefreshTokens = async () => {
+    if (refreshing) return;
+
+    setRefreshing(true);
+    try {
+      // Backend validates/refreshes IGAA (and checks EAAV) in storage.
+      // Bearer tokens are never returned to the Mini App.
+      const response = await api.post('/api/instagram/tokens/refresh');
+      const nextAccount = response.data?.account;
+      if (nextAccount) {
+        setAccount(nextAccount);
+        notifyInstagramConnection(Boolean(nextAccount.connected));
+      } else {
+        await fetchAccountStatus();
+      }
+
+      const reauthNeeded = Number(response.data?.instagram?.reauth_required || 0) > 0;
+      const message = reauthNeeded
+        ? 'Токен Instagram требует повторного подключения.'
+        : 'Токены проверены и обновлены на сервере.';
+
+      if (tg?.showAlert) {
+        tg.showAlert(message);
+      } else {
+        alert(message);
+      }
+    } catch (error) {
+      console.error('Failed to refresh Meta tokens:', error);
+      const message = 'Не удалось обновить токены. Попробуйте позже.';
+      if (tg?.showAlert) {
+        tg.showAlert(message);
+      } else {
+        alert(message);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const showFacebookDisabledInfo = () => {
+    if (tg?.showAlert) {
+      tg.showAlert(FACEBOOK_COMMENTS_DISABLED_MESSAGE);
+    } else {
+      alert(FACEBOOK_COMMENTS_DISABLED_MESSAGE);
     }
   };
 
@@ -227,14 +240,16 @@ const Settings: React.FC = () => {
               style={{ borderTop: '1px solid rgba(127,127,127,0.18)' }}
             >
               <button
-                onClick={() => void fetchAccountStatus()}
-                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
+                type='button'
+                onClick={() => void handleRefreshTokens()}
+                disabled={refreshing}
+                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70 disabled:opacity-60'
                 style={{
                   background: 'var(--tg-theme-button-color)',
                   color: 'var(--tg-theme-button-text-color)',
                 }}
               >
-                Обновить
+                {refreshing ? 'Обновление…' : 'Обновить'}
               </button>
               <button
                 onClick={handleFinish}
@@ -250,6 +265,9 @@ const Settings: React.FC = () => {
               <button
                 type='button'
                 disabled
+                onClick={showFacebookDisabledInfo}
+                title={FACEBOOK_COMMENTS_DISABLED_MESSAGE}
+                aria-disabled='true'
                 className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium cursor-not-allowed opacity-60'
                 style={{
                   color: 'var(--tg-theme-hint-color)',
@@ -257,11 +275,12 @@ const Settings: React.FC = () => {
                   background: 'rgba(127,127,127,0.08)',
                 }}
               >
-                {account.facebook_token_is_valid &&
-                !account.facebook_token_refresh_required
-                  ? '✓ Facebook API подключён'
-                  : 'Facebook для комментариев — временно недоступен'}
+                {FACEBOOK_COMMENTS_DISABLED_MESSAGE}
               </button>
+              <p className='col-span-2 text-xs text-center mt-1' style={{ color: 'var(--tg-theme-hint-color)' }}>
+                Кнопка Facebook временно отключена. Публичные комментарии через
+                Facebook API пока недоступны.
+              </p>
             </div>
           </div>
         ) : (
