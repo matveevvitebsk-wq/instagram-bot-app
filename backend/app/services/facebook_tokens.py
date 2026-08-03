@@ -95,7 +95,13 @@ def _token_metadata(debug_data: dict, checked_at: datetime) -> dict:
 
 
 async def attach_facebook_token_to_owner(sb, owner_id: str, token: str) -> int:
-    """Attach a Facebook Login token to every accessible active IG account."""
+    """
+    Attach a Facebook Login token (EAAV) to the owner's active IG accounts.
+
+    Prefer accounts whose Page/IG asset the token can access. If the token is
+    valid for this Meta app but asset matching fails (common when page_id is an
+    Instagram-scoped id), still save the token so OAuth completes automatically.
+    """
     debug_data = await debug_facebook_token(token)
     if not debug_data.get("is_valid"):
         raise FacebookTokenError("Facebook token is invalid")
@@ -104,11 +110,16 @@ async def attach_facebook_token_to_owner(sb, owner_id: str, token: str) -> int:
 
     accounts = (
         sb.table("ig_accounts")
-        .select("id,page_id")
+        .select("id,page_id,username")
         .eq("owner_id", owner_id)
         .eq("is_active", True)
         .execute()
     )
+    if not accounts.data:
+        raise FacebookTokenError(
+            "Connect Instagram first, then connect Facebook to store the EAAV token"
+        )
+
     checked_at = datetime.now(timezone.utc)
     metadata = _token_metadata(debug_data, checked_at)
     metadata.update(
@@ -119,29 +130,68 @@ async def attach_facebook_token_to_owner(sb, owner_id: str, token: str) -> int:
         }
     )
 
-    attached = 0
+    accessible_ids: set[str] = set()
+    accessible_usernames: set[str] = set()
     async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as client:
-        for account in accounts.data or []:
+        for account in accounts.data:
+            page_id = str(account.get("page_id") or "")
+            if not page_id:
+                continue
             response = await client.get(
-                f"{settings.meta_api_base}/{account['page_id']}",
+                f"{settings.meta_api_base}/{page_id}",
                 params={"fields": "id,username", "access_token": token},
             )
-            if response.status_code != 200:
-                continue
-            (
-                sb.table("ig_accounts")
-                .update(metadata)
-                .eq("id", account["id"])
-                .eq("owner_id", owner_id)
-                .execute()
-            )
-            attached += 1
+            if response.status_code == 200:
+                accessible_ids.add(page_id)
+                username = (response.json() or {}).get("username")
+                if username:
+                    accessible_usernames.add(str(username).lower())
 
-    if attached == 0:
-        raise FacebookTokenError(
-            "Facebook token cannot access any connected Instagram account"
+        pages_response = await client.get(
+            f"{settings.meta_api_base}/me/accounts",
+            params={
+                "fields": "id,name,instagram_business_account{id,username}",
+                "access_token": token,
+            },
         )
-    return attached
+        if pages_response.status_code == 200:
+            for page in (pages_response.json() or {}).get("data") or []:
+                accessible_ids.add(str(page.get("id") or ""))
+                ig = page.get("instagram_business_account") or {}
+                if ig.get("id"):
+                    accessible_ids.add(str(ig["id"]))
+                if ig.get("username"):
+                    accessible_usernames.add(str(ig["username"]).lower())
+
+    matched_ids: list[str] = []
+    for account in accounts.data:
+        page_id = str(account.get("page_id") or "")
+        username = str(account.get("username") or "").lower()
+        if page_id in accessible_ids or (
+            username and username in accessible_usernames
+        ):
+            matched_ids.append(account["id"])
+
+    targets = matched_ids or [account["id"] for account in accounts.data]
+    if not matched_ids:
+        metadata["facebook_token_error"] = (
+            "Facebook token saved; Page/IG asset link was not verified"
+        )
+        logger.warning(
+            "Saving EAAV for owner %s without verified Page/IG match",
+            owner_id,
+        )
+
+    for account_id in targets:
+        (
+            sb.table("ig_accounts")
+            .update(metadata)
+            .eq("id", account_id)
+            .eq("owner_id", owner_id)
+            .execute()
+        )
+
+    return len(targets)
 
 
 async def maintain_owner_facebook_tokens(sb, owner_id: str) -> None:
