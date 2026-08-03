@@ -6,6 +6,38 @@
 > Mermaid-блоки ниже отображаются в GitHub как диаграммы. Значения токенов,
 > ключей и других секретов намеренно не приводятся.
 
+## Готовые визуальные материалы
+
+Файлы лежат в [`docs/assets/meta-architecture/`](./assets/meta-architecture/):
+
+| Формат | Файл |
+|---|---|
+| Презентация PowerPoint | [`meta-token-n8n-architecture-ru.pptx`](./assets/meta-architecture/meta-token-n8n-architecture-ru.pptx) |
+| HTML-презентация | [`meta-token-n8n-architecture-ru.html`](./assets/meta-architecture/meta-token-n8n-architecture-ru.html) |
+| PNG / JPEG схемы | `01` … `07` в той же папке |
+
+Пересоздать материалы:
+
+```bash
+python3 scripts/generate_meta_architecture_visuals.py
+```
+
+### Превью схем
+
+![1. Текущее состояние](./assets/meta-architecture/01-tekushchee-sostoyanie.png)
+
+![2. Целевая архитектура](./assets/meta-architecture/02-tselevaya-arkhitektura.png)
+
+![3. Роли IGAA и EAAV](./assets/meta-architecture/03-roli-igaa-eaav.png)
+
+![4. Обработка webhook](./assets/meta-architecture/04-obrabotka-webhook.png)
+
+![5. Безопасное хранение](./assets/meta-architecture/05-bezopasnoe-hranenie.png)
+
+![6. Жизненный цикл токенов](./assets/meta-architecture/06-zhiznennyy-tsikl.png)
+
+![7. Этапы внедрения](./assets/meta-architecture/07-etapy-vnedreniya.png)
+
 ## Навигация
 
 1. [Текущее состояние](#1-текущее-состояние)
