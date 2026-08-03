@@ -1,6 +1,6 @@
 // frontend/src/pages/Settings.tsx
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 import { notifyInstagramConnection } from '../utils/instagramConnection';
@@ -12,32 +12,17 @@ interface InstagramAccount {
   profile_picture_url?: string | null;
   connected: boolean;
   status: 'active' | 'pending' | 'error' | 'disconnected';
-  token_expires_at?: string | null;
   facebook_token_is_valid?: boolean;
   facebook_token_refresh_required?: boolean;
   facebook_token_expires_at?: string | null;
   facebook_token_last_checked_at?: string | null;
-  facebook_comments_available?: boolean;
 }
 
 const Settings: React.FC = () => {
-  const { tg, user, openLink } = useTelegram();
+  const { tg, user } = useTelegram();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [connecting, setConnecting] = useState<'instagram' | 'facebook' | null>(
-    null,
-  );
-
-  const notify = useCallback((message: string) => {
-    if (tg?.showAlert) {
-      tg.showAlert(message);
-    } else {
-      window.alert(message);
-    }
-  }, [tg]);
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -73,91 +58,65 @@ const Settings: React.FC = () => {
     };
   }, [fetchAccountStatus]);
 
-  // After Meta OAuth redirect: backend saved tokens to ig_accounts automatically.
-  useEffect(() => {
-    const instagram = searchParams.get('instagram');
-    const facebook = searchParams.get('facebook');
-    if (!instagram && !facebook) return;
+  // const handleConnectInstagram = () => {
+  //   // Открываем Instagram OAuth
+  //   const clientId = import.meta.env.META_APP_ID;
+  //   const redirectUri = import.meta.env.META_REDIRECT_URI;
+  //   const scope =
+  //     'instagram_basic,instagram_content_publish,pages_read_engagement,pages_manage_metadata';
 
-    const message =
-      instagram === 'connected'
-        ? 'Instagram подключён. IGAA токен сохранён на сервере.'
-        : facebook === 'connected'
-          ? 'Facebook подключён. EAAV токен сохранён на сервере.'
-          : instagram === 'error'
-            ? 'Не удалось подключить Instagram. Проверьте, что вы тестер приложения Meta.'
-            : facebook === 'error'
-              ? 'Не удалось подключить Facebook. Сначала подключите Instagram, затем повторите.'
-              : null;
+  //   const authUrl = `https://www.facebook.com/v23.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
 
-    if (message) {
-      notify(message);
-    }
+  //   // Открываем в новом окне или в Telegram WebView
+  //   if (tg) {
+  //     tg.openLink(authUrl);
+  //     console.log(user);
+  //   } else {
+  //     window.open(authUrl, '_blank');
+  //   }
+  // };
 
-    void fetchAccountStatus();
-    const next = new URLSearchParams(searchParams);
-    next.delete('instagram');
-    next.delete('facebook');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, fetchAccountStatus, notify]);
+  // const handleConnectInstagram = async () => {
+  //   try {
+  //     // const response = await api.get('/api/auth/meta/url');
+  //     const response = await api.get('/api/instagram/meta/url');
 
-  const startOAuth = async (provider: 'instagram' | 'facebook') => {
-    const telegramId = user?.id;
-    if (!telegramId) {
-      notify('Telegram ID not found');
-      return;
-    }
+  //     console.log(response.data + ' = response.data');
 
-    setConnecting(provider);
+  //     const authUrl = response.data.auth_url;
+
+  //     console.log(authUrl + ' = authUrl');
+  //     console.log(tg + ' = tg');
+  //     if (tg) {
+  //       tg.openLink(authUrl);
+  //       console.log(user);
+  //     } else {
+  //       window.open(authUrl, '_blank');
+  //     }
+  //   } catch (error) {
+  //     console.error('Instagram OAuth error:', error);
+  //   }
+  // };
+
+  const handleConnectInstagram = async () => {
     try {
-      const path =
-        provider === 'instagram'
-          ? '/api/instagram/meta/url'
-          : '/api/instagram/facebook/url';
-      const response = await api.get(path, {
-        params: { telegram_id: telegramId },
-      });
-      const authUrl = response.data.auth_url as string;
-      // Meta OAuth must leave the Mini App WebView; openLink is the supported path.
-      openLink(authUrl);
-    } catch (error) {
-      console.error(`${provider} OAuth error:`, error);
-      notify(
-        provider === 'instagram'
-          ? 'Не удалось начать подключение Instagram.'
-          : 'Не удалось начать подключение Facebook.',
-      );
-    } finally {
-      setConnecting(null);
-    }
-  };
+      const telegramId = user?.id;
 
-  const handleRefreshTokens = async () => {
-    if (refreshing) return;
-
-    setRefreshing(true);
-    try {
-      const response = await api.post('/api/instagram/tokens/refresh');
-      const nextAccount = response.data?.account;
-      if (nextAccount) {
-        setAccount(nextAccount);
-        notifyInstagramConnection(Boolean(nextAccount.connected));
-      } else {
-        await fetchAccountStatus();
+      if (!telegramId) {
+        alert('Telegram ID not found');
+        return;
       }
 
-      const reauthNeeded =
-        Number(response.data?.instagram?.reauth_required || 0) > 0;
-      notify(
-        reauthNeeded
-          ? 'Токен Instagram требует повторного подключения.'
-          : 'Токены проверены и обновлены на сервере.',
-      );
+      const response = await api.get('/api/instagram/meta/url', {
+        params: {
+          telegram_id: telegramId,
+        },
+      });
+      const authUrl = response.data.auth_url;
+
+      window.location.assign(authUrl);
     } catch (error) {
-      console.error('Failed to refresh Meta tokens:', error);
-      notify('Не удалось обновить токены. Попробуйте позже.');
-    } finally {
-      setRefreshing(false);
+      console.error('Instagram OAuth error: ', error);
     }
   };
 
@@ -171,7 +130,7 @@ const Settings: React.FC = () => {
       navigate('/', { replace: true });
     } catch (error) {
       console.error('Failed to disconnect Instagram account:', error);
-      notify('Не удалось отключить Instagram аккаунт');
+      alert('Не удалось отключить Instagram аккаунт');
     }
   };
 
@@ -202,14 +161,12 @@ const Settings: React.FC = () => {
   const accountInitial = (account?.display_name || account?.username || 'I')
     .charAt(0)
     .toUpperCase();
-  const facebookConnected =
-    Boolean(account?.facebook_token_is_valid) &&
-    !account?.facebook_token_refresh_required;
 
   return (
     <div className='p-4 pb-20'>
       <h2 className='text-xl font-semibold mb-4'>Настройки</h2>
 
+      {/* Instagram Account Section */}
       <div
         className='rounded-2xl p-4 mb-4'
         style={{
@@ -262,17 +219,6 @@ const Settings: React.FC = () => {
                 >
                   {account.status === 'active' ? '✓ Активен' : '⏳ На проверке'}
                 </p>
-                <p
-                  className='text-xs mt-1'
-                  style={{ color: 'var(--tg-theme-hint-color)' }}
-                >
-                  IGAA: {account.token_expires_at ? 'сохранён на сервере' : 'есть / срок неизвестен'}
-                  {' · '}
-                  EAAV:{' '}
-                  {facebookConnected
-                    ? 'сохранён на сервере'
-                    : 'не подключён'}
-                </p>
               </div>
             </div>
 
@@ -281,19 +227,16 @@ const Settings: React.FC = () => {
               style={{ borderTop: '1px solid rgba(127,127,127,0.18)' }}
             >
               <button
-                type='button'
-                onClick={() => void handleRefreshTokens()}
-                disabled={refreshing}
-                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70 disabled:opacity-60'
+                onClick={() => void fetchAccountStatus()}
+                className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
                 style={{
                   background: 'var(--tg-theme-button-color)',
                   color: 'var(--tg-theme-button-text-color)',
                 }}
               >
-                {refreshing ? 'Обновление…' : 'Обновить'}
+                Обновить
               </button>
               <button
-                type='button'
                 onClick={handleFinish}
                 className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
                 style={{
@@ -306,67 +249,33 @@ const Settings: React.FC = () => {
               </button>
               <button
                 type='button'
-                onClick={() => void startOAuth('instagram')}
-                disabled={connecting === 'instagram'}
-                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70 disabled:opacity-60'
+                disabled
+                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium cursor-not-allowed opacity-60'
                 style={{
-                  border: '1px solid var(--tg-theme-button-color)',
-                  color: 'var(--tg-theme-button-color)',
-                  background: 'transparent',
+                  color: 'var(--tg-theme-hint-color)',
+                  border: '1px solid var(--tg-theme-hint-color)',
+                  background: 'rgba(127,127,127,0.08)',
                 }}
               >
-                {connecting === 'instagram'
-                  ? 'Открытие Instagram…'
-                  : 'Переподключить Instagram (получить IGAA)'}
+                {account.facebook_token_is_valid &&
+                !account.facebook_token_refresh_required
+                  ? '✓ Facebook API подключён'
+                  : 'Facebook для комментариев — временно недоступен'}
               </button>
-              <button
-                type='button'
-                onClick={() => void startOAuth('facebook')}
-                disabled={connecting === 'facebook'}
-                className='col-span-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70 disabled:opacity-60'
-                style={{
-                  background: facebookConnected
-                    ? 'rgba(34,197,94,0.12)'
-                    : 'var(--tg-theme-button-color)',
-                  color: facebookConnected
-                    ? '#16a34a'
-                    : 'var(--tg-theme-button-text-color)',
-                  border: facebookConnected
-                    ? '1px solid rgba(34,197,94,0.35)'
-                    : 'none',
-                }}
-              >
-                {connecting === 'facebook'
-                  ? 'Открытие Facebook…'
-                  : facebookConnected
-                    ? '✓ Facebook токен сохранён — переподключить'
-                    : 'Подключить Facebook (получить EAAV)'}
-              </button>
-              <p
-                className='col-span-2 text-xs text-center mt-1'
-                style={{ color: 'var(--tg-theme-hint-color)' }}
-              >
-                Токены получает backend через OAuth Meta и сразу пишет в таблицу
-                ig_accounts. В приложение они не возвращаются.
-              </p>
             </div>
           </div>
         ) : (
           <div className='space-y-3'>
             <p className='text-gray-600 dark:text-gray-400 text-sm'>
-              Подключите Instagram Business/Creator. После согласия Meta токен
-              IGAA автоматически сохранится в базе.
+              Подключите Instagram, если у вас есть аккаунт Business или Creator.
             </p>
 
+            {/* Кнопка входа (существующий аккаунт) */}
             <button
-              type='button'
-              onClick={() => void startOAuth('instagram')}
-              disabled={connecting === 'instagram'}
-              className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all disabled:opacity-60'
+              onClick={handleConnectInstagram}
+              className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
             >
-              {connecting === 'instagram'
-                ? 'Открытие Instagram…'
-                : '🔑 Войти в существующий'}
+              🔑 Войти в существующий
             </button>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
@@ -385,6 +294,7 @@ const Settings: React.FC = () => {
         )}
       </div>
 
+      {/* Telegram bot info */}
       <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-4'>
         <div className='flex items-start space-x-3'>
           <span className='text-2xl'>🤖</span>

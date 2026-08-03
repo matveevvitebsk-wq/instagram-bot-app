@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from app.core.security import verify_telegram_init_data, create_access_token
 from app.core.supabase import get_supabase
 from app.services.facebook_tokens import maintain_owner_facebook_tokens
-from app.services.instagram_tokens import maintain_owner_instagram_tokens
 
 router = APIRouter()
 
@@ -64,9 +63,6 @@ async def auth_telegram(body: TelegramAuthRequest):
         )
 
     profile = result.data[0]
-    # Refresh/validate stored Meta tokens on every Mini App login.
-    # Raw bearer values never leave the backend.
-    await maintain_owner_instagram_tokens(sb, profile["id"])
     await maintain_owner_facebook_tokens(sb, profile["id"])
     token = create_access_token({**user_data, "profile_id": profile["id"]})
 
