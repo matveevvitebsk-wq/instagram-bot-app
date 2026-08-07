@@ -238,6 +238,7 @@ payload
 result
 error_message
 schedule_at
+comment_on_post   boolean — comments under author posts (feed/Reels/live)
 created_at
 updated_at
 ```

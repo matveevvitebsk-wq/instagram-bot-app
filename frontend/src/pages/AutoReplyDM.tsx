@@ -10,6 +10,7 @@ interface AutoReplyTask {
   id: string;
   task_type: 'keyword_funnel' | 'dm_reply';
   status: string;
+  comment_on_post?: boolean;
   payload: {
     trigger_keyword?: string;
     trigger_keywords?: string[];
@@ -35,6 +36,7 @@ export default function AutoReplyDM() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [exactMatch, setExactMatch] = useState(true);
+  const [commentOnPost, setCommentOnPost] = useState(true);
   const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export default function AutoReplyDM() {
   function resetForm() {
     setKeywords([]);
     setExactMatch(true);
+    setCommentOnPost(true);
     setReplyText('');
     setEditingId(null);
     setShowForm(false);
@@ -84,6 +87,7 @@ export default function AutoReplyDM() {
     }
     setKeywords([]);
     setExactMatch(true);
+    setCommentOnPost(true);
     setReplyText('');
     setEditingId(null);
     setShowForm(true);
@@ -93,6 +97,7 @@ export default function AutoReplyDM() {
   function openEditForm(task: AutoReplyTask) {
     setKeywords(keywordsFromPayload(task.payload ?? {}));
     setExactMatch(task.payload?.exact_match ?? true);
+    setCommentOnPost(Boolean(task.comment_on_post));
     setReplyText(task.payload?.reply_text ?? '');
     setEditingId(task.id);
     setShowForm(true);
@@ -101,13 +106,14 @@ export default function AutoReplyDM() {
   }
 
   async function saveAutoReply() {
-    if (keywords.length === 0 || !replyText.trim()) return;
+    if (!replyText.trim()) return;
+    if (commentOnPost && keywords.length === 0) return;
     setSaving(true);
     setError(null);
     const payload = {
       trigger_keywords: keywords,
       // Backward-compatible single field for existing n8n / list consumers
-      trigger_keyword: keywords[0],
+      trigger_keyword: keywords[0] ?? '',
       exact_match: exactMatch,
       reply_text: replyText.trim(),
     };
@@ -117,6 +123,7 @@ export default function AutoReplyDM() {
         const currentTask = autoReplies.find((task) => task.id === editingId);
         const res = await api.patch(`/api/tasks/${editingId}`, {
           payload: { ...currentTask?.payload, ...payload },
+          comment_on_post: commentOnPost,
         });
         setAutoReplies((previous) =>
           previous.map((task) => (task.id === editingId ? res.data : task)),
@@ -125,6 +132,7 @@ export default function AutoReplyDM() {
         const res = await api.post('/api/tasks/', {
           task_type: 'dm_reply',
           ig_account_id: igAccountId,
+          comment_on_post: commentOnPost,
           payload: {
             ...payload,
             content_type: 'ALL',
@@ -260,7 +268,7 @@ export default function AutoReplyDM() {
             </div>
           )}
 
-          {/* Comment trigger block — redesign aligned with project theme */}
+          {/* Comment trigger block */}
           <div
             className='rounded-xl p-3 space-y-3'
             style={{
@@ -268,7 +276,7 @@ export default function AutoReplyDM() {
               border: '1px solid rgba(112, 132, 153, 0.35)',
             }}
           >
-            <div className='flex items-center gap-2.5'>
+            <label className='flex items-center gap-2.5 cursor-pointer select-none'>
               <span
                 className='w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0'
                 style={{
@@ -278,50 +286,61 @@ export default function AutoReplyDM() {
               >
                 💬
               </span>
-              <div className='flex-1 min-w-0'>
-                <p
-                  className='text-sm font-medium leading-snug'
+              <span className='flex-1 min-w-0'>
+                <span
+                  className='text-sm font-medium leading-snug block'
                   style={{ color: 'var(--tg-theme-text-color)' }}
                 >
-                  Комментарий к Reels или публикации
-                </p>
-                <p
-                  className='text-[11px] mt-0.5'
-                  style={{ color: 'var(--tg-theme-hint-color)' }}
-                >
-                  Реакция на кодовые слова в комментариях
-                </p>
-              </div>
+                  Auto-reply to all private posts.
+                </span>
+              </span>
+              <input
+                type='checkbox'
+                checked={commentOnPost}
+                disabled={saving}
+                onChange={(event) => setCommentOnPost(event.target.checked)}
+                className='sr-only'
+                aria-label='Auto-reply to all private posts'
+              />
               <span
+                aria-hidden
                 className='w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0'
                 style={{
-                  background: 'var(--tg-theme-button-color)',
-                  color: 'var(--tg-theme-button-text-color)',
+                  background: commentOnPost
+                    ? 'var(--tg-theme-button-color)'
+                    : 'var(--tg-theme-bg-color)',
+                  color: commentOnPost
+                    ? 'var(--tg-theme-button-text-color)'
+                    : 'transparent',
+                  border: commentOnPost
+                    ? '1px solid var(--tg-theme-button-color)'
+                    : '1px solid var(--tg-theme-hint-color)',
                 }}
-                aria-hidden
               >
                 ✓
               </span>
-            </div>
+            </label>
 
-            <div
-              className='rounded-xl p-3'
-              style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-            >
-              <p
-                className='text-xs font-medium mb-3'
-                style={{ color: 'var(--tg-theme-text-color)' }}
+            {commentOnPost && (
+              <div
+                className='rounded-xl p-3'
+                style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
               >
-                Комментарий с кодовым словом
-              </p>
-              <KeywordChipsInput
-                keywords={keywords}
-                onChange={setKeywords}
-                exactMatch={exactMatch}
-                onExactMatchChange={setExactMatch}
-                disabled={saving}
-              />
-            </div>
+                <p
+                  className='text-xs font-medium mb-3'
+                  style={{ color: 'var(--tg-theme-text-color)' }}
+                >
+                  Комментарий с кодовым словом
+                </p>
+                <KeywordChipsInput
+                  keywords={keywords}
+                  onChange={setKeywords}
+                  exactMatch={exactMatch}
+                  onExactMatchChange={setExactMatch}
+                  disabled={saving}
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -347,7 +366,11 @@ export default function AutoReplyDM() {
 
           <button
             onClick={() => void saveAutoReply()}
-            disabled={saving || keywords.length === 0 || !replyText.trim()}
+            disabled={
+              saving ||
+              !replyText.trim() ||
+              (commentOnPost && keywords.length === 0)
+            }
             className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
             style={{
               background: 'var(--tg-theme-button-color)',
@@ -419,6 +442,17 @@ export default function AutoReplyDM() {
                         style={{ color: 'var(--tg-theme-hint-color)' }}
                       >
                         Без кодового слова
+                      </span>
+                    )}
+                    {rule.comment_on_post && (
+                      <span
+                        className='text-[10px] px-1.5 py-0.5 rounded'
+                        style={{
+                          color: 'var(--tg-theme-button-color)',
+                          border: '1px solid var(--tg-theme-button-color)',
+                        }}
+                      >
+                        комментарии
                       </span>
                     )}
                     {rule.payload?.exact_match !== false && (

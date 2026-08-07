@@ -42,9 +42,14 @@ CREATE TABLE IF NOT EXISTS automation_tasks (
     result JSONB,
     error_message TEXT,
     schedule_at TIMESTAMP WITH TIME ZONE,
+    -- true: trigger on comments under author posts (feed / Reels / saved live)
+    comment_on_post BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE automation_tasks
+    ADD COLUMN IF NOT EXISTS comment_on_post BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Автоматическое обновление updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
