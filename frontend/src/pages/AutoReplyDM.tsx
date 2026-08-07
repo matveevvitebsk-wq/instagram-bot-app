@@ -106,14 +106,13 @@ export default function AutoReplyDM() {
   }
 
   async function saveAutoReply() {
-    if (!replyText.trim()) return;
-    if (commentOnPost && keywords.length === 0) return;
+    if (keywords.length === 0 || !replyText.trim()) return;
     setSaving(true);
     setError(null);
     const payload = {
       trigger_keywords: keywords,
       // Backward-compatible single field for existing n8n / list consumers
-      trigger_keyword: keywords[0] ?? '',
+      trigger_keyword: keywords[0],
       exact_match: exactMatch,
       reply_text: replyText.trim(),
     };
@@ -291,7 +290,7 @@ export default function AutoReplyDM() {
                   className='text-sm font-medium leading-snug block'
                   style={{ color: 'var(--tg-theme-text-color)' }}
                 >
-                  Auto-reply to all personal posts.
+                  Авто-ответ на все личные публикации
                 </span>
               </span>
               <input
@@ -300,7 +299,7 @@ export default function AutoReplyDM() {
                 disabled={saving}
                 onChange={(event) => setCommentOnPost(event.target.checked)}
                 className='sr-only'
-                aria-label='Auto-reply to all personal posts'
+                aria-label='Авто-ответ на все личные публикации'
               />
               <span
                 aria-hidden
@@ -321,26 +320,24 @@ export default function AutoReplyDM() {
               </span>
             </label>
 
-            {commentOnPost && (
-              <div
-                className='rounded-xl p-3'
-                style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+            <div
+              className='rounded-xl p-3'
+              style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+            >
+              <p
+                className='text-xs font-medium mb-3'
+                style={{ color: 'var(--tg-theme-text-color)' }}
               >
-                <p
-                  className='text-xs font-medium mb-3'
-                  style={{ color: 'var(--tg-theme-text-color)' }}
-                >
-                  Комментарий с кодовым словом
-                </p>
-                <KeywordChipsInput
-                  keywords={keywords}
-                  onChange={setKeywords}
-                  exactMatch={exactMatch}
-                  onExactMatchChange={setExactMatch}
-                  disabled={saving}
-                />
-              </div>
-            )}
+                Комментарий с кодовым словом
+              </p>
+              <KeywordChipsInput
+                keywords={keywords}
+                onChange={setKeywords}
+                exactMatch={exactMatch}
+                onExactMatchChange={setExactMatch}
+                disabled={saving}
+              />
+            </div>
           </div>
 
           <div>
@@ -366,11 +363,7 @@ export default function AutoReplyDM() {
 
           <button
             onClick={() => void saveAutoReply()}
-            disabled={
-              saving ||
-              !replyText.trim() ||
-              (commentOnPost && keywords.length === 0)
-            }
+            disabled={saving || keywords.length === 0 || !replyText.trim()}
             className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
             style={{
               background: 'var(--tg-theme-button-color)',
