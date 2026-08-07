@@ -20,10 +20,13 @@ class CreateTaskRequest(BaseModel):
     ig_account_id: Optional[str] = None
     payload: dict           # Параметры задачи (зависят от типа)
     schedule_at: Optional[str] = None  # ISO 8601 или null для немедленного запуска
+    # Trigger on comments under author posts (feed / Reels / saved live)
+    comment_on_post: Optional[bool] = False
 
 
 class UpdateTaskRequest(BaseModel):
     payload: dict
+    comment_on_post: Optional[bool] = None
 
 
 class TaskResponse(BaseModel):
@@ -32,6 +35,7 @@ class TaskResponse(BaseModel):
     status: str
     ig_account_id: Optional[str]
     payload: dict
+    comment_on_post: bool = False
     created_at: str
 
 
@@ -101,6 +105,7 @@ async def create_task(
         "status": "pending",
         "payload": body.payload,
         "schedule_at": body.schedule_at,
+        "comment_on_post": bool(body.comment_on_post),
     }
 
     task_result = sb.table("automation_tasks").insert(task_record).execute()
@@ -148,10 +153,16 @@ async def update_task(
     sb = get_supabase()
     profile_id = get_profile_id(sb, current_user)
 
-    result = sb.table("automation_tasks").update({
+    update_data = {
         "payload": body.payload,
         "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", task_id).eq("owner_id", profile_id).neq(
+    }
+    if body.comment_on_post is not None:
+        update_data["comment_on_post"] = bool(body.comment_on_post)
+
+    result = sb.table("automation_tasks").update(update_data).eq(
+        "id", task_id
+    ).eq("owner_id", profile_id).neq(
         "status", "running"
     ).execute()
 
