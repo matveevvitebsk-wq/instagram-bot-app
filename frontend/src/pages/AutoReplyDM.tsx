@@ -11,6 +11,8 @@ interface AutoReplyTask {
   task_type: 'keyword_funnel' | 'dm_reply';
   status: string;
   comment_on_post?: boolean;
+  exact_match?: boolean;
+  all_content_types?: boolean;
   payload: {
     trigger_keyword?: string;
     trigger_keywords?: string[];
@@ -22,6 +24,16 @@ interface AutoReplyTask {
     [key: string]: unknown;
   };
   created_at: string;
+}
+
+function isExactMatch(task: AutoReplyTask) {
+  if (typeof task.exact_match === 'boolean') return task.exact_match;
+  return task.payload?.exact_match !== false;
+}
+
+function isAllContentTypes(task: AutoReplyTask) {
+  if (typeof task.all_content_types === 'boolean') return task.all_content_types;
+  return (task.payload?.content_type ?? 'ALL') === 'ALL';
 }
 
 function isAutoReplyActive(task: AutoReplyTask) {
@@ -37,6 +49,7 @@ export default function AutoReplyDM() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [exactMatch, setExactMatch] = useState(true);
   const [commentOnPost, setCommentOnPost] = useState(true);
+  const [allContentTypes, setAllContentTypes] = useState(true);
   const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -75,6 +88,7 @@ export default function AutoReplyDM() {
     setKeywords([]);
     setExactMatch(true);
     setCommentOnPost(true);
+    setAllContentTypes(true);
     setReplyText('');
     setEditingId(null);
     setShowForm(false);
@@ -88,6 +102,7 @@ export default function AutoReplyDM() {
     setKeywords([]);
     setExactMatch(true);
     setCommentOnPost(true);
+    setAllContentTypes(true);
     setReplyText('');
     setEditingId(null);
     setShowForm(true);
@@ -96,8 +111,9 @@ export default function AutoReplyDM() {
 
   function openEditForm(task: AutoReplyTask) {
     setKeywords(keywordsFromPayload(task.payload ?? {}));
-    setExactMatch(task.payload?.exact_match ?? true);
+    setExactMatch(isExactMatch(task));
     setCommentOnPost(Boolean(task.comment_on_post));
+    setAllContentTypes(isAllContentTypes(task));
     setReplyText(task.payload?.reply_text ?? '');
     setEditingId(task.id);
     setShowForm(true);
@@ -114,6 +130,7 @@ export default function AutoReplyDM() {
       // Backward-compatible single field for existing n8n / list consumers
       trigger_keyword: keywords[0],
       exact_match: exactMatch,
+      content_type: allContentTypes ? 'ALL' : 'OPTIONAL',
       reply_text: replyText.trim(),
     };
 
@@ -123,6 +140,8 @@ export default function AutoReplyDM() {
         const res = await api.patch(`/api/tasks/${editingId}`, {
           payload: { ...currentTask?.payload, ...payload },
           comment_on_post: commentOnPost,
+          exact_match: exactMatch,
+          all_content_types: allContentTypes,
         });
         setAutoReplies((previous) =>
           previous.map((task) => (task.id === editingId ? res.data : task)),
@@ -132,9 +151,10 @@ export default function AutoReplyDM() {
           task_type: 'dm_reply',
           ig_account_id: igAccountId,
           comment_on_post: commentOnPost,
+          exact_match: exactMatch,
+          all_content_types: allContentTypes,
           payload: {
             ...payload,
-            content_type: 'ALL',
             is_active: true,
           },
         });
@@ -338,6 +358,52 @@ export default function AutoReplyDM() {
                 disabled={saving}
               />
             </div>
+
+            <label className='flex items-center gap-2.5 cursor-pointer select-none'>
+              <input
+                type='checkbox'
+                checked={allContentTypes}
+                disabled={saving}
+                onChange={(event) => setAllContentTypes(event.target.checked)}
+                className='sr-only'
+                aria-label='Все типы контента'
+              />
+              <span
+                aria-hidden
+                className='w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0'
+                style={{
+                  background: allContentTypes
+                    ? 'var(--tg-theme-button-color)'
+                    : 'var(--tg-theme-bg-color)',
+                  color: allContentTypes
+                    ? 'var(--tg-theme-button-text-color)'
+                    : 'transparent',
+                  border: allContentTypes
+                    ? '1px solid var(--tg-theme-button-color)'
+                    : '1px solid var(--tg-theme-hint-color)',
+                }}
+              >
+                ✓
+              </span>
+              <span className='min-w-0'>
+                <span
+                  className='text-sm font-medium block'
+                  style={{ color: 'var(--tg-theme-text-color)' }}
+                >
+                  {allContentTypes
+                    ? 'Все типы контента'
+                    : 'Выборочные ответы'}
+                </span>
+                <span
+                  className='text-[11px] block mt-0.5'
+                  style={{ color: 'var(--tg-theme-hint-color)' }}
+                >
+                  {allContentTypes
+                    ? 'Правило действует для всех типов публикаций'
+                    : 'Ответы только для выбранных типов контента'}
+                </span>
+              </span>
+            </label>
           </div>
 
           <div>
@@ -414,7 +480,7 @@ export default function AutoReplyDM() {
                   opacity: isAutoReplyActive(rule) ? 1 : 0.65,
                 }}
               >
-                <div className='flex items-start justify-between gap-2 mb-2'>
+                <div className='flex items-start justify-between gap-3 mb-2'>
                   <div className='flex flex-wrap items-center gap-1.5 min-w-0'>
                     {ruleKeywords.length > 0 ? (
                       ruleKeywords.map((keyword, index) => (
@@ -448,7 +514,7 @@ export default function AutoReplyDM() {
                         комментарии
                       </span>
                     )}
-                    {rule.payload?.exact_match !== false && (
+                    {isExactMatch(rule) && (
                       <span
                         className='text-[10px] px-1.5 py-0.5 rounded'
                         style={{
@@ -459,36 +525,50 @@ export default function AutoReplyDM() {
                         точное
                       </span>
                     )}
-                    {!isAutoReplyActive(rule) && (
+                  </div>
+                  <div className='shrink-0 text-right max-w-[46%]'>
+                    <p
+                      className='text-[11px] font-medium leading-snug mb-1'
+                      style={{ color: 'var(--tg-theme-text-color)' }}
+                    >
+                      Ответы на комментарии
+                    </p>
+                    <div className='flex items-center justify-end gap-2'>
                       <span
-                        className='text-xs'
+                        className='text-[10px] leading-none'
                         style={{ color: 'var(--tg-theme-hint-color)' }}
                       >
-                        выкл
+                        {isAutoReplyActive(rule)
+                          ? 'Вкл — бот отвечает'
+                          : 'Выкл — ответы отключены'}
                       </span>
-                    )}
+                      <button
+                        onClick={() => void toggleAutoReply(rule.id)}
+                        disabled={togglingId === rule.id}
+                        aria-label={
+                          isAutoReplyActive(rule)
+                            ? 'Выключить ответы на комментарии'
+                            : 'Включить ответы на комментарии'
+                        }
+                        aria-pressed={isAutoReplyActive(rule)}
+                        className='relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 shrink-0'
+                        style={{
+                          background: isAutoReplyActive(rule)
+                            ? 'var(--tg-theme-button-color)'
+                            : 'var(--tg-theme-hint-color)',
+                        }}
+                      >
+                        <span
+                          className='inline-block h-4 w-4 transform rounded-full bg-white transition-transform'
+                          style={{
+                            transform: isAutoReplyActive(rule)
+                              ? 'translateX(24px)'
+                              : 'translateX(4px)',
+                          }}
+                        />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => void toggleAutoReply(rule.id)}
-                    disabled={togglingId === rule.id}
-                    aria-label={`${isAutoReplyActive(rule) ? 'Выключить' : 'Включить'} авто-ответ`}
-                    aria-pressed={isAutoReplyActive(rule)}
-                    className='relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 shrink-0'
-                    style={{
-                      background: isAutoReplyActive(rule)
-                        ? 'var(--tg-theme-button-color)'
-                        : 'var(--tg-theme-hint-color)',
-                    }}
-                  >
-                    <span
-                      className='inline-block h-4 w-4 transform rounded-full bg-white transition-transform'
-                      style={{
-                        transform: isAutoReplyActive(rule)
-                          ? 'translateX(24px)'
-                          : 'translateX(4px)',
-                      }}
-                    />
-                  </button>
                 </div>
                 <p
                   className='text-sm mb-3 leading-relaxed'
@@ -501,9 +581,9 @@ export default function AutoReplyDM() {
                     className='text-xs'
                     style={{ color: 'var(--tg-theme-hint-color)' }}
                   >
-                    {(rule.payload?.content_type ?? 'ALL') === 'ALL'
+                    {isAllContentTypes(rule)
                       ? 'Все типы контента'
-                      : rule.payload?.content_type}
+                      : 'Выборочные ответы'}
                   </span>
                   <div className='flex items-center gap-2 shrink-0'>
                     <button

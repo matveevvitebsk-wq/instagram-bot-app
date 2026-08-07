@@ -23,11 +23,17 @@ class CreateTaskRequest(BaseModel):
     # Trigger on comments under author posts (feed / Reels / saved live)
     # Default true for new auto-replies
     comment_on_post: Optional[bool] = True
+    # Exact keyword match in comments; default true for new auto-replies
+    exact_match: Optional[bool] = True
+    # All content types vs optional/selected responses; default true
+    all_content_types: Optional[bool] = True
 
 
 class UpdateTaskRequest(BaseModel):
     payload: dict
     comment_on_post: Optional[bool] = None
+    exact_match: Optional[bool] = None
+    all_content_types: Optional[bool] = None
 
 
 class TaskResponse(BaseModel):
@@ -37,6 +43,8 @@ class TaskResponse(BaseModel):
     ig_account_id: Optional[str]
     payload: dict
     comment_on_post: bool = True
+    exact_match: bool = True
+    all_content_types: bool = True
     created_at: str
 
 
@@ -107,6 +115,8 @@ async def create_task(
         "payload": body.payload,
         "schedule_at": body.schedule_at,
         "comment_on_post": bool(body.comment_on_post),
+        "exact_match": bool(body.exact_match),
+        "all_content_types": bool(body.all_content_types),
     }
 
     task_result = sb.table("automation_tasks").insert(task_record).execute()
@@ -160,6 +170,10 @@ async def update_task(
     }
     if body.comment_on_post is not None:
         update_data["comment_on_post"] = bool(body.comment_on_post)
+    if body.exact_match is not None:
+        update_data["exact_match"] = bool(body.exact_match)
+    if body.all_content_types is not None:
+        update_data["all_content_types"] = bool(body.all_content_types)
 
     result = sb.table("automation_tasks").update(update_data).eq(
         "id", task_id

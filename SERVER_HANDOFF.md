@@ -238,7 +238,9 @@ payload
 result
 error_message
 schedule_at
-comment_on_post   boolean — comments under author posts (feed/Reels/live)
+comment_on_post     boolean — comments under author posts (feed/Reels/live)
+exact_match         boolean — exact keyword match in comments (default true)
+all_content_types   boolean — all content types vs optional responses
 created_at
 updated_at
 ```
