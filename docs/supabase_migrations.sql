@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS automation_tasks (
     schedule_at TIMESTAMP WITH TIME ZONE,
     -- true: trigger on comments under author posts (feed / Reels / saved live)
     comment_on_post BOOLEAN NOT NULL DEFAULT TRUE,
+    exact_match BOOLEAN NOT NULL DEFAULT TRUE,
+    all_content_types BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -53,6 +55,10 @@ ALTER TABLE automation_tasks
 
 ALTER TABLE automation_tasks
     ALTER COLUMN comment_on_post SET DEFAULT TRUE;
+
+ALTER TABLE automation_tasks
+    ADD COLUMN IF NOT EXISTS exact_match BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS all_content_types BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Автоматическое обновление updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
