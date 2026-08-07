@@ -21,7 +21,8 @@ class CreateTaskRequest(BaseModel):
     payload: dict           # Параметры задачи (зависят от типа)
     schedule_at: Optional[str] = None  # ISO 8601 или null для немедленного запуска
     # Trigger on comments under author posts (feed / Reels / saved live)
-    comment_on_post: Optional[bool] = False
+    # Default true for new auto-replies
+    comment_on_post: Optional[bool] = True
 
 
 class UpdateTaskRequest(BaseModel):
@@ -35,7 +36,7 @@ class TaskResponse(BaseModel):
     status: str
     ig_account_id: Optional[str]
     payload: dict
-    comment_on_post: bool = False
+    comment_on_post: bool = True
     created_at: str
 
 

@@ -291,7 +291,7 @@ export default function AutoReplyDM() {
                   className='text-sm font-medium leading-snug block'
                   style={{ color: 'var(--tg-theme-text-color)' }}
                 >
-                  Auto-reply to all private posts.
+                  Auto-reply to all personal posts.
                 </span>
               </span>
               <input
@@ -300,7 +300,7 @@ export default function AutoReplyDM() {
                 disabled={saving}
                 onChange={(event) => setCommentOnPost(event.target.checked)}
                 className='sr-only'
-                aria-label='Auto-reply to all private posts'
+                aria-label='Auto-reply to all personal posts'
               />
               <span
                 aria-hidden
