@@ -502,6 +502,7 @@ export default function AutoReplyDM() {
         <div className='space-y-3'>
           {autoReplies.map((rule) => {
             const ruleKeywords = keywordsFromPayload(rule.payload ?? {});
+            const ruleMediaCount = selectedMediaIdsFromTask(rule).length;
             return (
               <div
                 key={rule.id}
@@ -615,9 +616,7 @@ export default function AutoReplyDM() {
                     {isAllContentTypes(rule)
                       ? 'Все типы контента'
                       : `Выборочные ответы${
-                          selectedMediaIdsFromTask(rule).length
-                            ? ` · ${selectedMediaIdsFromTask(rule).length}`
-                            : ''
+                          ruleMediaCount ? ` · ${ruleMediaCount}` : ''
                         }`}
                   </span>
                   <div className='flex items-center gap-2 shrink-0'>
