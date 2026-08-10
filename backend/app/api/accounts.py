@@ -71,10 +71,10 @@ async def list_account_media(
 
     access_token = account_row.get("access_token")
     page_id = account_row.get("page_id")
-    if not access_token or not page_id:
+    if not access_token:
         raise HTTPException(
             status_code=400,
-            detail="У аккаунта нет токена или Instagram ID",
+            detail="У аккаунта нет Instagram-токена",
         )
 
     params = {
@@ -85,12 +85,30 @@ async def list_account_media(
     if after:
         params["after"] = after
 
+    # Prefer /me/media (Instagram Login / IGAA). Fallback to /{ig-user-id}/media.
+    media_urls = [
+        f"https://graph.instagram.com/{settings.META_API_VERSION}/me/media",
+    ]
+    if page_id:
+        media_urls.append(
+            f"https://graph.instagram.com/{settings.META_API_VERSION}/{page_id}/media"
+        )
+
+    response = None
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.get(
-                f"https://graph.instagram.com/{settings.META_API_VERSION}/{page_id}/media",
-                params=params,
-            )
+            last_error_text = ""
+            for media_url in media_urls:
+                response = await client.get(media_url, params=params)
+                if response.status_code == 200:
+                    break
+                last_error_text = response.text[:800]
+                logger.warning(
+                    "Instagram media attempt failed url=%s status=%s body=%s",
+                    media_url,
+                    response.status_code,
+                    last_error_text,
+                )
     except httpx.HTTPError:
         logger.exception("Instagram media request failed for account %s", account_id)
         raise HTTPException(
@@ -98,18 +116,13 @@ async def list_account_media(
             detail="Не удалось связаться с Instagram API",
         )
 
-    if response.status_code != 200:
-        logger.error(
-            "Instagram media error account=%s status=%s body=%s",
-            account_id,
-            response.status_code,
-            response.text[:800],
-        )
+    if response is None or response.status_code != 200:
         detail = "Не удалось загрузить публикации Instagram"
         try:
-            err = response.json().get("error") or {}
-            if err.get("message"):
-                detail = str(err["message"])
+            if response is not None:
+                err = response.json().get("error") or {}
+                if err.get("message"):
+                    detail = str(err["message"])
         except Exception:
             pass
         raise HTTPException(status_code=400, detail=detail)

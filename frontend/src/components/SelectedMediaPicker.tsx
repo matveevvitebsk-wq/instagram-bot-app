@@ -15,6 +15,7 @@ interface SelectedMediaPickerProps {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
+  active?: boolean;
 }
 
 export default function SelectedMediaPicker({
@@ -22,6 +23,7 @@ export default function SelectedMediaPicker({
   selectedIds,
   onChange,
   disabled = false,
+  active = true,
 }: SelectedMediaPickerProps) {
   const [media, setMedia] = useState<IgMediaItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,13 +36,19 @@ export default function SelectedMediaPicker({
     async (cursor?: string | null, append = false) => {
       if (!accountId) {
         setMedia([]);
+        setAfter(null);
+        setHasMore(false);
+        setLoading(false);
+        setLoadingMore(false);
         setError('Подключите Instagram, чтобы выбрать публикации');
         return;
       }
 
       if (append) setLoadingMore(true);
-      else setLoading(true);
-      setError(null);
+      else {
+        setLoading(true);
+        setError(null);
+      }
 
       try {
         const res = await api.get(`/api/accounts/${accountId}/media`, {
@@ -49,15 +57,22 @@ export default function SelectedMediaPicker({
             ...(cursor ? { after: cursor } : {}),
           },
         });
-        const items: IgMediaItem[] = res.data?.media ?? [];
+        const items: IgMediaItem[] = Array.isArray(res.data?.media)
+          ? res.data.media
+          : [];
         setMedia((previous) => (append ? [...previous, ...items] : items));
         setAfter(res.data?.paging?.after ?? null);
         setHasMore(Boolean(res.data?.paging?.has_more));
+        if (!append && items.length === 0) {
+          setError(null);
+        }
       } catch (requestError: any) {
         if (!append) setMedia([]);
+        const detail = requestError?.response?.data?.detail;
         setError(
-          requestError?.response?.data?.detail ||
-            'Не удалось загрузить публикации',
+          typeof detail === 'string'
+            ? detail
+            : 'Не удалось загрузить публикации',
         );
       } finally {
         setLoading(false);
@@ -68,8 +83,9 @@ export default function SelectedMediaPicker({
   );
 
   useEffect(() => {
+    if (!active) return;
     void loadMedia(null, false);
-  }, [loadMedia]);
+  }, [active, loadMedia]);
 
   function toggleMedia(id: string) {
     if (disabled) return;
@@ -82,8 +98,11 @@ export default function SelectedMediaPicker({
 
   return (
     <div
-      className='rounded-xl p-3 space-y-2'
-      style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+      className='rounded-xl p-3 space-y-3 min-h-[140px]'
+      style={{
+        background: 'var(--tg-theme-secondary-bg-color)',
+        border: '1px solid rgba(112, 132, 153, 0.25)',
+      }}
     >
       <div className='flex items-center justify-between gap-2'>
         <div>
@@ -97,7 +116,7 @@ export default function SelectedMediaPicker({
             className='text-[11px] mt-0.5'
             style={{ color: 'var(--tg-theme-hint-color)' }}
           >
-            Отметьте посты для обработки
+            Отметьте посты галочкой для обработки
             {selectedIds.length > 0 ? ` · выбрано ${selectedIds.length}` : ''}
           </p>
         </div>
@@ -105,10 +124,11 @@ export default function SelectedMediaPicker({
           type='button'
           disabled={disabled || loading || !accountId}
           onClick={() => void loadMedia(null, false)}
-          className='text-[11px] px-2 py-1 rounded-lg disabled:opacity-50'
+          className='text-[11px] px-2 py-1 rounded-lg disabled:opacity-50 shrink-0'
           style={{
             color: 'var(--tg-theme-button-color)',
             border: '1px solid var(--tg-theme-button-color)',
+            background: 'var(--tg-theme-bg-color)',
           }}
         >
           Обновить
@@ -116,18 +136,27 @@ export default function SelectedMediaPicker({
       </div>
 
       {loading && (
-        <p
-          className='text-xs py-6 text-center'
-          style={{ color: 'var(--tg-theme-hint-color)' }}
-        >
-          Загрузка публикаций...
-        </p>
+        <div className='flex gap-2 overflow-x-auto pb-1'>
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              className='shrink-0 w-24 h-24 rounded-xl animate-pulse'
+              style={{ background: 'var(--tg-theme-bg-color)' }}
+            />
+          ))}
+        </div>
       )}
 
       {!loading && error && (
-        <p className='text-xs py-4 text-center' style={{ color: '#dc2626' }}>
+        <div
+          className='rounded-lg px-3 py-4 text-xs text-center'
+          style={{
+            background: 'rgba(220, 38, 38, 0.08)',
+            color: '#dc2626',
+          }}
+        >
           {error}
-        </p>
+        </div>
       )}
 
       {!loading && !error && media.length === 0 && (
@@ -139,8 +168,8 @@ export default function SelectedMediaPicker({
         </p>
       )}
 
-      {!loading && media.length > 0 && (
-        <div className='flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5'>
+      {!loading && !error && media.length > 0 && (
+        <div className='flex gap-2 overflow-x-auto pb-1'>
           {media.map((item) => {
             const selected = selectedIds.includes(item.id);
             return (
@@ -152,9 +181,9 @@ export default function SelectedMediaPicker({
                 className='relative shrink-0 w-24 h-24 rounded-xl overflow-hidden disabled:opacity-50'
                 style={{
                   background: 'var(--tg-theme-bg-color)',
-                  outline: selected
-                    ? '2px solid var(--tg-theme-button-color)'
-                    : '1px solid rgba(112, 132, 153, 0.35)',
+                  boxShadow: selected
+                    ? '0 0 0 2px var(--tg-theme-button-color)'
+                    : '0 0 0 1px rgba(112, 132, 153, 0.35)',
                 }}
                 aria-pressed={selected}
                 aria-label={
@@ -169,6 +198,7 @@ export default function SelectedMediaPicker({
                     alt=''
                     className='w-full h-full object-cover'
                     loading='lazy'
+                    referrerPolicy='no-referrer'
                   />
                 ) : (
                   <span
@@ -202,7 +232,7 @@ export default function SelectedMediaPicker({
         </div>
       )}
 
-      {!loading && hasMore && (
+      {!loading && !error && hasMore && (
         <button
           type='button'
           disabled={disabled || loadingMore}

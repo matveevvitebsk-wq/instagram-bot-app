@@ -72,8 +72,11 @@ export default function AutoReplyDM() {
     try {
       const res = await api.get('/api/accounts/');
       const accounts = res.data?.accounts ?? res.data;
-      const active = accounts.find((account: { is_active: boolean }) => account.is_active);
-      if (active) setIgAccountId(active.id);
+      const list = Array.isArray(accounts) ? accounts : [];
+      const active =
+        list.find((account: { is_active?: boolean }) => account.is_active) ??
+        list[0];
+      if (active?.id) setIgAccountId(active.id);
     } catch {
       // The form can still create an unassigned rule.
     }
@@ -376,58 +379,64 @@ export default function AutoReplyDM() {
               />
             </div>
 
-            <label className='flex items-center gap-2.5 cursor-pointer select-none'>
-              <input
-                type='checkbox'
-                checked={allContentTypes}
+            <div
+              className='rounded-xl p-1 flex gap-1'
+              style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+              role='tablist'
+              aria-label='Область действия авто-ответа'
+            >
+              <button
+                type='button'
+                role='tab'
+                aria-selected={allContentTypes}
                 disabled={saving}
-                onChange={(event) => setAllContentTypes(event.target.checked)}
-                className='sr-only'
-                aria-label='Все типы контента'
-              />
-              <span
-                aria-hidden
-                className='w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0'
+                onClick={() => setAllContentTypes(true)}
+                className='flex-1 py-2 px-2 rounded-lg text-xs font-medium disabled:opacity-50'
                 style={{
                   background: allContentTypes
-                    ? 'var(--tg-theme-button-color)'
-                    : 'var(--tg-theme-bg-color)',
-                  color: allContentTypes
-                    ? 'var(--tg-theme-button-text-color)'
+                    ? 'var(--tg-theme-bg-color)'
                     : 'transparent',
-                  border: allContentTypes
-                    ? '1px solid var(--tg-theme-button-color)'
-                    : '1px solid var(--tg-theme-hint-color)',
+                  color: 'var(--tg-theme-text-color)',
                 }}
               >
-                ✓
-              </span>
-              <span className='min-w-0'>
-                <span
-                  className='text-sm font-medium block'
-                  style={{ color: 'var(--tg-theme-text-color)' }}
-                >
-                  {allContentTypes
-                    ? 'Все типы контента'
-                    : 'Выборочные ответы'}
-                </span>
-                <span
-                  className='text-[11px] block mt-0.5'
-                  style={{ color: 'var(--tg-theme-hint-color)' }}
-                >
-                  {allContentTypes
-                    ? 'Правило действует для всех публикаций'
-                    : 'Выберите публикации ниже для обработки'}
-                </span>
-              </span>
-            </label>
+                Все публикации
+              </button>
+              <button
+                type='button'
+                role='tab'
+                aria-selected={!allContentTypes}
+                disabled={saving}
+                onClick={() => setAllContentTypes(false)}
+                className='flex-1 py-2 px-2 rounded-lg text-xs font-medium disabled:opacity-50'
+                style={{
+                  background: !allContentTypes
+                    ? 'var(--tg-theme-bg-color)'
+                    : 'transparent',
+                  color: 'var(--tg-theme-text-color)',
+                }}
+              >
+                Выбранные
+              </button>
+            </div>
 
-            {!allContentTypes && (
+            {allContentTypes ? (
+              <div
+                className='rounded-xl px-3 py-5 text-center text-xs leading-relaxed'
+                style={{
+                  background: 'var(--tg-theme-secondary-bg-color)',
+                  color: 'var(--tg-theme-hint-color)',
+                }}
+              >
+                Автоматизация будет отслеживать комментарии под всеми
+                публикациями
+              </div>
+            ) : (
               <SelectedMediaPicker
                 accountId={igAccountId}
                 selectedIds={selectedMediaIds}
                 onChange={setSelectedMediaIds}
                 disabled={saving}
+                active={!allContentTypes}
               />
             )}
           </div>
