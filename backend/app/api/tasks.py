@@ -27,6 +27,8 @@ class CreateTaskRequest(BaseModel):
     exact_match: Optional[bool] = True
     # All content types vs optional/selected responses; default true
     all_content_types: Optional[bool] = True
+    # Instagram media IDs when all_content_types is false
+    selected_media_ids: Optional[list[str]] = None
 
 
 class UpdateTaskRequest(BaseModel):
@@ -34,6 +36,7 @@ class UpdateTaskRequest(BaseModel):
     comment_on_post: Optional[bool] = None
     exact_match: Optional[bool] = None
     all_content_types: Optional[bool] = None
+    selected_media_ids: Optional[list[str]] = None
 
 
 class TaskResponse(BaseModel):
@@ -45,6 +48,7 @@ class TaskResponse(BaseModel):
     comment_on_post: bool = True
     exact_match: bool = True
     all_content_types: bool = True
+    selected_media_ids: list[str] = []
     created_at: str
 
 
@@ -117,6 +121,7 @@ async def create_task(
         "comment_on_post": bool(body.comment_on_post),
         "exact_match": bool(body.exact_match),
         "all_content_types": bool(body.all_content_types),
+        "selected_media_ids": list(body.selected_media_ids or []),
     }
 
     task_result = sb.table("automation_tasks").insert(task_record).execute()
@@ -174,6 +179,8 @@ async def update_task(
         update_data["exact_match"] = bool(body.exact_match)
     if body.all_content_types is not None:
         update_data["all_content_types"] = bool(body.all_content_types)
+    if body.selected_media_ids is not None:
+        update_data["selected_media_ids"] = list(body.selected_media_ids)
 
     result = sb.table("automation_tasks").update(update_data).eq(
         "id", task_id

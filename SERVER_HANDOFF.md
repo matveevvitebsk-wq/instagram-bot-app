@@ -241,6 +241,7 @@ schedule_at
 comment_on_post     boolean — comments under author posts (feed/Reels/live)
 exact_match         boolean — exact keyword match in comments (default true)
 all_content_types   boolean — all content types vs optional responses
+selected_media_ids  jsonb — Instagram media IDs for selected scope
 created_at
 updated_at
 ```

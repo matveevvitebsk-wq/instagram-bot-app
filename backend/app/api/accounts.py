@@ -1,31 +1,145 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from typing import Optional
+import logging
+import httpx
+
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
 from app.core.cache import cache
-import logging
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+settings = get_settings()
+
 
 class LinkAccountRequest(BaseModel):
     page_id: str
     access_token: str
     username: str
 
-@router.get("/")
-async def list_accounts(current_user: dict = Depends(get_current_user)):
-    sb = get_supabase()
+
+def _profile_id(sb, current_user: dict) -> str:
     profile = sb.table("customer_profiles").select("id").eq(
         "telegram_id", current_user["telegram_id"]
     ).single().execute()
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Профиль не найден")
+    return profile.data["id"]
+
+
+@router.get("/")
+async def list_accounts(current_user: dict = Depends(get_current_user)):
+    sb = get_supabase()
+    profile_id = _profile_id(sb, current_user)
     result = sb.table("ig_accounts").select(
         "id,username,page_id,is_active,created_at"
     ).eq(
-        "owner_id", profile.data["id"]
+        "owner_id", profile_id
     ).eq("is_active", True).execute()
     logger.info(f"[ACCOUNTS] Returning: {result.data}")
     return result.data
+
+
+@router.get("/{account_id}/media")
+async def list_account_media(
+    account_id: str,
+    current_user: dict = Depends(get_current_user),
+    limit: int = Query(default=25, ge=1, le=50),
+    after: Optional[str] = None,
+):
+    """
+    Список публикаций Instagram-аккаунта для вкладки «Выбранные».
+    Использует IGAA → graph.instagram.com/{ig-user-id}/media
+    """
+    sb = get_supabase()
+    profile_id = _profile_id(sb, current_user)
+
+    account = (
+        sb.table("ig_accounts")
+        .select("id,page_id,access_token,is_active")
+        .eq("id", account_id)
+        .eq("owner_id", profile_id)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    if not account.data:
+        raise HTTPException(status_code=404, detail="Instagram аккаунт не найден")
+    account_row = account.data[0]
+
+    access_token = account_row.get("access_token")
+    page_id = account_row.get("page_id")
+    if not access_token or not page_id:
+        raise HTTPException(
+            status_code=400,
+            detail="У аккаунта нет токена или Instagram ID",
+        )
+
+    params = {
+        "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+        "limit": limit,
+        "access_token": access_token,
+    }
+    if after:
+        params["after"] = after
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                f"https://graph.instagram.com/{settings.META_API_VERSION}/{page_id}/media",
+                params=params,
+            )
+    except httpx.HTTPError:
+        logger.exception("Instagram media request failed for account %s", account_id)
+        raise HTTPException(
+            status_code=502,
+            detail="Не удалось связаться с Instagram API",
+        )
+
+    if response.status_code != 200:
+        logger.error(
+            "Instagram media error account=%s status=%s body=%s",
+            account_id,
+            response.status_code,
+            response.text[:800],
+        )
+        detail = "Не удалось загрузить публикации Instagram"
+        try:
+            err = response.json().get("error") or {}
+            if err.get("message"):
+                detail = str(err["message"])
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=detail)
+
+    payload = response.json()
+    media_items = []
+    for item in payload.get("data") or []:
+        media_type = item.get("media_type") or "IMAGE"
+        preview = item.get("thumbnail_url") or item.get("media_url")
+        caption = (item.get("caption") or "").strip()
+        media_items.append(
+            {
+                "id": str(item.get("id")),
+                "caption": caption[:160],
+                "media_type": media_type,
+                "preview_url": preview,
+                "permalink": item.get("permalink"),
+                "timestamp": item.get("timestamp"),
+            }
+        )
+
+    paging = payload.get("paging") or {}
+    cursors = paging.get("cursors") or {}
+    return {
+        "media": media_items,
+        "paging": {
+            "after": cursors.get("after"),
+            "has_more": bool(paging.get("next") and cursors.get("after")),
+        },
+    }
 
 @router.post("/")
 async def link_account(
