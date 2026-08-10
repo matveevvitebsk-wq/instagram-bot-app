@@ -51,7 +51,7 @@ async def list_account_media(
 ):
     """
     Список публикаций Instagram-аккаунта для вкладки «Выбранные».
-    Использует IGAA → graph.instagram.com/{ig-user-id}/media
+    IGAA → graph.instagram.com/me/media (fallback: /{ig-user-id}/media).
     """
     sb = get_supabase()
     profile_id = _profile_id(sb, current_user)
