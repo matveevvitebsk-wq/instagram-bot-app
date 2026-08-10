@@ -247,20 +247,12 @@ export default function AutoReplyDM() {
   return (
     <div className='p-4 pb-24 max-w-lg mx-auto'>
       <div className='flex items-center justify-between gap-3 mb-4'>
-        <div className='min-w-0'>
-          <h1
-            className='text-lg font-semibold'
-            style={{ color: 'var(--tg-theme-text-color)' }}
-          >
-            Авто-ответ в DM
-          </h1>
-          <p
-            className='text-[10px] mt-0.5'
-            style={{ color: 'var(--tg-theme-hint-color)' }}
-          >
-            v2 · вкладки «Все публикации» / «Выбранные»
-          </p>
-        </div>
+        <h1
+          className='text-lg font-semibold'
+          style={{ color: 'var(--tg-theme-text-color)' }}
+        >
+          Авто-ответ в DM
+        </h1>
         <button
           onClick={openCreateForm}
           className='text-sm px-3 py-1.5 rounded-lg font-medium shrink-0'
@@ -452,25 +444,13 @@ export default function AutoReplyDM() {
                 публикациями
               </div>
             ) : (
-              <>
-                <div
-                  className='rounded-lg px-3 py-2 text-[11px]'
-                  style={{
-                    background: 'rgba(38, 120, 182, 0.12)',
-                    color: 'var(--tg-theme-button-color)',
-                  }}
-                >
-                  Откройте вкладку «Выбранные» — ниже загружается лента постов.
-                  Отметьте нужные галочкой в правом верхнем углу превью.
-                </div>
-                <SelectedMediaPicker
-                  accountId={igAccountId}
-                  selectedIds={selectedMediaIds}
-                  onChange={setSelectedMediaIds}
-                  disabled={saving}
-                  active={!allContentTypes}
-                />
-              </>
+              <SelectedMediaPicker
+                accountId={igAccountId}
+                selectedIds={selectedMediaIds}
+                onChange={setSelectedMediaIds}
+                disabled={saving}
+                active={!allContentTypes}
+              />
             )}
           </div>
 
