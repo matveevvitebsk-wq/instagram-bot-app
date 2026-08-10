@@ -136,11 +136,14 @@ export default function SelectedMediaPicker({
       </div>
 
       {loading && (
-        <div className='flex gap-2 overflow-x-auto pb-1'>
-          {[0, 1, 2, 3].map((index) => (
+        <div
+          className='grid grid-rows-2 grid-flow-col auto-cols-[minmax(5.5rem,5.5rem)] gap-2 overflow-x-auto pb-1'
+          style={{ height: '12.25rem' }}
+        >
+          {[0, 1, 2, 3, 4, 5].map((index) => (
             <div
               key={index}
-              className='shrink-0 w-24 h-24 rounded-xl animate-pulse'
+              className='w-full aspect-square rounded-xl animate-pulse'
               style={{ background: 'var(--tg-theme-bg-color)' }}
             />
           ))}
@@ -169,7 +172,10 @@ export default function SelectedMediaPicker({
       )}
 
       {!loading && !error && media.length > 0 && (
-        <div className='flex gap-2 overflow-x-auto pb-1'>
+        <div
+          className='grid grid-rows-2 grid-flow-col auto-cols-[minmax(5.5rem,5.5rem)] gap-2 overflow-x-auto pb-1'
+          style={{ height: '12.25rem' }}
+        >
           {media.map((item) => {
             const selected = selectedIds.includes(item.id);
             return (
@@ -178,7 +184,7 @@ export default function SelectedMediaPicker({
                 type='button'
                 disabled={disabled}
                 onClick={() => toggleMedia(item.id)}
-                className='relative shrink-0 w-24 h-24 rounded-xl overflow-hidden disabled:opacity-50'
+                className='relative w-full aspect-square rounded-xl overflow-hidden disabled:opacity-50'
                 style={{
                   background: 'var(--tg-theme-bg-color)',
                   boxShadow: selected
