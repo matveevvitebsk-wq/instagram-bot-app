@@ -5,6 +5,9 @@ import KeywordChipsInput, {
   formatKeywordsLabel,
   keywordsFromPayload,
 } from '@/components/KeywordChipsInput';
+import SelectedMediaPicker, {
+  selectedMediaIdsFromTask,
+} from '@/components/SelectedMediaPicker';
 
 interface AutoReplyTask {
   id: string;
@@ -13,12 +16,14 @@ interface AutoReplyTask {
   comment_on_post?: boolean;
   exact_match?: boolean;
   all_content_types?: boolean;
+  selected_media_ids?: string[];
   payload: {
     trigger_keyword?: string;
     trigger_keywords?: string[];
     exact_match?: boolean;
     reply_text?: string;
     content_type?: string;
+    selected_media_ids?: string[];
     media_link?: string | null;
     is_active?: boolean;
     [key: string]: unknown;
@@ -50,6 +55,7 @@ export default function AutoReplyDM() {
   const [exactMatch, setExactMatch] = useState(true);
   const [commentOnPost, setCommentOnPost] = useState(true);
   const [allContentTypes, setAllContentTypes] = useState(true);
+  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -89,6 +95,7 @@ export default function AutoReplyDM() {
     setExactMatch(true);
     setCommentOnPost(true);
     setAllContentTypes(true);
+    setSelectedMediaIds([]);
     setReplyText('');
     setEditingId(null);
     setShowForm(false);
@@ -103,6 +110,7 @@ export default function AutoReplyDM() {
     setExactMatch(true);
     setCommentOnPost(true);
     setAllContentTypes(true);
+    setSelectedMediaIds([]);
     setReplyText('');
     setEditingId(null);
     setShowForm(true);
@@ -114,6 +122,7 @@ export default function AutoReplyDM() {
     setExactMatch(isExactMatch(task));
     setCommentOnPost(Boolean(task.comment_on_post));
     setAllContentTypes(isAllContentTypes(task));
+    setSelectedMediaIds(selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
     setEditingId(task.id);
     setShowForm(true);
@@ -123,14 +132,20 @@ export default function AutoReplyDM() {
 
   async function saveAutoReply() {
     if (keywords.length === 0 || !replyText.trim()) return;
+    if (!allContentTypes && selectedMediaIds.length === 0) {
+      setError('Выберите хотя бы одну публикацию');
+      return;
+    }
     setSaving(true);
     setError(null);
+    const mediaIds = allContentTypes ? [] : selectedMediaIds;
     const payload = {
       trigger_keywords: keywords,
       // Backward-compatible single field for existing n8n / list consumers
       trigger_keyword: keywords[0],
       exact_match: exactMatch,
       content_type: allContentTypes ? 'ALL' : 'OPTIONAL',
+      selected_media_ids: mediaIds,
       reply_text: replyText.trim(),
     };
 
@@ -142,6 +157,7 @@ export default function AutoReplyDM() {
           comment_on_post: commentOnPost,
           exact_match: exactMatch,
           all_content_types: allContentTypes,
+          selected_media_ids: mediaIds,
         });
         setAutoReplies((previous) =>
           previous.map((task) => (task.id === editingId ? res.data : task)),
@@ -153,6 +169,7 @@ export default function AutoReplyDM() {
           comment_on_post: commentOnPost,
           exact_match: exactMatch,
           all_content_types: allContentTypes,
+          selected_media_ids: mediaIds,
           payload: {
             ...payload,
             is_active: true,
@@ -399,11 +416,20 @@ export default function AutoReplyDM() {
                   style={{ color: 'var(--tg-theme-hint-color)' }}
                 >
                   {allContentTypes
-                    ? 'Правило действует для всех типов публикаций'
-                    : 'Ответы только для выбранных типов контента'}
+                    ? 'Правило действует для всех публикаций'
+                    : 'Выберите публикации ниже для обработки'}
                 </span>
               </span>
             </label>
+
+            {!allContentTypes && (
+              <SelectedMediaPicker
+                accountId={igAccountId}
+                selectedIds={selectedMediaIds}
+                onChange={setSelectedMediaIds}
+                disabled={saving}
+              />
+            )}
           </div>
 
           <div>
@@ -429,7 +455,12 @@ export default function AutoReplyDM() {
 
           <button
             onClick={() => void saveAutoReply()}
-            disabled={saving || keywords.length === 0 || !replyText.trim()}
+            disabled={
+              saving ||
+              keywords.length === 0 ||
+              !replyText.trim() ||
+              (!allContentTypes && selectedMediaIds.length === 0)
+            }
             className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
             style={{
               background: 'var(--tg-theme-button-color)',
@@ -583,7 +614,11 @@ export default function AutoReplyDM() {
                   >
                     {isAllContentTypes(rule)
                       ? 'Все типы контента'
-                      : 'Выборочные ответы'}
+                      : `Выборочные ответы${
+                          selectedMediaIdsFromTask(rule).length
+                            ? ` · ${selectedMediaIdsFromTask(rule).length}`
+                            : ''
+                        }`}
                   </span>
                   <div className='flex items-center gap-2 shrink-0'>
                     <button

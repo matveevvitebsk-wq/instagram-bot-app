@@ -60,6 +60,9 @@ ALTER TABLE automation_tasks
     ADD COLUMN IF NOT EXISTS exact_match BOOLEAN NOT NULL DEFAULT TRUE,
     ADD COLUMN IF NOT EXISTS all_content_types BOOLEAN NOT NULL DEFAULT TRUE;
 
+ALTER TABLE automation_tasks
+    ADD COLUMN IF NOT EXISTS selected_media_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+
 -- Автоматическое обновление updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
