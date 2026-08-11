@@ -242,6 +242,7 @@ comment_on_post     boolean — comments under author posts (feed/Reels/live)
 exact_match         boolean — exact keyword match in comments (default true)
 all_content_types   boolean — all content types vs optional responses
 selected_media_ids  jsonb — Instagram media IDs for selected scope
+check_subscription  boolean — verify follower before bot continues (default true)
 created_at
 updated_at
 ```

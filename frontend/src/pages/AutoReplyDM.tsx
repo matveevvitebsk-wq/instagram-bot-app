@@ -17,6 +17,7 @@ interface AutoReplyTask {
   exact_match?: boolean;
   all_content_types?: boolean;
   selected_media_ids?: string[];
+  check_subscription?: boolean;
   payload: {
     trigger_keyword?: string;
     trigger_keywords?: string[];
@@ -54,6 +55,7 @@ export default function AutoReplyDM() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [exactMatch, setExactMatch] = useState(true);
   const [commentOnPost, setCommentOnPost] = useState(true);
+  const [checkSubscription, setCheckSubscription] = useState(true);
   const [allContentTypes, setAllContentTypes] = useState(true);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
@@ -97,6 +99,7 @@ export default function AutoReplyDM() {
     setKeywords([]);
     setExactMatch(true);
     setCommentOnPost(true);
+    setCheckSubscription(true);
     setAllContentTypes(true);
     setSelectedMediaIds([]);
     setReplyText('');
@@ -112,6 +115,7 @@ export default function AutoReplyDM() {
     setKeywords([]);
     setExactMatch(true);
     setCommentOnPost(true);
+    setCheckSubscription(true);
     setAllContentTypes(true);
     setSelectedMediaIds([]);
     setReplyText('');
@@ -124,6 +128,7 @@ export default function AutoReplyDM() {
     setKeywords(keywordsFromPayload(task.payload ?? {}));
     setExactMatch(isExactMatch(task));
     setCommentOnPost(Boolean(task.comment_on_post));
+    setCheckSubscription(task.check_subscription !== false);
     setAllContentTypes(isAllContentTypes(task));
     setSelectedMediaIds(selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
@@ -161,6 +166,7 @@ export default function AutoReplyDM() {
           exact_match: exactMatch,
           all_content_types: allContentTypes,
           selected_media_ids: mediaIds,
+          check_subscription: checkSubscription,
         });
         setAutoReplies((previous) =>
           previous.map((task) => (task.id === editingId ? res.data : task)),
@@ -173,6 +179,7 @@ export default function AutoReplyDM() {
           exact_match: exactMatch,
           all_content_types: allContentTypes,
           selected_media_ids: mediaIds,
+          check_subscription: checkSubscription,
           payload: {
             ...payload,
             is_active: true,
@@ -306,6 +313,52 @@ export default function AutoReplyDM() {
               привязки к аккаунту.
             </div>
           )}
+
+          <div
+            className='rounded-xl px-3 py-3 flex items-center justify-between gap-3'
+            style={{
+              background: 'var(--tg-theme-bg-color)',
+              border: '1px solid rgba(112, 132, 153, 0.35)',
+            }}
+          >
+            <div className='min-w-0'>
+              <p
+                className='text-sm font-medium'
+                style={{ color: 'var(--tg-theme-text-color)' }}
+              >
+                Проверить подписку
+              </p>
+              <p
+                className='text-[11px] mt-0.5 leading-snug'
+                style={{ color: 'var(--tg-theme-hint-color)' }}
+              >
+                Чат-бот проверит подписку на аккаунт
+              </p>
+            </div>
+            <button
+              type='button'
+              role='switch'
+              aria-checked={checkSubscription}
+              aria-label='Проверить подписку'
+              disabled={saving}
+              onClick={() => setCheckSubscription((value) => !value)}
+              className='relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 shrink-0'
+              style={{
+                background: checkSubscription
+                  ? 'var(--tg-theme-button-color)'
+                  : 'var(--tg-theme-hint-color)',
+              }}
+            >
+              <span
+                className='inline-block h-5 w-5 transform rounded-full bg-white transition-transform'
+                style={{
+                  transform: checkSubscription
+                    ? 'translateX(26px)'
+                    : 'translateX(4px)',
+                }}
+              />
+            </button>
+          </div>
 
           {/* Comment trigger block */}
           <div

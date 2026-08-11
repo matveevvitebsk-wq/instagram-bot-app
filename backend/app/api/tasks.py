@@ -29,6 +29,8 @@ class CreateTaskRequest(BaseModel):
     all_content_types: Optional[bool] = True
     # Instagram media IDs when all_content_types is false
     selected_media_ids: Optional[list[str]] = None
+    # Verify follower subscription before bot continues; default true
+    check_subscription: Optional[bool] = True
 
 
 class UpdateTaskRequest(BaseModel):
@@ -37,6 +39,7 @@ class UpdateTaskRequest(BaseModel):
     exact_match: Optional[bool] = None
     all_content_types: Optional[bool] = None
     selected_media_ids: Optional[list[str]] = None
+    check_subscription: Optional[bool] = None
 
 
 class TaskResponse(BaseModel):
@@ -49,6 +52,7 @@ class TaskResponse(BaseModel):
     exact_match: bool = True
     all_content_types: bool = True
     selected_media_ids: list[str] = []
+    check_subscription: bool = True
     created_at: str
 
 
@@ -122,6 +126,7 @@ async def create_task(
         "exact_match": bool(body.exact_match),
         "all_content_types": bool(body.all_content_types),
         "selected_media_ids": list(body.selected_media_ids or []),
+        "check_subscription": bool(body.check_subscription),
     }
 
     task_result = sb.table("automation_tasks").insert(task_record).execute()
@@ -181,6 +186,8 @@ async def update_task(
         update_data["all_content_types"] = bool(body.all_content_types)
     if body.selected_media_ids is not None:
         update_data["selected_media_ids"] = list(body.selected_media_ids)
+    if body.check_subscription is not None:
+        update_data["check_subscription"] = bool(body.check_subscription)
 
     result = sb.table("automation_tasks").update(update_data).eq(
         "id", task_id
