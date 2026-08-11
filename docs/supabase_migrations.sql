@@ -63,6 +63,9 @@ ALTER TABLE automation_tasks
 ALTER TABLE automation_tasks
     ADD COLUMN IF NOT EXISTS selected_media_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
 
+ALTER TABLE automation_tasks
+    ADD COLUMN IF NOT EXISTS check_subscription BOOLEAN NOT NULL DEFAULT TRUE;
+
 -- Автоматическое обновление updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
