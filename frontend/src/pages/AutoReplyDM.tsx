@@ -19,7 +19,6 @@ interface AutoReplyTask {
   selected_media_ids?: string[];
   check_subscription?: boolean;
   payload: {
-    trigger_keyword?: string;
     trigger_keywords?: string[];
     exact_match?: boolean;
     reply_text?: string;
@@ -149,8 +148,6 @@ export default function AutoReplyDM() {
     const mediaIds = useAllPosts ? [] : selectedMediaIds;
     const payload = {
       trigger_keywords: keywords,
-      // Backward-compatible single field for existing n8n / list consumers
-      trigger_keyword: keywords[0],
       exact_match: exactMatch,
       content_type: useAllPosts ? 'ALL' : 'OPTIONAL',
       selected_media_ids: mediaIds,
@@ -160,8 +157,10 @@ export default function AutoReplyDM() {
     try {
       if (editingId) {
         const currentTask = autoReplies.find((task) => task.id === editingId);
+        const mergedPayload = { ...currentTask?.payload, ...payload };
+        delete mergedPayload.trigger_keyword;
         const res = await api.patch(`/api/tasks/${editingId}`, {
-          payload: { ...currentTask?.payload, ...payload },
+          payload: mergedPayload,
           comment_on_post: commentOnPost,
           exact_match: exactMatch,
           all_content_types: useAllPosts,
