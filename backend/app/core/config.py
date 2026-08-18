@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     N8N_URL: str = "https://n8n.almarathon.com"
     N8N_BASE_URL: str = ""
     N8N_API_KEY: str = ""
+    # Dedicated credential for n8n → FastAPI broker calls.
+    # Falls back to N8N_API_KEY when unset so existing Compose env still works.
+    N8N_SERVICE_TOKEN: str = ""
 
     # Debug
     debug: bool = False
@@ -81,6 +84,10 @@ class Settings(BaseSettings):
     @property
     def n8n_api_key(self) -> str:
         return self.N8N_API_KEY
+
+    @property
+    def n8n_service_token(self) -> str:
+        return (self.N8N_SERVICE_TOKEN or self.N8N_API_KEY).strip()
 
 
     @property

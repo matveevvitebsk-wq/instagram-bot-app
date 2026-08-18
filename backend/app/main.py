@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.rate_limit import RateLimitMiddleware
-from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels
+from app.api import auth, accounts, tasks, webhooks, analytics, telegram_webhook, events, meta_oauth, funnels, internal_meta
 
 settings = get_settings()
 
@@ -41,6 +41,11 @@ app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(meta_oauth.router, tags=["Meta OAuth"])
 app.include_router(telegram_webhook.router, prefix="/api/webhooks", tags=["Telegram"])
 app.include_router(funnels.router, prefix="/api/funnels", tags=["Auto-Reply in DM"])
+app.include_router(
+    internal_meta.router,
+    prefix="/api/internal/meta",
+    tags=["Internal Meta Broker"],
+)
 
 @app.get("/health")
 async def health_check():

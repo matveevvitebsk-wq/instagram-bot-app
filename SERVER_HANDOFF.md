@@ -247,6 +247,11 @@ created_at
 updated_at
 ```
 
+Runtime follow check is **not** done in n8n Graph nodes. FastAPI exposes
+`POST /api/internal/meta/actions` with `operation=check_follower`, using
+Meta `is_user_follow_business` and the webhook IGSID. See
+[`docs/instagram-follower-check.md`](docs/instagram-follower-check.md).
+
 ### Другие таблицы, используемые кодом
 
 Код также обращается к таблицам:
