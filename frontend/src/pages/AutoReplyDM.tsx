@@ -56,7 +56,6 @@ export default function AutoReplyDM() {
   const [exactMatch, setExactMatch] = useState(true);
   const [commentOnPost, setCommentOnPost] = useState(true);
   const [checkSubscription, setCheckSubscription] = useState(true);
-  const [allContentTypes, setAllContentTypes] = useState(true);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -100,7 +99,6 @@ export default function AutoReplyDM() {
     setExactMatch(true);
     setCommentOnPost(true);
     setCheckSubscription(true);
-    setAllContentTypes(true);
     setSelectedMediaIds([]);
     setReplyText('');
     setEditingId(null);
@@ -116,7 +114,6 @@ export default function AutoReplyDM() {
     setExactMatch(true);
     setCommentOnPost(true);
     setCheckSubscription(true);
-    setAllContentTypes(true);
     setSelectedMediaIds([]);
     setReplyText('');
     setEditingId(null);
@@ -125,12 +122,13 @@ export default function AutoReplyDM() {
   }
 
   function openEditForm(task: AutoReplyTask) {
+    const onAllPosts = Boolean(task.comment_on_post);
     setKeywords(keywordsFromPayload(task.payload ?? {}));
     setExactMatch(isExactMatch(task));
-    setCommentOnPost(Boolean(task.comment_on_post));
+    setCommentOnPost(onAllPosts);
     setCheckSubscription(task.check_subscription !== false);
-    setAllContentTypes(isAllContentTypes(task));
-    setSelectedMediaIds(selectedMediaIdsFromTask(task));
+    // Checkbox on → all posts; off → selected posts only (picker).
+    setSelectedMediaIds(onAllPosts ? [] : selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
     setEditingId(task.id);
     setShowForm(true);
@@ -140,19 +138,21 @@ export default function AutoReplyDM() {
 
   async function saveAutoReply() {
     if (keywords.length === 0 || !replyText.trim()) return;
-    if (!allContentTypes && selectedMediaIds.length === 0) {
+    // Checked "all publications" → all posts. Unchecked → must pick media.
+    const useAllPosts = commentOnPost;
+    if (!useAllPosts && selectedMediaIds.length === 0) {
       setError('Выберите хотя бы одну публикацию');
       return;
     }
     setSaving(true);
     setError(null);
-    const mediaIds = allContentTypes ? [] : selectedMediaIds;
+    const mediaIds = useAllPosts ? [] : selectedMediaIds;
     const payload = {
       trigger_keywords: keywords,
       // Backward-compatible single field for existing n8n / list consumers
       trigger_keyword: keywords[0],
       exact_match: exactMatch,
-      content_type: allContentTypes ? 'ALL' : 'OPTIONAL',
+      content_type: useAllPosts ? 'ALL' : 'OPTIONAL',
       selected_media_ids: mediaIds,
       reply_text: replyText.trim(),
     };
@@ -164,7 +164,7 @@ export default function AutoReplyDM() {
           payload: { ...currentTask?.payload, ...payload },
           comment_on_post: commentOnPost,
           exact_match: exactMatch,
-          all_content_types: allContentTypes,
+          all_content_types: useAllPosts,
           selected_media_ids: mediaIds,
           check_subscription: checkSubscription,
         });
@@ -177,7 +177,7 @@ export default function AutoReplyDM() {
           ig_account_id: igAccountId,
           comment_on_post: commentOnPost,
           exact_match: exactMatch,
-          all_content_types: allContentTypes,
+          all_content_types: useAllPosts,
           selected_media_ids: mediaIds,
           check_subscription: checkSubscription,
           payload: {
@@ -390,7 +390,12 @@ export default function AutoReplyDM() {
                 type='checkbox'
                 checked={commentOnPost}
                 disabled={saving}
-                onChange={(event) => setCommentOnPost(event.target.checked)}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setCommentOnPost(checked);
+                  // Checked = all posts (no picker). Unchecked = selected posts only.
+                  if (checked) setSelectedMediaIds([]);
+                }}
                 className='sr-only'
                 aria-label='Авто-ответ на все личные публикации'
               />
@@ -432,77 +437,13 @@ export default function AutoReplyDM() {
               />
             </div>
 
-            <p
-              className='text-xs font-medium'
-              style={{ color: 'var(--tg-theme-text-color)' }}
-            >
-              Где искать комментарии?
-            </p>
-            <div
-              className='rounded-xl p-1 flex gap-1'
-              style={{
-                background: 'var(--tg-theme-secondary-bg-color)',
-                border: '1px solid rgba(112, 132, 153, 0.35)',
-              }}
-              role='tablist'
-              aria-label='Область действия авто-ответа'
-            >
-              <button
-                type='button'
-                role='tab'
-                aria-selected={allContentTypes}
-                disabled={saving}
-                onClick={() => setAllContentTypes(true)}
-                className='flex-1 py-2.5 px-2 rounded-lg text-xs font-semibold disabled:opacity-50'
-                style={{
-                  background: allContentTypes
-                    ? 'var(--tg-theme-button-color)'
-                    : 'transparent',
-                  color: allContentTypes
-                    ? 'var(--tg-theme-button-text-color)'
-                    : 'var(--tg-theme-text-color)',
-                }}
-              >
-                Все публикации
-              </button>
-              <button
-                type='button'
-                role='tab'
-                aria-selected={!allContentTypes}
-                disabled={saving}
-                onClick={() => setAllContentTypes(false)}
-                className='flex-1 py-2.5 px-2 rounded-lg text-xs font-semibold disabled:opacity-50'
-                style={{
-                  background: !allContentTypes
-                    ? 'var(--tg-theme-button-color)'
-                    : 'transparent',
-                  color: !allContentTypes
-                    ? 'var(--tg-theme-button-text-color)'
-                    : 'var(--tg-theme-text-color)',
-                }}
-              >
-                Выбранные
-              </button>
-            </div>
-
-            {allContentTypes ? (
-              <div
-                className='rounded-xl px-3 py-5 text-center text-xs leading-relaxed'
-                style={{
-                  background: 'var(--tg-theme-secondary-bg-color)',
-                  color: 'var(--tg-theme-hint-color)',
-                }}
-              >
-                Автоматизация будет отслеживать комментарии под всеми
-                публикациями
-              </div>
-            ) : (
+            {!commentOnPost && (
               <SelectedMediaPicker
                 accountId={igAccountId}
                 selectedIds={selectedMediaIds}
                 onChange={setSelectedMediaIds}
                 disabled={saving}
-                active={!allContentTypes}
+                active
               />
             )}
           </div>
@@ -534,7 +475,7 @@ export default function AutoReplyDM() {
               saving ||
               keywords.length === 0 ||
               !replyText.trim() ||
-              (!allContentTypes && selectedMediaIds.length === 0)
+              (!commentOnPost && selectedMediaIds.length === 0)
             }
             className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
             style={{
@@ -573,7 +514,7 @@ export default function AutoReplyDM() {
         </div>
       )}
 
-      {autoReplies.length > 0 && (
+      {autoReplies.length > 0 && !editingId && (
         <div className='space-y-3'>
           {autoReplies.map((rule) => {
             const ruleKeywords = keywordsFromPayload(rule.payload ?? {});
