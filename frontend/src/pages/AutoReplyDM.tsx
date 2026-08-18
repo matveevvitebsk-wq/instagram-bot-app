@@ -332,7 +332,8 @@ export default function AutoReplyDM() {
                 className='text-[11px] mt-0.5 leading-snug'
                 style={{ color: 'var(--tg-theme-hint-color)' }}
               >
-                Чат-бот проверит подписку на аккаунт
+                Чат-бот проверит подписку в Direct,
+                когда человек напишет сообщение
               </p>
             </div>
             <button

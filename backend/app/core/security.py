@@ -125,3 +125,27 @@ async def get_current_user(
     except Exception as e:
         print(f"❌ Token error: {e}")
         raise
+
+
+def _tokens_match(provided: str, expected: str) -> bool:
+    if not provided or not expected:
+        return False
+    provided_bytes = provided.encode("utf-8")
+    expected_bytes = expected.encode("utf-8")
+    if len(provided_bytes) != len(expected_bytes):
+        return False
+    return hmac.compare_digest(provided_bytes, expected_bytes)
+
+
+async def require_n8n_service(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> str:
+    """Authenticate n8n → FastAPI broker calls. Never accepts empty credentials."""
+    expected = settings.n8n_service_token
+    if not expected or not _tokens_match(credentials.credentials, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid service credential",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return credentials.credentials
