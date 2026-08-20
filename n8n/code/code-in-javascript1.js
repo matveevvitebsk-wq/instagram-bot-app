@@ -1,22 +1,33 @@
 const inputData = $input.first().json.payload.trigger_keywords;
 
-// Цепочка:
-//   Webhook → … → ig_accounts → Get a row1 → Code in JavaScript1
+// Цепочка: Webhook → … → ig_accounts → Get a row1 → этот узел
 //
-// Get a row1 отдаёт строки automation_tasks.
-// inputData — кодовые слова первой строки: ["Бежим", "Бегать"]
+// Сравниваем текст комментария из Webhook
+//   body.entry[0].changes[0].value.text
+// с кодовыми словами из БД: payload.trigger_keywords
 //
-// Текст комментария берём из узла Webhook:
-//   body.entry[0].changes[0].value.text  →  например "Супер🔥"
-//
-// Сравниваем text с trigger_keywords всех строк.
-// Совпало → возвращаем этот text. Не совпало → "".
+// exact_match = true  → строки должны совпасть целиком
+//   "Супер🔥" и "супер!👏" — это РАЗНЫЕ слова, совпадения нет
+// exact_match = false → достаточно, чтобы слово встретилось внутри текста
+
+function payloadOf(task) {
+  const raw = task && task.payload;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch (_error) {
+      return {};
+    }
+  }
+  return {};
+}
 
 function asKeywords(raw) {
-  // Всегда массив: одно слово → ["Бежим"], несколько → ["Бежим", "Бегать"]
   if (Array.isArray(raw)) {
     return raw.map((word) => String(word).trim()).filter(Boolean);
   }
+  if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
   return [];
 }
 
@@ -31,29 +42,47 @@ const commentValue =
     ? body.entry[0].changes[0].value
     : {};
 const commentText = String(commentValue.text || '').trim();
-
 const commentNorm = commentText.toLowerCase();
 
-// Все правила, которые вернул Get a row1 (одна или несколько строк)
+const checked = [];
+let matchedWord = '';
+
 const matched = $input.all().some(({ json: task }, index) => {
-  const rawKeywords = index === 0
-    ? inputData
-    : (task.payload && task.payload.trigger_keywords);
+  const payload = payloadOf(task);
+  const rawKeywords = index === 0 ? inputData : payload.trigger_keywords;
+  const words = asKeywords(rawKeywords);
+  checked.push({
+    task_id: task.id || null,
+    keywords: words,
+    exact_match: task.exact_match !== false,
+  });
 
-  const words = asKeywords(rawKeywords).map((word) => word.toLowerCase());
-
-  // Пустой комментарий или нет кодовых слов — это правило не подходит
   if (!commentNorm || words.length === 0) return false;
+  if (payload.is_active === false) return false;
 
-  // Выключенное правило не отвечает
-  if (task.payload && task.payload.is_active === false) return false;
-
-  // exact_match = true  → комментарий целиком равен слову ("Бежим" === "бежим")
-  // exact_match = false → слово может быть внутри текста ("давайте бежим")
+  const lower = words.map((word) => word.toLowerCase());
   if (task.exact_match === false) {
-    return words.some((word) => commentNorm.includes(word));
+    const hit = words.find((_word, i) => commentNorm.includes(lower[i]));
+    if (hit) {
+      matchedWord = hit;
+      return true;
+    }
+    return false;
   }
-  return words.includes(commentNorm);
+
+  const hitIndex = lower.indexOf(commentNorm);
+  if (hitIndex >= 0) {
+    matchedWord = words[hitIndex];
+    return true;
+  }
+  return false;
 });
 
-return [{ json: { text: matched ? commentText : '' } }];
+return [{
+  json: {
+    text: matched ? commentText : '',
+    comment: commentText,
+    matched_keyword: matchedWord,
+    checked,
+  },
+}];
