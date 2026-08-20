@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
@@ -7,14 +7,18 @@ from app.core.supabase import get_supabase
 router = APIRouter()
 
 
+def normalize_keywords(raw: list[str] | None) -> list[str]:
+    return [item.strip() for item in (raw or []) if item and item.strip()]
+
+
 class AutoReplyCreate(BaseModel):
-    trigger_keyword: str
+    trigger_keywords: list[str] = Field(min_length=1)
     reply_text: str
     ig_account_id: str | None = None
 
 
 class AutoReplyUpdate(BaseModel):
-    trigger_keyword: str | None = None
+    trigger_keywords: list[str] | None = None
     reply_text: str | None = None
 
 
@@ -61,7 +65,7 @@ async def create_auto_reply(
             {
                 "owner_id": profile_id,
                 "ig_account_id": body.ig_account_id,
-                "trigger_keyword": body.trigger_keyword,
+                "trigger_keywords": normalize_keywords(body.trigger_keywords),
                 "reply_text": body.reply_text,
                 "is_active": True,
             }
@@ -81,6 +85,8 @@ async def update_auto_reply(
     sb = get_supabase()
     profile_id = get_profile_id(sb, current_user)
     changes = body.model_dump(exclude_none=True)
+    if "trigger_keywords" in changes:
+        changes["trigger_keywords"] = normalize_keywords(changes["trigger_keywords"])
 
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update")

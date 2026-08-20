@@ -66,6 +66,38 @@ ALTER TABLE automation_tasks
 ALTER TABLE automation_tasks
     ADD COLUMN IF NOT EXISTS check_subscription BOOLEAN NOT NULL DEFAULT TRUE;
 
+-- Кодовые слова только в payload.trigger_keywords (массив).
+-- payload.trigger_keyword больше не используется.
+UPDATE automation_tasks
+SET payload = jsonb_set(
+    COALESCE(payload, '{}'::jsonb),
+    '{trigger_keywords}',
+    jsonb_build_array(trim(payload->>'trigger_keyword')),
+    true
+)
+WHERE COALESCE(payload, '{}'::jsonb) ? 'trigger_keyword'
+  AND length(trim(COALESCE(payload->>'trigger_keyword', ''))) > 0
+  AND (
+    jsonb_typeof(payload->'trigger_keywords') IS DISTINCT FROM 'array'
+    OR jsonb_array_length(COALESCE(payload->'trigger_keywords', '[]'::jsonb)) = 0
+  );
+
+UPDATE automation_tasks
+SET payload = payload - 'trigger_keyword'
+WHERE payload ? 'trigger_keyword';
+
+ALTER TABLE automation_funnels
+    ADD COLUMN IF NOT EXISTS trigger_keywords JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+UPDATE automation_funnels
+SET trigger_keywords = jsonb_build_array(trim(trigger_keyword))
+WHERE trigger_keyword IS NOT NULL
+  AND length(trim(trigger_keyword)) > 0
+  AND trigger_keywords = '[]'::jsonb;
+
+ALTER TABLE automation_funnels
+    DROP COLUMN IF EXISTS trigger_keyword;
+
 -- Автоматическое обновление updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

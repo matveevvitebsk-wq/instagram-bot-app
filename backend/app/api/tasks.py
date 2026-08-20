@@ -8,6 +8,7 @@ import httpx
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
 from app.core.config import get_settings
+from app.services.task_payload import normalize_task_payload, sanitize_task_row
 
 router = APIRouter()
 settings = get_settings()
@@ -97,7 +98,8 @@ async def list_tasks(
         offset, offset + limit - 1
     ).execute()
 
-    return {"tasks": result.data, "total": len(result.data)}
+    tasks = [sanitize_task_row(row) for row in (result.data or [])]
+    return {"tasks": tasks, "total": len(tasks)}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -113,6 +115,7 @@ async def create_task(
     sb = get_supabase()
     telegram_id = current_user["telegram_id"]
     profile_id = get_profile_id(sb, current_user)
+    payload = normalize_task_payload(body.payload)
 
     # Создаём запись задачи в Supabase
     task_record = {
@@ -120,7 +123,7 @@ async def create_task(
         "ig_account_id": body.ig_account_id,
         "task_type": body.task_type,
         "status": "pending",
-        "payload": body.payload,
+        "payload": payload,
         "schedule_at": body.schedule_at,
         "comment_on_post": bool(body.comment_on_post),
         "exact_match": bool(body.exact_match),
@@ -146,7 +149,7 @@ async def create_task(
                         "task_id": task["id"],
                         "task_type": body.task_type,
                         "ig_account_id": body.ig_account_id,
-                        "payload": body.payload,
+                        "payload": payload,
                         "owner_telegram_id": telegram_id,
                     },
                     headers={"Authorization": f"Bearer {settings.n8n_api_key}"}
@@ -161,7 +164,7 @@ async def create_task(
                 exc_info=True,
             )
 
-    return task
+    return sanitize_task_row(task)
 
 
 @router.patch("/{task_id}")
@@ -175,7 +178,7 @@ async def update_task(
     profile_id = get_profile_id(sb, current_user)
 
     update_data = {
-        "payload": body.payload,
+        "payload": normalize_task_payload(body.payload),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     if body.comment_on_post is not None:
@@ -200,7 +203,7 @@ async def update_task(
             status_code=409,
             detail="Выполняющуюся задачу нельзя редактировать"
         )
-    return result.data[0]
+    return sanitize_task_row(result.data[0])
 
 
 @router.patch("/{task_id}/toggle")
@@ -221,7 +224,7 @@ async def toggle_auto_reply_task(
     }:
         raise HTTPException(status_code=404, detail="Авто-ответ не найден")
 
-    payload = current.data.get("payload") or {}
+    payload = normalize_task_payload(current.data.get("payload") or {})
     is_active = payload.get(
         "is_active", current.data.get("status") != "cancelled"
     )
@@ -236,7 +239,7 @@ async def toggle_auto_reply_task(
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Авто-ответ не найден")
-    return result.data[0]
+    return sanitize_task_row(result.data[0])
 
 
 @router.patch("/{task_id}/cancel")
