@@ -110,3 +110,14 @@ test('ищет trigger_keywords во всех строках массива из
   const items = runScript(inputOf([task, other]), $);
   assert.equal(items[0].json.text, 'Супер🔥');
 });
+
+test('Супер🔥 не равен супер!👏 при exact_match', () => {
+  const superTask = {
+    ...task,
+    payload: { ...task.payload, trigger_keywords: ['супер!👏', 'офигеть'] },
+  };
+  const items = runScript(inputOf([superTask]), $);
+  assert.equal(items[0].json.text, '');
+  assert.equal(items[0].json.comment, 'Супер🔥');
+  assert.deepEqual(items[0].json.checked[0].keywords, ['супер!👏', 'офигеть']);
+});
