@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import api from '@/utils/api';
 import { supabase } from '@/utils/supabase';
+import {
+  formatKeywordsLabel,
+  keywordsFromPayload,
+} from '@/components/KeywordChipsInput';
 
 interface TaskPayload {
-  trigger_keyword?: string;
+  trigger_keywords?: string[];
   reply_text?: string;
   is_active?: boolean;
   [key: string]: unknown;
@@ -128,7 +132,7 @@ export default function Tasks() {
         task_type: selectedType,
         ig_account_id: 'default',
         payload: {
-          trigger_keyword: keyword.trim().toLowerCase(),
+          trigger_keywords: [keyword.trim().toLowerCase()],
           reply_text: replyText.trim(),
         },
       });
@@ -180,7 +184,7 @@ export default function Tasks() {
 
   function startEditing(task: Task) {
     setEditingTaskId(task.id);
-    setEditKeyword(task.payload?.trigger_keyword ?? '');
+    setEditKeyword(keywordsFromPayload(task.payload ?? {}).join(', '));
     setEditReplyText(task.payload?.reply_text ?? '');
     setError(null);
   }
@@ -191,9 +195,13 @@ export default function Tasks() {
     setError(null);
     const payload = {
       ...task.payload,
-      trigger_keyword: editKeyword.trim().toLowerCase(),
+      trigger_keywords: editKeyword
+        .split(/[\n,]+/)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
       reply_text: editReplyText.trim(),
     };
+    delete payload.trigger_keyword;
 
     try {
       const response = await api.patch(`/api/tasks/${task.id}`, { payload });
@@ -391,6 +399,9 @@ export default function Tasks() {
               EDITABLE_STATUSES.has(task.status);
             const canDelete = task.status !== 'running';
             const isEditing = editingTaskId === task.id;
+            const keywordsLabel = formatKeywordsLabel(
+              keywordsFromPayload(task.payload ?? {}),
+            );
 
             return (
               <div
@@ -410,12 +421,12 @@ export default function Tasks() {
                     >
                       {typeConfig.label}
                     </p>
-                    {task.payload?.trigger_keyword && (
+                    {keywordsLabel !== 'Без кодового слова' && (
                       <p
                         className='text-xs truncate mt-0.5'
                         style={{ color: 'var(--tg-theme-hint-color)' }}
                       >
-                        {task.payload.trigger_keyword}
+                        {keywordsLabel}
                       </p>
                     )}
                     <p

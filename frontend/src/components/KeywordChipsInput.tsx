@@ -217,10 +217,9 @@ export default function KeywordChipsInput({
   );
 }
 
-/** Normalize payload keywords from legacy single string or array. */
+/** Normalize payload keywords from trigger_keywords array. */
 export function keywordsFromPayload(payload: {
   trigger_keywords?: unknown;
-  trigger_keyword?: unknown;
 }): string[] {
   if (Array.isArray(payload.trigger_keywords)) {
     return payload.trigger_keywords
@@ -228,8 +227,8 @@ export function keywordsFromPayload(payload: {
       .map((item) => item.trim())
       .filter(Boolean);
   }
-  if (typeof payload.trigger_keyword === 'string' && payload.trigger_keyword.trim()) {
-    return [payload.trigger_keyword.trim()];
+  if (typeof payload.trigger_keywords === 'string' && payload.trigger_keywords.trim()) {
+    return [payload.trigger_keywords.trim()];
   }
   return [];
 }
