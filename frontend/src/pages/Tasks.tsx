@@ -193,7 +193,7 @@ export default function Tasks() {
     if (!editKeyword.trim()) return;
     setSavingTaskId(task.id);
     setError(null);
-    const payload = {
+    const payload: TaskPayload & { trigger_keyword?: unknown } = {
       ...task.payload,
       trigger_keywords: editKeyword
         .split(/[\n,]+/)
