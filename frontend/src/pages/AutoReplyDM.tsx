@@ -8,6 +8,11 @@ import KeywordChipsInput, {
 import SelectedMediaPicker, {
   selectedMediaIdsFromTask,
 } from '@/components/SelectedMediaPicker';
+import ReplyDmComposer, {
+  ReplyAttachment,
+  attachmentsFromPayload,
+  linksFromPayload,
+} from '@/components/ReplyDmComposer';
 
 interface AutoReplyTask {
   id: string;
@@ -22,6 +27,8 @@ interface AutoReplyTask {
     trigger_keywords?: string[];
     exact_match?: boolean;
     reply_text?: string;
+    reply_links?: string[];
+    reply_attachments?: ReplyAttachment[];
     content_type?: string;
     selected_media_ids?: string[];
     media_link?: string | null;
@@ -50,6 +57,7 @@ export default function AutoReplyDM() {
   const [autoReplies, setAutoReplies] = useState<AutoReplyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [exactMatch, setExactMatch] = useState(true);
@@ -57,6 +65,10 @@ export default function AutoReplyDM() {
   const [checkSubscription, setCheckSubscription] = useState(true);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
+  const [replyLinks, setReplyLinks] = useState<string[]>([]);
+  const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>(
+    [],
+  );
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -100,6 +112,9 @@ export default function AutoReplyDM() {
     setCheckSubscription(true);
     setSelectedMediaIds([]);
     setReplyText('');
+    setReplyLinks([]);
+    setReplyAttachments([]);
+    setStep(1);
     setEditingId(null);
     setShowForm(false);
   }
@@ -115,6 +130,9 @@ export default function AutoReplyDM() {
     setCheckSubscription(true);
     setSelectedMediaIds([]);
     setReplyText('');
+    setReplyLinks([]);
+    setReplyAttachments([]);
+    setStep(1);
     setEditingId(null);
     setShowForm(true);
     setError(null);
@@ -129,9 +147,28 @@ export default function AutoReplyDM() {
     // Checkbox on → all posts; off → selected posts only (picker).
     setSelectedMediaIds(onAllPosts ? [] : selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
+    setReplyLinks(linksFromPayload(task.payload ?? {}));
+    setReplyAttachments(attachmentsFromPayload(task.payload ?? {}));
+    setStep(1);
     setEditingId(task.id);
     setShowForm(true);
     setError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function goToStep(nextStep: number) {
+    setError(null);
+    if (nextStep === 2) {
+      if (keywords.length === 0) {
+        setError('Добавьте хотя бы одно кодовое слово');
+        return;
+      }
+      if (!commentOnPost && selectedMediaIds.length === 0) {
+        setError('Выберите хотя бы одну публикацию');
+        return;
+      }
+    }
+    setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -152,12 +189,17 @@ export default function AutoReplyDM() {
       content_type: useAllPosts ? 'ALL' : 'OPTIONAL',
       selected_media_ids: mediaIds,
       reply_text: replyText.trim(),
+      reply_links: replyLinks,
+      reply_attachments: replyAttachments,
     };
 
     try {
       if (editingId) {
         const currentTask = autoReplies.find((task) => task.id === editingId);
-        const mergedPayload = { ...currentTask?.payload, ...payload };
+        const mergedPayload: Record<string, unknown> = {
+          ...currentTask?.payload,
+          ...payload,
+        };
         delete mergedPayload.trigger_keyword;
         const res = await api.patch(`/api/tasks/${editingId}`, {
           payload: mergedPayload,
@@ -290,7 +332,7 @@ export default function AutoReplyDM() {
               className='text-xs font-medium'
               style={{ color: 'var(--tg-theme-hint-color)' }}
             >
-              {editingId ? 'РЕДАКТИРОВАНИЕ АВТО-ОТВЕТА' : 'НОВЫЙ АВТО-ОТВЕТ'}
+              {editingId ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ АВТО-ОТВЕТ'} · ШАГ {step} ИЗ 2
             </p>
             {editingId && (
               <button
@@ -313,6 +355,8 @@ export default function AutoReplyDM() {
             </div>
           )}
 
+          {step === 1 && (
+            <>
           <div
             className='rounded-xl px-3 py-3 flex items-center justify-between gap-3'
             style={{
@@ -448,47 +492,63 @@ export default function AutoReplyDM() {
             )}
           </div>
 
-          <div>
-            <label
-              className='text-xs mb-1.5 block font-medium'
-              style={{ color: 'var(--tg-theme-hint-color)' }}
-            >
-              Текст ответного DM
-            </label>
-            <textarea
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder='Привет! Вот наш прайс: ...'
-              rows={3}
-              className='w-full px-3 py-2 rounded-xl text-sm outline-none resize-none'
-              style={{
-                background: 'var(--tg-theme-bg-color)',
-                color: 'var(--tg-theme-text-color)',
-                border: '1px solid var(--tg-theme-hint-color)',
-              }}
-            />
-          </div>
+              <div className='flex justify-end'>
+                <button
+                  type='button'
+                  onClick={() => goToStep(2)}
+                  className='px-8 py-2.5 rounded-xl text-sm font-medium'
+                  style={{
+                    background: 'var(--tg-theme-button-color)',
+                    color: 'var(--tg-theme-button-text-color)',
+                  }}
+                >
+                  Далее
+                </button>
+              </div>
+            </>
+          )}
 
-          <button
-            onClick={() => void saveAutoReply()}
-            disabled={
-              saving ||
-              keywords.length === 0 ||
-              !replyText.trim() ||
-              (!commentOnPost && selectedMediaIds.length === 0)
-            }
-            className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
-            style={{
-              background: 'var(--tg-theme-button-color)',
-              color: 'var(--tg-theme-button-text-color)',
-            }}
-          >
-            {saving
-              ? 'Сохранение...'
-              : editingId
-                ? 'Сохранить изменения'
-                : 'Создать авто-ответ'}
-          </button>
+          {step === 2 && (
+            <>
+              <ReplyDmComposer
+                replyText={replyText}
+                onReplyTextChange={setReplyText}
+                replyLinks={replyLinks}
+                onReplyLinksChange={setReplyLinks}
+                replyAttachments={replyAttachments}
+                onReplyAttachmentsChange={setReplyAttachments}
+                disabled={saving}
+                onError={setError}
+              />
+
+              <div className='flex gap-3'>
+                <button
+                  type='button'
+                  onClick={() => goToStep(1)}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium'
+                  style={{ border: '1px solid var(--tg-theme-hint-color)' }}
+                >
+                  Назад
+                </button>
+                <button
+                  type='button'
+                  onClick={() => void saveAutoReply()}
+                  disabled={saving || !replyText.trim()}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
+                  style={{
+                    background: 'var(--tg-theme-button-color)',
+                    color: 'var(--tg-theme-button-text-color)',
+                  }}
+                >
+                  {saving
+                    ? 'Сохранение...'
+                    : editingId
+                      ? 'Сохранить изменения'
+                      : 'Создать авто-ответ'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -519,6 +579,8 @@ export default function AutoReplyDM() {
           {autoReplies.map((rule) => {
             const ruleKeywords = keywordsFromPayload(rule.payload ?? {});
             const ruleMediaCount = selectedMediaIdsFromTask(rule).length;
+            const ruleAttachments = attachmentsFromPayload(rule.payload ?? {});
+            const ruleLinks = linksFromPayload(rule.payload ?? {});
             return (
               <div
                 key={rule.id}
@@ -624,6 +686,21 @@ export default function AutoReplyDM() {
                 >
                   {rule.payload?.reply_text ?? ''}
                 </p>
+                {(ruleAttachments.length > 0 || ruleLinks.length > 0) && (
+                  <p
+                    className='text-[11px] mb-3'
+                    style={{ color: 'var(--tg-theme-hint-color)' }}
+                  >
+                    {[
+                      ruleAttachments.length
+                        ? `файлов: ${ruleAttachments.length}`
+                        : null,
+                      ruleLinks.length ? `ссылок: ${ruleLinks.length}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                )}
                 <div className='flex items-end justify-between gap-3'>
                   <span
                     className='text-xs'
