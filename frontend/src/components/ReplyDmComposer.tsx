@@ -1,5 +1,4 @@
-import { ChangeEvent, KeyboardEvent, useRef, useState } from 'react';
-import api from '@/utils/api';
+import { KeyboardEvent, useState } from 'react';
 
 export interface ReplyAttachment {
   name: string;
@@ -8,7 +7,8 @@ export interface ReplyAttachment {
   size: number;
 }
 
-const EMOJIS = ['❤️', '✅', '🔥', '🙌', '🎁', '✨', '😊', '👇', '📩', '🚀', '💬', '⭐'];
+// 2026-08-31 cursor photo/GIF/emoji/file controls are temporarily inactive
+// const EMOJIS = ['❤️', '✅', '🔥', '🙌', '🎁', '✨', '😊', '👇', '📩', '🚀', '💬', '⭐'];
 
 export function attachmentsFromPayload(payload: {
   reply_attachments?: unknown;
@@ -54,11 +54,12 @@ export default function ReplyDmComposer({
   onError,
 }: ReplyDmComposerProps) {
   const [linkDraft, setLinkDraft] = useState('');
-  const [showEmojis, setShowEmojis] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const gifInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // 2026-08-31 cursor photo/GIF/emoji/file controls are temporarily inactive
+  // const [showEmojis, setShowEmojis] = useState(false);
+  // const [uploading, setUploading] = useState(false);
+  // const photoInputRef = useRef<HTMLInputElement>(null);
+  // const gifInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
 
   function addLink() {
     const rawLink = linkDraft.trim();
@@ -91,34 +92,35 @@ export default function ReplyDmComposer({
     }
   }
 
-  async function uploadAttachment(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setUploading(true);
-    onError(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await api.post('/api/tasks/attachments', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      });
-      onReplyAttachmentsChange([...replyAttachments, response.data]);
-    } catch (requestError: unknown) {
-      const detail =
-        typeof requestError === 'object' &&
-        requestError &&
-        'response' in requestError
-          ? (requestError as { response?: { data?: { detail?: string } } })
-              .response?.data?.detail
-          : null;
-      onError(detail || 'Не удалось загрузить файл');
-    } finally {
-      setUploading(false);
-    }
-  }
+  // 2026-08-31 cursor photo/GIF/emoji/file uploads are temporarily inactive
+  // async function uploadAttachment(event: ChangeEvent<HTMLInputElement>) {
+  //   const file = event.target.files?.[0];
+  //   event.target.value = '';
+  //   if (!file) return;
+  //
+  //   setUploading(true);
+  //   onError(null);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('file', file);
+  //     const response = await api.post('/api/tasks/attachments', formData, {
+  //       headers: { 'Content-Type': 'multipart/form-data' },
+  //       timeout: 30000,
+  //     });
+  //     onReplyAttachmentsChange([...replyAttachments, response.data]);
+  //   } catch (requestError: unknown) {
+  //     const detail =
+  //       typeof requestError === 'object' &&
+  //       requestError &&
+  //       'response' in requestError
+  //         ? (requestError as { response?: { data?: { detail?: string } } })
+  //             .response?.data?.detail
+  //         : null;
+  //     onError(detail || 'Не удалось загрузить файл');
+  //   } finally {
+  //     setUploading(false);
+  //   }
+  // }
 
   return (
     <div className='space-y-3'>
@@ -150,6 +152,7 @@ export default function ReplyDmComposer({
         />
       </div>
 
+      {/* 2026-08-31 cursor photo/GIF/emoji/file controls are temporarily inactive
       <div className='flex flex-wrap gap-2'>
         <button
           type='button'
@@ -229,12 +232,41 @@ export default function ReplyDmComposer({
           ))}
         </div>
       )}
-
-      {uploading && (
-        <p className='text-xs' style={{ color: 'var(--tg-theme-hint-color)' }}>
-          Загрузка файла...
-        </p>
-      )}
+      */}
+      <div className='flex flex-wrap gap-2'>
+        <button
+          type='button'
+          disabled
+          className='px-3 py-2 rounded-lg text-xs font-medium opacity-50 cursor-not-allowed'
+          style={{ background: 'var(--tg-theme-bg-color)' }}
+        >
+          📷 Фото
+        </button>
+        <button
+          type='button'
+          disabled
+          className='px-3 py-2 rounded-lg text-xs font-medium opacity-50 cursor-not-allowed'
+          style={{ background: 'var(--tg-theme-bg-color)' }}
+        >
+          GIF
+        </button>
+        <button
+          type='button'
+          disabled
+          className='px-3 py-2 rounded-lg text-xs font-medium opacity-50 cursor-not-allowed'
+          style={{ background: 'var(--tg-theme-bg-color)' }}
+        >
+          😊 Смайлики
+        </button>
+        <button
+          type='button'
+          disabled
+          className='px-3 py-2 rounded-lg text-xs font-medium opacity-50 cursor-not-allowed'
+          style={{ background: 'var(--tg-theme-bg-color)' }}
+        >
+          📎 Файл
+        </button>
+      </div>
 
       {replyAttachments.map((attachment, index) => (
         <div
