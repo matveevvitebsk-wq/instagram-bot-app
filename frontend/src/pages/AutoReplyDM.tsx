@@ -294,24 +294,26 @@ export default function AutoReplyDM() {
 
   return (
     <div className='p-4 pb-24 max-w-lg mx-auto'>
-      <div className='flex items-center justify-between gap-3 mb-4'>
-        <h1
-          className='text-lg font-semibold'
-          style={{ color: 'var(--tg-theme-text-color)' }}
-        >
-          Авто-ответ в DM
-        </h1>
-        <button
-          onClick={openCreateForm}
-          className='text-sm px-3 py-1.5 rounded-lg font-medium shrink-0'
-          style={{
-            background: 'var(--tg-theme-button-color)',
-            color: 'var(--tg-theme-button-text-color)',
-          }}
-        >
-          {showForm && !editingId ? 'Отмена' : '+ Создать'}
-        </button>
-      </div>
+      {!(showForm && editingId) && (
+        <div className='flex items-center justify-between gap-3 mb-4'>
+          <h1
+            className='text-lg font-semibold'
+            style={{ color: 'var(--tg-theme-text-color)' }}
+          >
+            Авто-ответ в DM
+          </h1>
+          <button
+            onClick={openCreateForm}
+            className='text-sm px-3 py-1.5 rounded-lg font-medium shrink-0'
+            style={{
+              background: 'var(--tg-theme-button-color)',
+              color: 'var(--tg-theme-button-text-color)',
+            }}
+          >
+            {showForm && !editingId ? 'Отмена' : '+ Создать'}
+          </button>
+        </div>
+      )}
 
       {error && (
         <div
@@ -521,11 +523,11 @@ export default function AutoReplyDM() {
                 onError={setError}
               />
 
-              <div className='flex gap-3'>
+              <div className='flex flex-col gap-3'>
                 <button
                   type='button'
                   onClick={() => goToStep(1)}
-                  className='flex-1 py-2.5 rounded-xl text-sm font-medium'
+                  className='w-full py-2.5 rounded-xl text-sm font-medium'
                   style={{ border: '1px solid var(--tg-theme-hint-color)' }}
                 >
                   Назад
@@ -534,7 +536,7 @@ export default function AutoReplyDM() {
                   type='button'
                   onClick={() => void saveAutoReply()}
                   disabled={saving || !replyText.trim()}
-                  className='flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
+                  className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
                   style={{
                     background: 'var(--tg-theme-button-color)',
                     color: 'var(--tg-theme-button-text-color)',
