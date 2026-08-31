@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 import logging
 import httpx
 
@@ -13,6 +15,19 @@ from app.services.task_payload import normalize_task_payload, sanitize_task_row
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+ATTACHMENTS_BUCKET = "automation-attachments"
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+ALLOWED_ATTACHMENT_TYPES = {
+    "application/msword",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/plain",
+}
 
 # ─── Schemas ──────────────────────────────────────────────────────────────
 
@@ -165,6 +180,52 @@ async def create_task(
             )
 
     return sanitize_task_row(task)
+
+
+@router.post("/attachments")
+async def upload_task_attachment(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Uploads a DM attachment and returns payload-safe metadata."""
+    content_type = (file.content_type or "application/octet-stream").lower()
+    if content_type not in ALLOWED_ATTACHMENT_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail="Поддерживаются изображения, GIF, PDF, DOC, DOCX и TXT",
+        )
+
+    content = await file.read(MAX_ATTACHMENT_SIZE + 1)
+    if not content:
+        raise HTTPException(status_code=400, detail="Файл пуст")
+    if len(content) > MAX_ATTACHMENT_SIZE:
+        raise HTTPException(status_code=413, detail="Максимальный размер файла — 10 МБ")
+
+    sb = get_supabase()
+    profile_id = get_profile_id(sb, current_user)
+    suffix = Path(file.filename or "").suffix.lower()[:10]
+    storage_path = f"{profile_id}/{uuid4().hex}{suffix}"
+
+    try:
+        sb.storage.from_(ATTACHMENTS_BUCKET).upload(
+            path=storage_path,
+            file=content,
+            file_options={"content-type": content_type, "upsert": "false"},
+        )
+        public_url = sb.storage.from_(ATTACHMENTS_BUCKET).get_public_url(storage_path)
+    except Exception as exc:
+        logger.exception("Unable to upload automation attachment")
+        raise HTTPException(
+            status_code=502,
+            detail="Не удалось загрузить файл",
+        ) from exc
+
+    return {
+        "name": file.filename or "attachment",
+        "url": public_url,
+        "content_type": content_type,
+        "size": len(content),
+    }
 
 
 @router.patch("/{task_id}")
