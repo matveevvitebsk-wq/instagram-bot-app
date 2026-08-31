@@ -1,5 +1,3 @@
-import { KeyboardEvent, useState } from 'react';
-
 export interface ReplyAttachment {
   name: string;
   url: string;
@@ -51,46 +49,46 @@ export default function ReplyDmComposer({
   replyAttachments,
   onReplyAttachmentsChange,
   disabled = false,
-  onError,
 }: ReplyDmComposerProps) {
-  const [linkDraft, setLinkDraft] = useState('');
-  // 2026-08-31 cursor photo/GIF/emoji/file controls are temporarily inactive
+  // 2026-08-31 cursor photo/GIF/emoji/file/link controls are temporarily inactive
+  // const [linkDraft, setLinkDraft] = useState('');
   // const [showEmojis, setShowEmojis] = useState(false);
   // const [uploading, setUploading] = useState(false);
   // const photoInputRef = useRef<HTMLInputElement>(null);
   // const gifInputRef = useRef<HTMLInputElement>(null);
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function addLink() {
-    const rawLink = linkDraft.trim();
-    if (!rawLink) return;
-    const normalizedLink = /^https?:\/\//i.test(rawLink)
-      ? rawLink
-      : `https://${rawLink}`;
-    try {
-      const parsed = new URL(normalizedLink);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
-      const href = parsed.toString();
-      if (!replyLinks.includes(href)) {
-        onReplyLinksChange([...replyLinks, href]);
-      }
-      const spacer = replyText && !replyText.endsWith(' ') ? ' ' : '';
-      if (!replyText.includes(href)) {
-        onReplyTextChange(`${replyText}${spacer}${href}`);
-      }
-      setLinkDraft('');
-      onError(null);
-    } catch {
-      onError('Введите корректную ссылку');
-    }
-  }
-
-  function handleLinkKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      addLink();
-    }
-  }
+  // 2026-08-31 cursor link form is temporarily inactive
+  // function addLink() {
+  //   const rawLink = linkDraft.trim();
+  //   if (!rawLink) return;
+  //   const normalizedLink = /^https?:\/\//i.test(rawLink)
+  //     ? rawLink
+  //     : `https://${rawLink}`;
+  //   try {
+  //     const parsed = new URL(normalizedLink);
+  //     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+  //     const href = parsed.toString();
+  //     if (!replyLinks.includes(href)) {
+  //       onReplyLinksChange([...replyLinks, href]);
+  //     }
+  //     const spacer = replyText && !replyText.endsWith(' ') ? ' ' : '';
+  //     if (!replyText.includes(href)) {
+  //       onReplyTextChange(`${replyText}${spacer}${href}`);
+  //     }
+  //     setLinkDraft('');
+  //     onError(null);
+  //   } catch {
+  //     onError('Введите корректную ссылку');
+  //   }
+  // }
+  //
+  // function handleLinkKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  //   if (event.key === 'Enter') {
+  //     event.preventDefault();
+  //     addLink();
+  //   }
+  // }
 
   // 2026-08-31 cursor photo/GIF/emoji/file uploads are temporarily inactive
   // async function uploadAttachment(event: ChangeEvent<HTMLInputElement>) {
@@ -291,6 +289,7 @@ export default function ReplyDmComposer({
         </div>
       ))}
 
+      {/* 2026-08-31 cursor link form is temporarily inactive
       <div className='flex gap-2'>
         <input
           type='url'
@@ -311,6 +310,32 @@ export default function ReplyDmComposer({
           disabled={disabled}
           onClick={addLink}
           className='px-3 rounded-xl text-sm font-medium disabled:opacity-50'
+          style={{
+            color: 'var(--tg-theme-button-color)',
+            border: '1px solid var(--tg-theme-button-color)',
+          }}
+        >
+          + Ссылка
+        </button>
+      </div>
+      */}
+      <div className='flex gap-2'>
+        <input
+          type='url'
+          value=''
+          disabled
+          placeholder='https://example.com'
+          className='min-w-0 flex-1 px-3 py-2 rounded-xl text-sm outline-none opacity-50 cursor-not-allowed'
+          style={{
+            background: 'var(--tg-theme-bg-color)',
+            color: 'var(--tg-theme-text-color)',
+            border: '1px solid var(--tg-theme-hint-color)',
+          }}
+        />
+        <button
+          type='button'
+          disabled
+          className='px-3 rounded-xl text-sm font-medium opacity-50 cursor-not-allowed'
           style={{
             color: 'var(--tg-theme-button-color)',
             border: '1px solid var(--tg-theme-button-color)',
