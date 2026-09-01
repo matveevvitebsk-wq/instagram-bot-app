@@ -34,7 +34,7 @@ async def list_accounts(current_user: dict = Depends(get_current_user)):
     sb = get_supabase()
     profile_id = _profile_id(sb, current_user)
     result = sb.table("ig_accounts").select(
-        "id,username,page_id,is_active,created_at"
+        "id,username,display_name,profile_picture_url,page_id,is_active,created_at"
     ).eq(
         "owner_id", profile_id
     ).eq("is_active", True).execute()
