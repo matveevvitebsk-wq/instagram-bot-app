@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
+ACCOUNT_PUBLIC_FIELDS = (
+    "id",
+    "username",
+    "display_name",
+    "profile_picture_url",
+    "page_id",
+    "is_active",
+    "created_at",
+)
+
 
 class LinkAccountRequest(BaseModel):
     page_id: str
@@ -29,17 +39,75 @@ def _profile_id(sb, current_user: dict) -> str:
     return profile.data["id"]
 
 
+async def _refresh_instagram_profile(sb, account: dict) -> dict:
+    """Refresh short-lived Instagram CDN profile data before returning it."""
+    access_token = account.get("access_token")
+    if not access_token:
+        return account
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"https://graph.instagram.com/{settings.META_API_VERSION}/me",
+                params={
+                    "fields": "user_id,username,name,profile_picture_url",
+                    "access_token": access_token,
+                },
+            )
+        if response.status_code != 200:
+            logger.warning(
+                "Instagram profile refresh failed account=%s status=%s",
+                account.get("id"),
+                response.status_code,
+            )
+            return account
+
+        profile = response.json()
+        refreshed = {
+            "username": profile.get("username") or account.get("username"),
+            "display_name": profile.get("name") or account.get("display_name"),
+            "profile_picture_url": (
+                profile.get("profile_picture_url")
+                or account.get("profile_picture_url")
+            ),
+        }
+        changed = {
+            key: value
+            for key, value in refreshed.items()
+            if value and value != account.get(key)
+        }
+        if changed:
+            sb.table("ig_accounts").update(changed).eq(
+                "id", account["id"]
+            ).execute()
+            account = {**account, **changed}
+        return account
+    except (httpx.HTTPError, ValueError):
+        logger.exception(
+            "Unable to refresh Instagram profile for account %s",
+            account.get("id"),
+        )
+        return account
+
+
 @router.get("/")
 async def list_accounts(current_user: dict = Depends(get_current_user)):
     sb = get_supabase()
     profile_id = _profile_id(sb, current_user)
     result = sb.table("ig_accounts").select(
-        "id,username,display_name,profile_picture_url,page_id,is_active,created_at"
+        "id,username,display_name,profile_picture_url,page_id,is_active,"
+        "created_at,access_token"
     ).eq(
         "owner_id", profile_id
     ).eq("is_active", True).execute()
-    logger.info(f"[ACCOUNTS] Returning: {result.data}")
-    return result.data
+    accounts = []
+    for row in result.data or []:
+        refreshed = await _refresh_instagram_profile(sb, dict(row))
+        accounts.append(
+            {field: refreshed.get(field) for field in ACCOUNT_PUBLIC_FIELDS}
+        )
+    logger.info("[ACCOUNTS] Returning %s active account(s)", len(accounts))
+    return accounts
 
 
 @router.get("/{account_id}/media")
