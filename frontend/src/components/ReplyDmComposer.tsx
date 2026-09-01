@@ -30,9 +30,24 @@ export function linksFromPayload(payload: { reply_links?: unknown }): string[] {
   );
 }
 
+export function isValidDmButtonUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 interface ReplyDmComposerProps {
   replyText: string;
   onReplyTextChange: (value: string) => void;
+  dmButtonEnabled: boolean;
+  onDmButtonEnabledChange: (value: boolean) => void;
+  dmButtonText: string;
+  onDmButtonTextChange: (value: string) => void;
+  dmButtonUrl: string;
+  onDmButtonUrlChange: (value: string) => void;
   replyLinks: string[];
   onReplyLinksChange: (value: string[]) => void;
   replyAttachments: ReplyAttachment[];
@@ -44,6 +59,12 @@ interface ReplyDmComposerProps {
 export default function ReplyDmComposer({
   replyText,
   onReplyTextChange,
+  dmButtonEnabled,
+  onDmButtonEnabledChange,
+  dmButtonText,
+  onDmButtonTextChange,
+  dmButtonUrl,
+  onDmButtonUrlChange,
   replyLinks,
   onReplyLinksChange,
   replyAttachments,
@@ -148,6 +169,122 @@ export default function ReplyDmComposer({
             border: '1px solid var(--tg-theme-hint-color)',
           }}
         />
+      </div>
+
+      <div
+        className='rounded-xl p-3 space-y-3'
+        style={{
+          background: 'var(--tg-theme-bg-color)',
+          border: '1px solid rgba(112, 132, 153, 0.35)',
+        }}
+      >
+        <div className='flex items-center justify-between gap-3'>
+          <div className='min-w-0'>
+            <p
+              className='text-sm font-medium'
+              style={{ color: 'var(--tg-theme-text-color)' }}
+            >
+              Кнопка со ссылкой
+            </p>
+            <p
+              className='text-xs mt-0.5'
+              style={{ color: 'var(--tg-theme-hint-color)' }}
+            >
+              Например, для фразы «Жми кнопку ниже» укажите текст «Жми»
+            </p>
+          </div>
+          <button
+            type='button'
+            role='switch'
+            aria-checked={dmButtonEnabled}
+            aria-label='Кнопка со ссылкой в Direct'
+            disabled={disabled}
+            onClick={() => onDmButtonEnabledChange(!dmButtonEnabled)}
+            className='relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 shrink-0'
+            style={{
+              background: dmButtonEnabled
+                ? 'var(--tg-theme-button-color)'
+                : 'var(--tg-theme-hint-color)',
+            }}
+          >
+            <span
+              className='inline-block h-5 w-5 rounded-full bg-white transition-transform'
+              style={{
+                transform: dmButtonEnabled
+                  ? 'translateX(26px)'
+                  : 'translateX(4px)',
+              }}
+            />
+          </button>
+        </div>
+
+        <div>
+          <label
+            className='text-xs mb-1.5 block'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            Текст кнопки
+          </label>
+          <input
+            type='text'
+            value={dmButtonText}
+            maxLength={20}
+            onChange={(event) => onDmButtonTextChange(event.target.value)}
+            placeholder='Жми'
+            disabled={disabled || !dmButtonEnabled}
+            className='w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50'
+            style={{
+              background: 'var(--tg-theme-secondary-bg-color)',
+              color: 'var(--tg-theme-text-color)',
+              border: '1px solid rgba(112, 132, 153, 0.35)',
+            }}
+          />
+          <p
+            className='text-[10px] text-right mt-1'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            {dmButtonText.length} / 20
+          </p>
+        </div>
+
+        <div>
+          <label
+            className='text-xs mb-1.5 block'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            Ссылка кнопки
+          </label>
+          <input
+            type='url'
+            value={dmButtonUrl}
+            onChange={(event) => onDmButtonUrlChange(event.target.value)}
+            placeholder='https://site.ru или https://t.me/group'
+            disabled={disabled || !dmButtonEnabled}
+            className='w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50'
+            style={{
+              background: 'var(--tg-theme-secondary-bg-color)',
+              color: 'var(--tg-theme-text-color)',
+              border: '1px solid rgba(112, 132, 153, 0.35)',
+            }}
+          />
+        </div>
+
+        {dmButtonEnabled &&
+          dmButtonText.trim() &&
+          isValidDmButtonUrl(dmButtonUrl) && (
+          <a
+            href={dmButtonUrl}
+            target='_blank'
+            rel='noreferrer'
+            className='block w-full py-2.5 rounded-xl text-center text-sm font-medium'
+            style={{
+              background: 'var(--tg-theme-button-color)',
+              color: 'var(--tg-theme-button-text-color)',
+            }}
+          >
+            {dmButtonText.trim()}
+          </a>
+        )}
       </div>
 
       {/* 2026-08-31 cursor photo/GIF/emoji/file controls are temporarily inactive
