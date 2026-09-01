@@ -5,6 +5,40 @@ import type { IgMediaItem } from '@/components/SelectedMediaPicker';
 
 type PreviewTab = 'message' | 'comment';
 
+function ChevronLeftIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none' aria-hidden>
+      <path d='m15 18-6-6 6-6' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg width='19' height='19' viewBox='0 0 24 24' fill='none' aria-hidden>
+      <path d='M7.2 3.5 9.7 7l-1.8 2.1c1.2 2.5 2.5 3.8 5 5l2.1-1.8 3.5 2.5-.8 4c-.2.9-1 1.5-1.9 1.5C9 19.9 4.1 15 3.7 8.2c0-.9.6-1.7 1.5-1.9l2-.4Z' stroke='currentColor' strokeWidth='1.65' strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+  );
+}
+
+function VideoIcon() {
+  return (
+    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' aria-hidden>
+      <rect x='3' y='6' width='13' height='12' rx='3' stroke='currentColor' strokeWidth='1.65' />
+      <path d='m16 10 4-2v8l-4-2' stroke='currentColor' strokeWidth='1.65' strokeLinejoin='round' />
+    </svg>
+  );
+}
+
+function StickerIcon() {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' aria-hidden>
+      <path d='M7 3.5h10A3.5 3.5 0 0 1 20.5 7v7.5L15 20.5H7A3.5 3.5 0 0 1 3.5 17V7A3.5 3.5 0 0 1 7 3.5Z' stroke='currentColor' strokeWidth='1.7' strokeLinejoin='round' />
+      <path d='M14.5 20.5v-3a3 3 0 0 1 3-3h3M8 9h.01M16 9h.01M8.5 13c1.8 1.5 5.2 1.5 7 0' stroke='currentColor' strokeWidth='1.7' strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+  );
+}
+
 interface ChatbotPreviewProps {
   accountId: string | null;
   username: string;
@@ -39,10 +73,15 @@ function Avatar({
 
   return (
     <span
-      className='relative rounded-full flex items-center justify-center font-semibold shrink-0 overflow-hidden'
+      className='relative rounded-full font-semibold shrink-0 overflow-hidden'
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         width: size,
         height: size,
+        minWidth: size,
+        minHeight: size,
         fontSize: Math.max(10, size * 0.35),
         color: '#fff',
         background: 'linear-gradient(135deg, #f9ce34, #ee2a7b, #6228d7)',
@@ -53,7 +92,15 @@ function Avatar({
         <img
           src={profilePictureUrl}
           alt={`Фото профиля @${username}`}
-          className='absolute inset-0 w-full h-full object-cover'
+          referrerPolicy='no-referrer'
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
           onError={() => setImageFailed(true)}
         />
       )}
@@ -82,14 +129,17 @@ function Phone({
   return (
     <>
       <div
-        className='mx-auto w-full max-w-[310px] rounded-[42px] border border-[#a8a8a8] p-[10px]'
+        className='mx-auto w-full max-w-[310px] rounded-[43px] border border-[#a8a8a8] p-[10px]'
         style={{
-          background: '#f7f7f7',
+          background: 'linear-gradient(145deg, #ffffff, #f4f4f4)',
           boxShadow:
-            '0 14px 34px rgba(0,0,0,.10), inset 0 0 0 2px rgba(255,255,255,.8)',
+            '0 18px 38px rgba(0,0,0,.11), inset 0 0 0 2px rgba(255,255,255,.9)',
         }}
       >
-        <div className='h-[515px] rounded-[33px] overflow-hidden bg-white flex flex-col text-black'>
+        <div
+          className='h-[540px] rounded-[34px] overflow-hidden bg-white flex flex-col text-black'
+          style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
+        >
           {children}
           <div className='h-[22px] bg-white flex items-center justify-center shrink-0'>
             <span className='w-[116px] h-[4px] rounded-full bg-black' />
@@ -97,7 +147,7 @@ function Phone({
         </div>
       </div>
 
-      <div className='grid grid-cols-2 gap-1 rounded-xl p-1 bg-[#f0f0f4]'>
+      <div className='grid grid-cols-2 gap-1 rounded-xl p-1 bg-[#f0f0f4] max-w-[310px] mx-auto'>
         {(
           [
             ['message', 'Сообщение'],
@@ -199,11 +249,8 @@ export default function ChatbotPreview({
         >
           Просмотр работы чат-бота
         </h2>
-        <p
-          className='text-xs mt-1'
-          style={{ color: 'var(--tg-theme-hint-color)' }}
-        >
-          Предпросмотр диалога в интерфейсе Instagram
+        <p className='text-xs mt-1' style={{ color: 'var(--tg-theme-hint-color)' }}>
+          Данные профиля загружаются из подключённого Instagram-аккаунта
         </p>
       </div>
 
@@ -211,29 +258,25 @@ export default function ChatbotPreview({
         {tab === 'message' ? (
           <div className='flex-1 min-h-0 flex flex-col bg-white'>
             <div className='h-[62px] px-3 flex items-center border-b border-[#efefef] shrink-0'>
-              <span className='text-[28px] font-light leading-none mr-2'>‹</span>
+              <span className='mr-2'><ChevronLeftIcon size={21} /></span>
               <Avatar
                 username={accountUsername}
                 profilePictureUrl={profilePictureUrl}
                 size={34}
               />
-              <div className='min-w-0 flex-1 ml-2 leading-tight'>
+              <div className='min-w-0 flex-1 ml-2 leading-[1.2]'>
                 <p className='text-[12px] font-semibold truncate'>{accountName}</p>
-                <p className='text-[9px] text-[#737373] truncate'>
+                <p className='text-[9px] text-[#737373] truncate mt-0.5'>
                   {accountUsername}
                 </p>
               </div>
-              <span className='text-lg mr-3' aria-label='Аудиозвонок'>
-                ♡
-              </span>
-              <span className='text-lg' aria-label='Видеозвонок'>
-                ▣
-              </span>
+              <span className='mr-3' aria-label='Аудиозвонок'><PhoneIcon /></span>
+              <span aria-label='Видеозвонок'><VideoIcon /></span>
             </div>
 
             <div className='px-4 py-2 text-[9px] leading-[12px] text-center text-[#737373] border-b border-[#f6f6f6]'>
-              @{accountUsername} отправил(-а) вам сообщение в ответ на комментарий
-              к публикации
+              @{accountUsername} отправил(-а) вам сообщение о комментарии,
+              который вы оставили под публикацией
             </div>
 
             <div className='flex-1 min-h-0 px-3 pt-4 pb-2 flex flex-col overflow-y-auto'>
@@ -244,7 +287,7 @@ export default function ChatbotPreview({
                     profilePictureUrl={profilePictureUrl}
                     size={31}
                   />
-                  <div className='max-w-[205px] rounded-[18px] bg-[#f3f3f5] px-3 pt-3 pb-1 text-[11px] leading-[15px] whitespace-pre-wrap'>
+                  <div className='max-w-[205px] rounded-[18px] bg-[#f3f3f5] px-3 pt-3 pb-1 text-[11px] leading-[15px] whitespace-pre-wrap break-words'>
                     {replyText || 'Сообщение в Direct'}
                     {dmButtonEnabled && dmQuickReplyText.trim() && (
                       <div className='-mx-3 mt-3 border-t border-white bg-white rounded-b-[18px] py-2 text-center font-medium'>
@@ -267,7 +310,7 @@ export default function ChatbotPreview({
                       profilePictureUrl={profilePictureUrl}
                       size={31}
                     />
-                    <div className='max-w-[205px] rounded-[18px] bg-[#f3f3f5] px-3 pt-3 pb-1 text-[11px] leading-[15px] whitespace-pre-wrap'>
+                    <div className='max-w-[205px] rounded-[18px] bg-[#f3f3f5] px-3 pt-3 pb-1 text-[11px] leading-[15px] whitespace-pre-wrap break-words'>
                       {dmFollowupText.trim()}
                       {dmButtonText.trim() && (
                         <a
@@ -291,17 +334,17 @@ export default function ChatbotPreview({
                 profilePictureUrl={profilePictureUrl}
                 size={31}
               />
-              <div className='h-[30px] flex-1 rounded-full border border-[#dbdbdb] flex items-center justify-end px-3 text-base'>
-                ♡
+              <div className='h-[32px] flex-1 rounded-full border border-[#dbdbdb] flex items-center justify-end px-2.5'>
+                <StickerIcon />
               </div>
             </div>
           </div>
         ) : (
           <div className='flex-1 min-h-0 flex flex-col bg-[#b4b5b9]'>
-            <div className='h-[79px] px-3 pt-3 bg-[#b4b5b9] shrink-0'>
-              <div className='text-[9px] tracking-wide text-center'>INSTAGRAM</div>
-              <div className='flex items-center -mt-1'>
-                <span className='text-[28px] font-light'>‹</span>
+            <div className='h-[80px] px-3 pt-3 bg-[#b4b5b9] shrink-0 border-b border-black/5'>
+              <div className='text-[8px] tracking-[.12em] text-center uppercase'>{accountName}</div>
+              <div className='flex items-center mt-0.5'>
+                <span><ChevronLeftIcon size={21} /></span>
                 <p className='text-[14px] font-semibold flex-1 text-center pr-5'>
                   Публикации
                 </p>
@@ -314,7 +357,7 @@ export default function ChatbotPreview({
                 profilePictureUrl={profilePictureUrl}
                 size={32}
               />
-              <span className='text-[11px] font-semibold'>{accountUsername}</span>
+              <span className='text-[11px] font-semibold truncate'>{accountUsername}</span>
             </div>
 
             <div className='h-[54px] overflow-hidden bg-[#acadb1] shrink-0'>
@@ -331,26 +374,26 @@ export default function ChatbotPreview({
               ) : null}
             </div>
 
-            <div className='flex-1 min-h-0 rounded-t-[30px] bg-white px-4 pt-3 pb-2 flex flex-col'>
+            <div className='flex-1 min-h-0 rounded-t-[30px] bg-white px-4 pt-3 pb-2 flex flex-col shadow-[0_-4px_16px_rgba(0,0,0,.06)]'>
               <span className='w-8 h-[3px] rounded-full bg-[#8e8e93] mx-auto mb-3' />
               <p className='text-[14px] font-semibold text-center pb-3 border-b border-[#efefef]'>
                 Комментарии
               </p>
 
-              <div className='flex-1 overflow-y-auto pt-3 space-y-3'>
-                <div className='flex gap-2'>
+              <div className='flex-1 min-h-0 overflow-y-auto pt-3 space-y-3'>
+                <div className='grid grid-cols-[32px_minmax(0,1fr)] gap-2 items-start'>
                   <PersonAvatar />
-                  <div className='text-[11px] leading-[15px]'>
+                  <div className='text-[11px] leading-[15px] min-w-0'>
                     <p>
                       <span className='font-semibold'>Имя</span>{' '}
                       <span className='text-[#8e8e93]'>Сейчас</span>
                     </p>
-                    <p className='text-[13px]'>{keyword}</p>
+                    <p className='text-[13px] break-words'>{keyword}</p>
                     <p className='text-[#8e8e93]'>Ответить</p>
                   </div>
                 </div>
 
-                <div className='flex gap-2 ml-1'>
+                <div className='grid grid-cols-[32px_minmax(0,1fr)] gap-2 items-start ml-1'>
                   <Avatar
                     username={accountUsername}
                     profilePictureUrl={profilePictureUrl}
@@ -358,10 +401,10 @@ export default function ChatbotPreview({
                   />
                   <div className='text-[11px] leading-[15px] min-w-0'>
                     <p>
-                      <span className='font-semibold'>{accountUsername}</span>{' '}
+                      <span className='font-semibold break-all'>{accountUsername}</span>{' '}
                       <span className='text-[#8e8e93]'>Сейчас</span>
                     </p>
-                    <p className='text-[13px]'>
+                    <p className='text-[13px] break-words'>
                       {commentRepliesEnabled
                         ? commentReply
                         : 'Автоответы на комментарии выключены'}
@@ -378,7 +421,7 @@ export default function ChatbotPreview({
                 </div>
               </div>
 
-              <div className='pl-10 flex justify-between text-base pb-2' aria-hidden>
+              <div className='pl-10 flex justify-between text-base pb-2 shrink-0' aria-hidden>
                 <span>♥</span><span>👌</span><span>👍</span><span>🥺</span>
                 <span>😱</span><span>👏</span><span>😍</span>
               </div>
@@ -388,8 +431,8 @@ export default function ChatbotPreview({
                   profilePictureUrl={profilePictureUrl}
                   size={32}
                 />
-                <div className='h-[32px] flex-1 rounded-full border border-[#dbdbdb] flex items-center justify-end px-3 text-base'>
-                  ♡
+                <div className='h-[32px] flex-1 rounded-full border border-[#dbdbdb] flex items-center justify-end px-2.5'>
+                  <StickerIcon />
                 </div>
               </div>
             </div>
