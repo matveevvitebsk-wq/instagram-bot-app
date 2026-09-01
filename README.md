@@ -1,9 +1,11 @@
 # MediaHave — Telegram Mini App для Instagram
 
+> 2026-09-01 cursor document Instagram auto-reply wizard and profile preview
+
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
 
-Актуальное состояние: 2026-07-29.
+Актуальное состояние: 2026-09-01.
 
 Подробная инструкция по сопровождению, серверу, Supabase и диагностике:
 [`SERVER_HANDOFF.md`](SERVER_HANDOFF.md).
@@ -20,6 +22,9 @@ MediaHave — Telegram Mini App для подключения профессио
 - аналитика Dashboard;
 - блокировка разделов до подключения Instagram;
 - автоматическое обновление интерфейса после OAuth;
+- четырёхшаговый мастер автоответов с сообщениями Direct, ответами на
+  комментарии, напоминаниями и предпросмотром Instagram;
+- актуализация имени, логина и URL аватара подключённого Instagram-аккаунта;
 - отключение Instagram от MediaHave.
 
 Страница «Лиды» пока является заготовкой. Часть n8n-интеграций и миграций
@@ -225,7 +230,8 @@ npm run build
 `npm run lint` сейчас требует миграции конфигурации на ESLint 9
 (`eslint.config.js` отсутствует).
 
-Автоматических тестов и CI пока нет.
+Backend содержит автоматические тесты для payload задач, внутренних Meta API,
+проверки подписки и обновления профиля Instagram. CI пока не настроен.
 
 ## Supabase
 
@@ -274,7 +280,9 @@ is_active
 
 `page_id` содержит Instagram professional account `user_id`, а не Facebook
 Page ID. `display_name` содержит полное имя профиля, а `username` — Instagram
-username.
+username. `profile_picture_url` является URL Meta CDN: endpoint
+`GET /api/accounts/` запрашивает актуальное значение через Instagram API и
+обновляет его в `ig_accounts`.
 
 ## Instagram OAuth
 
@@ -386,6 +394,10 @@ https://www.instagram.com/oauth/authorize
 - [`docs/SERVER_ARCHITECTURE.md`](docs/SERVER_ARCHITECTURE.md) — схема сервера;
 - [`docs/supabase_migrations.sql`](docs/supabase_migrations.sql) — SQL;
 - [`docs/PROJECT_AUDIT_2026-07-29.md`](docs/PROJECT_AUDIT_2026-07-29.md) — аудит;
+- [`docs/instagram-auto-reply-wizard-2026-09-01.md`](docs/instagram-auto-reply-wizard-2026-09-01.md) —
+  результаты разработки мастера автоответов и предпросмотра Instagram;
+- [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —
+  структура JSON payload сценария автоответа;
 - [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —
   исторический OAuth design, частично устарел.
 

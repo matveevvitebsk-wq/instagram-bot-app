@@ -1,6 +1,8 @@
 # Payload автоответа в Direct
 
 > 2026-09-01 cursor clarify automation task payload fields
+>
+> 2026-09-01 cursor document Direct buttons, comment media and Instagram preview
 
 Настройки сценария автоответа хранятся в колонке
 `automation_tasks.payload` типа `JSONB`.
@@ -137,3 +139,16 @@ Backend передаёт эти поля в webhook n8n внутри `payload`. 
   публикаций;
 - `status` — состояние задачи (`pending`, `running`, `completed`, `failed` или
   `cancelled`).
+
+## Связанные результаты
+
+Полный результат разработки четырёх шагов, список изменённых компонентов,
+источники имени и аватара Instagram, а также выполненные проверки описаны в
+[`instagram-auto-reply-wizard-2026-09-01.md`](instagram-auto-reply-wizard-2026-09-01.md).
+
+Имя и аватар не входят в `automation_tasks.payload`. Они загружаются из
+активной строки `ig_accounts`:
+
+- `display_name` — полное имя профиля;
+- `username` — Instagram-логин;
+- `profile_picture_url` — актуальный URL фотографии профиля.
