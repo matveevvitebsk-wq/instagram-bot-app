@@ -1,0 +1,85 @@
+import asyncio
+from unittest.mock import patch
+
+import httpx
+
+from app.api.accounts import ACCOUNT_PUBLIC_FIELDS, _refresh_instagram_profile
+
+
+class FakeResult:
+    data = []
+
+
+class FakeUpdate:
+    def __init__(self, table, values):
+        self.table = table
+        self.values = values
+
+    def eq(self, key, value):
+        self.table.filter = (key, value)
+        return self
+
+    def execute(self):
+        self.table.updated = self.values
+        return FakeResult()
+
+
+class FakeTable:
+    def __init__(self):
+        self.updated = None
+        self.filter = None
+
+    def update(self, values):
+        return FakeUpdate(self, values)
+
+
+class FakeSupabase:
+    def __init__(self):
+        self.accounts = FakeTable()
+
+    def table(self, name):
+        assert name == "ig_accounts"
+        return self.accounts
+
+
+def test_refresh_instagram_profile_updates_avatar_url():
+    account = {
+        "id": "account-1",
+        "username": "old_name",
+        "display_name": "Old name",
+        "profile_picture_url": "https://old.cdn/avatar.jpg",
+        "access_token": "IGAA-secret",
+    }
+    sb = FakeSupabase()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "graph.instagram.com"
+        assert request.url.params["fields"] == (
+            "user_id,username,name,profile_picture_url"
+        )
+        return httpx.Response(
+            200,
+            json={
+                "user_id": "123",
+                "username": "new_name",
+                "name": "New name",
+                "profile_picture_url": "https://fresh.cdn/avatar.jpg",
+            },
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    with patch("app.api.accounts.httpx.AsyncClient", return_value=client):
+        refreshed = asyncio.run(_refresh_instagram_profile(sb, account))
+
+    assert refreshed["profile_picture_url"] == "https://fresh.cdn/avatar.jpg"
+    assert refreshed["display_name"] == "New name"
+    assert sb.accounts.updated == {
+        "username": "new_name",
+        "display_name": "New name",
+        "profile_picture_url": "https://fresh.cdn/avatar.jpg",
+    }
+    assert sb.accounts.filter == ("id", "account-1")
+
+
+def test_public_account_fields_do_not_expose_access_token():
+    assert "access_token" not in ACCOUNT_PUBLIC_FIELDS
