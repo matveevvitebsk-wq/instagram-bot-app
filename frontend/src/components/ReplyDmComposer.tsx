@@ -44,6 +44,10 @@ interface ReplyDmComposerProps {
   onReplyTextChange: (value: string) => void;
   dmButtonEnabled: boolean;
   onDmButtonEnabledChange: (value: boolean) => void;
+  dmQuickReplyText: string;
+  onDmQuickReplyTextChange: (value: string) => void;
+  dmFollowupText: string;
+  onDmFollowupTextChange: (value: string) => void;
   dmButtonText: string;
   onDmButtonTextChange: (value: string) => void;
   dmButtonUrl: string;
@@ -61,6 +65,10 @@ export default function ReplyDmComposer({
   onReplyTextChange,
   dmButtonEnabled,
   onDmButtonEnabledChange,
+  dmQuickReplyText,
+  onDmQuickReplyTextChange,
+  dmFollowupText,
+  onDmFollowupTextChange,
   dmButtonText,
   onDmButtonTextChange,
   dmButtonUrl,
@@ -184,20 +192,20 @@ export default function ReplyDmComposer({
               className='text-sm font-medium'
               style={{ color: 'var(--tg-theme-text-color)' }}
             >
-              Кнопка со ссылкой
+              Диалог с двумя кнопками
             </p>
             <p
               className='text-xs mt-0.5'
               style={{ color: 'var(--tg-theme-hint-color)' }}
             >
-              Например, для фразы «Жми кнопку ниже» укажите текст «Жми»
+              Первая кнопка продолжает диалог, последняя открывает ссылку
             </p>
           </div>
           <button
             type='button'
             role='switch'
             aria-checked={dmButtonEnabled}
-            aria-label='Кнопка со ссылкой в Direct'
+            aria-label='Диалог с двумя кнопками в Direct'
             disabled={disabled}
             onClick={() => onDmButtonEnabledChange(!dmButtonEnabled)}
             className='relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 shrink-0'
@@ -223,14 +231,72 @@ export default function ReplyDmComposer({
             className='text-xs mb-1.5 block'
             style={{ color: 'var(--tg-theme-hint-color)' }}
           >
-            Текст кнопки
+            Текст первой кнопки
+          </label>
+          <input
+            type='text'
+            value={dmQuickReplyText}
+            maxLength={20}
+            onChange={(event) => onDmQuickReplyTextChange(event.target.value)}
+            placeholder='Жми'
+            disabled={disabled || !dmButtonEnabled}
+            className='w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50'
+            style={{
+              background: 'var(--tg-theme-secondary-bg-color)',
+              color: 'var(--tg-theme-text-color)',
+              border: '1px solid rgba(112, 132, 153, 0.35)',
+            }}
+          />
+          <p
+            className='text-[10px] text-right mt-1'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            {dmQuickReplyText.length} / 20
+          </p>
+        </div>
+
+        <div>
+          <label
+            className='text-xs mb-1.5 block'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            Сообщение после нажатия
+          </label>
+          <textarea
+            value={dmFollowupText}
+            onChange={(event) => onDmFollowupTextChange(event.target.value)}
+            placeholder='Высылаю тебе тренировку. Буду рада обратной связи!'
+            rows={4}
+            maxLength={500}
+            disabled={disabled || !dmButtonEnabled}
+            className='w-full px-3 py-2 rounded-xl text-sm outline-none resize-none disabled:opacity-50'
+            style={{
+              background: 'var(--tg-theme-secondary-bg-color)',
+              color: 'var(--tg-theme-text-color)',
+              border: '1px solid rgba(112, 132, 153, 0.35)',
+            }}
+          />
+          <p
+            className='text-[10px] text-right mt-1'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            {dmFollowupText.length} / 500
+          </p>
+        </div>
+
+        <div>
+          <label
+            className='text-xs mb-1.5 block'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            Текст последней кнопки
           </label>
           <input
             type='text'
             value={dmButtonText}
             maxLength={20}
             onChange={(event) => onDmButtonTextChange(event.target.value)}
-            placeholder='Жми'
+            placeholder='Забирай тренировку'
             disabled={disabled || !dmButtonEnabled}
             className='w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50'
             style={{
@@ -252,7 +318,7 @@ export default function ReplyDmComposer({
             className='text-xs mb-1.5 block'
             style={{ color: 'var(--tg-theme-hint-color)' }}
           >
-            Ссылка кнопки
+            Ссылка последней кнопки
           </label>
           <input
             type='url'
@@ -269,21 +335,57 @@ export default function ReplyDmComposer({
           />
         </div>
 
-        {dmButtonEnabled &&
-          dmButtonText.trim() &&
-          isValidDmButtonUrl(dmButtonUrl) && (
-          <a
-            href={dmButtonUrl}
-            target='_blank'
-            rel='noreferrer'
-            className='block w-full py-2.5 rounded-xl text-center text-sm font-medium'
-            style={{
-              background: 'var(--tg-theme-button-color)',
-              color: 'var(--tg-theme-button-text-color)',
-            }}
+        {dmButtonEnabled && (
+          <div
+            className='rounded-xl p-3 space-y-2'
+            style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
           >
-            {dmButtonText.trim()}
-          </a>
+            <p
+              className='text-xs font-medium'
+              style={{ color: 'var(--tg-theme-hint-color)' }}
+            >
+              Предпросмотр диалога
+            </p>
+            <div
+              className='rounded-xl p-3 text-sm whitespace-pre-wrap'
+              style={{ background: 'var(--tg-theme-bg-color)' }}
+            >
+              {replyText || 'Первое сообщение'}
+            </div>
+            {dmQuickReplyText.trim() && (
+              <div
+                className='rounded-lg py-2 text-center text-sm font-medium'
+                style={{
+                  background: 'var(--tg-theme-bg-color)',
+                  color: 'var(--tg-theme-button-color)',
+                }}
+              >
+                {dmQuickReplyText.trim()}
+              </div>
+            )}
+            {dmFollowupText.trim() && (
+              <div
+                className='rounded-xl p-3 text-sm whitespace-pre-wrap'
+                style={{ background: 'var(--tg-theme-bg-color)' }}
+              >
+                {dmFollowupText.trim()}
+              </div>
+            )}
+            {dmButtonText.trim() && isValidDmButtonUrl(dmButtonUrl) && (
+              <a
+                href={dmButtonUrl}
+                target='_blank'
+                rel='noreferrer'
+                className='block w-full py-2.5 rounded-xl text-center text-sm font-medium'
+                style={{
+                  background: 'var(--tg-theme-button-color)',
+                  color: 'var(--tg-theme-button-text-color)',
+                }}
+              >
+                {dmButtonText.trim()}
+              </a>
+            )}
+          </div>
         )}
       </div>
 

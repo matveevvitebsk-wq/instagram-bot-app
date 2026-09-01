@@ -36,6 +36,8 @@ interface AutoReplyTask {
     exact_match?: boolean;
     reply_text?: string;
     dm_button_enabled?: boolean;
+    dm_quick_reply_text?: string;
+    dm_followup_text?: string;
     dm_button_text?: string;
     dm_button_url?: string;
     reply_links?: string[];
@@ -84,6 +86,8 @@ export default function AutoReplyDM() {
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
   const [dmButtonEnabled, setDmButtonEnabled] = useState(false);
+  const [dmQuickReplyText, setDmQuickReplyText] = useState('');
+  const [dmFollowupText, setDmFollowupText] = useState('');
   const [dmButtonText, setDmButtonText] = useState('');
   const [dmButtonUrl, setDmButtonUrl] = useState('');
   const [replyLinks, setReplyLinks] = useState<string[]>([]);
@@ -143,6 +147,8 @@ export default function AutoReplyDM() {
     setSelectedMediaIds([]);
     setReplyText('');
     setDmButtonEnabled(false);
+    setDmQuickReplyText('');
+    setDmFollowupText('');
     setDmButtonText('');
     setDmButtonUrl('');
     setReplyLinks([]);
@@ -170,6 +176,8 @@ export default function AutoReplyDM() {
     setSelectedMediaIds([]);
     setReplyText('');
     setDmButtonEnabled(false);
+    setDmQuickReplyText('');
+    setDmFollowupText('');
     setDmButtonText('');
     setDmButtonUrl('');
     setReplyLinks([]);
@@ -196,6 +204,8 @@ export default function AutoReplyDM() {
     setSelectedMediaIds(onAllPosts ? [] : selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
     setDmButtonEnabled(task.payload?.dm_button_enabled === true);
+    setDmQuickReplyText(task.payload?.dm_quick_reply_text ?? '');
+    setDmFollowupText(task.payload?.dm_followup_text ?? '');
     setDmButtonText(task.payload?.dm_button_text ?? '');
     setDmButtonUrl(task.payload?.dm_button_url ?? '');
     setReplyLinks(linksFromPayload(task.payload ?? {}));
@@ -240,8 +250,16 @@ export default function AutoReplyDM() {
       return;
     }
     if (nextStep === 3 && dmButtonEnabled) {
+      if (!dmQuickReplyText.trim()) {
+        setError('Введите текст первой кнопки');
+        return;
+      }
+      if (!dmFollowupText.trim()) {
+        setError('Введите сообщение после нажатия первой кнопки');
+        return;
+      }
       if (!dmButtonText.trim()) {
-        setError('Введите текст кнопки');
+        setError('Введите текст последней кнопки');
         return;
       }
       if (!isValidDmButtonUrl(dmButtonUrl)) {
@@ -284,6 +302,8 @@ export default function AutoReplyDM() {
       selected_media_ids: mediaIds,
       reply_text: replyText.trim(),
       dm_button_enabled: dmButtonEnabled,
+      dm_quick_reply_text: dmQuickReplyText.trim(),
+      dm_followup_text: dmFollowupText.trim(),
       dm_button_text: dmButtonText.trim(),
       dm_button_url: dmButtonUrl.trim(),
       reply_links: replyLinks,
@@ -621,6 +641,10 @@ export default function AutoReplyDM() {
                 onReplyTextChange={setReplyText}
                 dmButtonEnabled={dmButtonEnabled}
                 onDmButtonEnabledChange={setDmButtonEnabled}
+                dmQuickReplyText={dmQuickReplyText}
+                onDmQuickReplyTextChange={setDmQuickReplyText}
+                dmFollowupText={dmFollowupText}
+                onDmFollowupTextChange={setDmFollowupText}
                 dmButtonText={dmButtonText}
                 onDmButtonTextChange={setDmButtonText}
                 dmButtonUrl={dmButtonUrl}
