@@ -1,5 +1,11 @@
-The table is named ig_accounts, not ig_accountts.
-customer_profiles
+# User and Instagram account tables
+
+> 2026-09-01 cursor clarify Instagram profile fields and avatar URL refresh
+
+The table is named `ig_accounts`, not `ig_accountts`.
+
+## customer_profiles
+
 Represents a MediaHave/Telegram user.
 
 It stores:
@@ -11,7 +17,8 @@ Connection status
 Legacy Instagram connection fields
 Its ID is used as owner_id in tasks, leads, Instagram accounts, funnels, analytics, and events.
 
-ig_accounts
+## ig_accounts
+
 Represents an Instagram Business or Creator account connected via OAuth.
 
 It stores:
@@ -30,10 +37,18 @@ customer_profiles = Telegram/MediaHave user
 ig_accounts = Instagram account connected by that user
 A single customer profile can own multiple Instagram accounts. ig_accounts should be the canonical location for Instagram credentials and account details.
 
-# ==========================================================
+The `profile_picture_url` value is a Meta CDN URL and may expire. The backend
+refreshes `username`, `display_name`, and `profile_picture_url` through the
+Instagram Graph API when `GET /api/accounts/` loads the active account.
 
-Таблица называется ig_accounts, а не ig_accountts.
-customer_profiles
+---
+
+# Таблицы пользователя и Instagram-аккаунта
+
+Таблица называется `ig_accounts`, а не `ig_accountts`.
+
+## customer_profiles
+
 Представляет пользователя MediaHave/Telegram.
 
 В ней хранятся:
@@ -45,7 +60,8 @@ ID в Telegram, имя пользователя, имя и фамилия, а т
 Поля подключения к устаревшей версии Instagram
 Её ID используется в качестве owner_id в задачах, лидах, аккаунтах Instagram, воронках, аналитике и событиях.
 
-ig_accounts
+## ig_accounts
+
 Представляет аккаунт Instagram Business или Creator, подключённый через OAuth.
 
 В нём хранятся:
@@ -63,3 +79,8 @@ ig_accounts
 customer_profiles = пользователь Telegram/MediaHave
 ig_accounts = аккаунт в Instagram, подключенный этим пользователем
 Один профиль клиента может владеть несколькими аккаунтами в Instagram. ig_accounts должен быть каноническим хранилищем учетных данных и сведений об аккаунтах в Instagram.
+
+`profile_picture_url` содержит URL Meta CDN, который может устаревать. При
+загрузке активного аккаунта через `GET /api/accounts/` backend получает у
+Instagram актуальные `username`, `display_name` и `profile_picture_url`, затем
+обновляет строку `ig_accounts`. Токен доступа во frontend не возвращается.
