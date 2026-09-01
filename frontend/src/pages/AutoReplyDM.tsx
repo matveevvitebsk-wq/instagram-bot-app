@@ -14,7 +14,9 @@ import ReplyDmComposer, {
   linksFromPayload,
 } from '@/components/ReplyDmComposer';
 import AdvancedReplySettings, {
+  CommentReplyGif,
   ReminderUnit,
+  commentReplyGifsFromPayload,
   commentRepliesFromPayload,
   reminderUnitFromPayload,
 } from '@/components/AdvancedReplySettings';
@@ -36,6 +38,7 @@ interface AutoReplyTask {
     reply_attachments?: ReplyAttachment[];
     comment_replies_enabled?: boolean;
     comment_replies?: string[];
+    comment_reply_gifs?: Array<CommentReplyGif | null>;
     comment_replies_random?: boolean;
     reminder_enabled?: boolean;
     reminder_delay?: number;
@@ -82,6 +85,9 @@ export default function AutoReplyDM() {
   );
   const [commentRepliesEnabled, setCommentRepliesEnabled] = useState(false);
   const [commentReplies, setCommentReplies] = useState<string[]>(['']);
+  const [commentReplyGifs, setCommentReplyGifs] = useState<
+    Array<CommentReplyGif | null>
+  >([null]);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDelay, setReminderDelay] = useState(10);
   const [reminderUnit, setReminderUnit] =
@@ -133,6 +139,7 @@ export default function AutoReplyDM() {
     setReplyAttachments([]);
     setCommentRepliesEnabled(false);
     setCommentReplies(['']);
+    setCommentReplyGifs([null]);
     setReminderEnabled(false);
     setReminderDelay(10);
     setReminderUnit('minutes');
@@ -156,6 +163,7 @@ export default function AutoReplyDM() {
     setReplyAttachments([]);
     setCommentRepliesEnabled(false);
     setCommentReplies(['']);
+    setCommentReplyGifs([null]);
     setReminderEnabled(false);
     setReminderDelay(10);
     setReminderUnit('minutes');
@@ -176,8 +184,15 @@ export default function AutoReplyDM() {
     setReplyText(task.payload?.reply_text ?? '');
     setReplyLinks(linksFromPayload(task.payload ?? {}));
     setReplyAttachments(attachmentsFromPayload(task.payload ?? {}));
+    const loadedCommentReplies = commentRepliesFromPayload(task.payload ?? {});
     setCommentRepliesEnabled(task.payload?.comment_replies_enabled === true);
-    setCommentReplies(commentRepliesFromPayload(task.payload ?? {}));
+    setCommentReplies(loadedCommentReplies);
+    setCommentReplyGifs(
+      commentReplyGifsFromPayload(
+        task.payload ?? {},
+        loadedCommentReplies.length,
+      ),
+    );
     setReminderEnabled(task.payload?.reminder_enabled === true);
     setReminderDelay(
       typeof task.payload?.reminder_delay === 'number'
@@ -214,9 +229,15 @@ export default function AutoReplyDM() {
 
   async function saveAutoReply() {
     if (keywords.length === 0 || !replyText.trim()) return;
-    const normalizedCommentReplies = commentReplies
-      .map((reply) => reply.trim())
-      .filter(Boolean);
+    const normalizedCommentReplyItems = commentReplies
+      .map((reply, index) => ({
+        text: reply.trim(),
+        gif: commentReplyGifs[index] ?? null,
+      }))
+      .filter((item) => item.text);
+    const normalizedCommentReplies = normalizedCommentReplyItems.map(
+      (item) => item.text,
+    );
     if (commentRepliesEnabled && normalizedCommentReplies.length === 0) {
       setError('Добавьте хотя бы один автоответ на комментарий');
       return;
@@ -240,6 +261,7 @@ export default function AutoReplyDM() {
       reply_attachments: replyAttachments,
       comment_replies_enabled: commentRepliesEnabled,
       comment_replies: normalizedCommentReplies,
+      comment_reply_gifs: normalizedCommentReplyItems.map((item) => item.gif),
       comment_replies_random: true,
       reminder_enabled: reminderEnabled,
       reminder_delay: reminderDelay,
@@ -608,6 +630,8 @@ export default function AutoReplyDM() {
                 onCommentRepliesEnabledChange={setCommentRepliesEnabled}
                 commentReplies={commentReplies}
                 onCommentRepliesChange={setCommentReplies}
+                commentReplyGifs={commentReplyGifs}
+                onCommentReplyGifsChange={setCommentReplyGifs}
                 reminderEnabled={reminderEnabled}
                 onReminderEnabledChange={setReminderEnabled}
                 reminderDelay={reminderDelay}
