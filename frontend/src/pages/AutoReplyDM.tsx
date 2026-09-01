@@ -13,6 +13,11 @@ import ReplyDmComposer, {
   attachmentsFromPayload,
   linksFromPayload,
 } from '@/components/ReplyDmComposer';
+import AdvancedReplySettings, {
+  ReminderUnit,
+  commentRepliesFromPayload,
+  reminderUnitFromPayload,
+} from '@/components/AdvancedReplySettings';
 
 interface AutoReplyTask {
   id: string;
@@ -29,6 +34,12 @@ interface AutoReplyTask {
     reply_text?: string;
     reply_links?: string[];
     reply_attachments?: ReplyAttachment[];
+    comment_replies_enabled?: boolean;
+    comment_replies?: string[];
+    comment_replies_random?: boolean;
+    reminder_enabled?: boolean;
+    reminder_delay?: number;
+    reminder_delay_unit?: ReminderUnit;
     content_type?: string;
     selected_media_ids?: string[];
     media_link?: string | null;
@@ -69,6 +80,12 @@ export default function AutoReplyDM() {
   const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>(
     [],
   );
+  const [commentRepliesEnabled, setCommentRepliesEnabled] = useState(false);
+  const [commentReplies, setCommentReplies] = useState<string[]>(['']);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderDelay, setReminderDelay] = useState(10);
+  const [reminderUnit, setReminderUnit] =
+    useState<ReminderUnit>('minutes');
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -114,6 +131,11 @@ export default function AutoReplyDM() {
     setReplyText('');
     setReplyLinks([]);
     setReplyAttachments([]);
+    setCommentRepliesEnabled(false);
+    setCommentReplies(['']);
+    setReminderEnabled(false);
+    setReminderDelay(10);
+    setReminderUnit('minutes');
     setStep(1);
     setEditingId(null);
     setShowForm(false);
@@ -132,6 +154,11 @@ export default function AutoReplyDM() {
     setReplyText('');
     setReplyLinks([]);
     setReplyAttachments([]);
+    setCommentRepliesEnabled(false);
+    setCommentReplies(['']);
+    setReminderEnabled(false);
+    setReminderDelay(10);
+    setReminderUnit('minutes');
     setStep(1);
     setEditingId(null);
     setShowForm(true);
@@ -149,6 +176,15 @@ export default function AutoReplyDM() {
     setReplyText(task.payload?.reply_text ?? '');
     setReplyLinks(linksFromPayload(task.payload ?? {}));
     setReplyAttachments(attachmentsFromPayload(task.payload ?? {}));
+    setCommentRepliesEnabled(task.payload?.comment_replies_enabled === true);
+    setCommentReplies(commentRepliesFromPayload(task.payload ?? {}));
+    setReminderEnabled(task.payload?.reminder_enabled === true);
+    setReminderDelay(
+      typeof task.payload?.reminder_delay === 'number'
+        ? Math.max(1, task.payload.reminder_delay)
+        : 10,
+    );
+    setReminderUnit(reminderUnitFromPayload(task.payload ?? {}));
     setStep(1);
     setEditingId(task.id);
     setShowForm(true);
@@ -168,12 +204,23 @@ export default function AutoReplyDM() {
         return;
       }
     }
+    if (nextStep === 3 && !replyText.trim()) {
+      setError('Введите текст сообщения в Direct');
+      return;
+    }
     setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function saveAutoReply() {
     if (keywords.length === 0 || !replyText.trim()) return;
+    const normalizedCommentReplies = commentReplies
+      .map((reply) => reply.trim())
+      .filter(Boolean);
+    if (commentRepliesEnabled && normalizedCommentReplies.length === 0) {
+      setError('Добавьте хотя бы один автоответ на комментарий');
+      return;
+    }
     // Checked "all publications" → all posts. Unchecked → must pick media.
     const useAllPosts = commentOnPost;
     if (!useAllPosts && selectedMediaIds.length === 0) {
@@ -191,6 +238,12 @@ export default function AutoReplyDM() {
       reply_text: replyText.trim(),
       reply_links: replyLinks,
       reply_attachments: replyAttachments,
+      comment_replies_enabled: commentRepliesEnabled,
+      comment_replies: normalizedCommentReplies,
+      comment_replies_random: true,
+      reminder_enabled: reminderEnabled,
+      reminder_delay: reminderDelay,
+      reminder_delay_unit: reminderUnit,
     };
 
     try {
@@ -334,7 +387,7 @@ export default function AutoReplyDM() {
               className='text-xs font-medium'
               style={{ color: 'var(--tg-theme-hint-color)' }}
             >
-              {editingId ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ АВТО-ОТВЕТ'} · ШАГ {step} ИЗ 2
+              {editingId ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ АВТО-ОТВЕТ'} · ШАГ {step} ИЗ 3
             </p>
             {editingId && (
               <button
@@ -523,10 +576,56 @@ export default function AutoReplyDM() {
                 onError={setError}
               />
 
-              <div className='flex flex-col gap-3'>
+              <div className='flex gap-3'>
                 <button
                   type='button'
                   onClick={() => goToStep(1)}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium'
+                  style={{ border: '1px solid var(--tg-theme-hint-color)' }}
+                >
+                  Назад
+                </button>
+                <button
+                  type='button'
+                  onClick={() => goToStep(3)}
+                  disabled={saving || !replyText.trim()}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
+                  style={{
+                    background: 'var(--tg-theme-button-color)',
+                    color: 'var(--tg-theme-button-text-color)',
+                  }}
+                >
+                  Далее
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <AdvancedReplySettings
+                commentRepliesEnabled={commentRepliesEnabled}
+                onCommentRepliesEnabledChange={setCommentRepliesEnabled}
+                commentReplies={commentReplies}
+                onCommentRepliesChange={setCommentReplies}
+                reminderEnabled={reminderEnabled}
+                onReminderEnabledChange={setReminderEnabled}
+                reminderDelay={reminderDelay}
+                onReminderDelayChange={setReminderDelay}
+                reminderUnit={reminderUnit}
+                onReminderUnitChange={(unit) => {
+                  setReminderUnit(unit);
+                  setReminderDelay((delay) =>
+                    Math.min(delay, unit === 'minutes' ? 1440 : 72),
+                  );
+                }}
+                disabled={saving}
+              />
+
+              <div className='flex flex-col gap-3'>
+                <button
+                  type='button'
+                  onClick={() => goToStep(2)}
                   className='w-full py-2.5 rounded-xl text-sm font-medium'
                   style={{ border: '1px solid var(--tg-theme-hint-color)' }}
                 >
@@ -535,7 +634,7 @@ export default function AutoReplyDM() {
                 <button
                   type='button'
                   onClick={() => void saveAutoReply()}
-                  disabled={saving || !replyText.trim()}
+                  disabled={saving}
                   className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
                   style={{
                     background: 'var(--tg-theme-button-color)',
