@@ -1,10 +1,39 @@
+import { ChangeEvent, useRef, useState } from 'react';
+import api from '@/utils/api';
+
 export type ReminderUnit = 'minutes' | 'hours';
+
+export interface CommentReplyGif {
+  name: string;
+  url: string;
+  content_type: string;
+  size: number;
+}
+
+const COMMENT_EMOJIS = [
+  '❤️',
+  '✅',
+  '🔥',
+  '🙌',
+  '🎁',
+  '✨',
+  '😊',
+  '👇',
+  '📩',
+  '🚀',
+  '💬',
+  '⭐',
+];
 
 interface AdvancedReplySettingsProps {
   commentRepliesEnabled: boolean;
   onCommentRepliesEnabledChange: (value: boolean) => void;
   commentReplies: string[];
   onCommentRepliesChange: (value: string[]) => void;
+  commentReplyGifs: Array<CommentReplyGif | null>;
+  onCommentReplyGifsChange: (
+    value: Array<CommentReplyGif | null>,
+  ) => void;
   reminderEnabled: boolean;
   onReminderEnabledChange: (value: boolean) => void;
   reminderDelay: number;
@@ -57,6 +86,27 @@ export function commentRepliesFromPayload(payload: {
   return replies.length > 0 ? replies : [''];
 }
 
+export function commentReplyGifsFromPayload(
+  payload: { comment_reply_gifs?: unknown },
+  replyCount: number,
+): Array<CommentReplyGif | null> {
+  const raw = Array.isArray(payload.comment_reply_gifs)
+    ? payload.comment_reply_gifs
+    : [];
+  return Array.from({ length: Math.max(1, replyCount) }, (_, index) => {
+    const item = raw[index];
+    if (
+      item &&
+      typeof item === 'object' &&
+      typeof (item as CommentReplyGif).url === 'string' &&
+      typeof (item as CommentReplyGif).name === 'string'
+    ) {
+      return item as CommentReplyGif;
+    }
+    return null;
+  });
+}
+
 export function reminderUnitFromPayload(payload: {
   reminder_delay_unit?: unknown;
 }): ReminderUnit {
@@ -68,6 +118,8 @@ export default function AdvancedReplySettings({
   onCommentRepliesEnabledChange,
   commentReplies,
   onCommentRepliesChange,
+  commentReplyGifs,
+  onCommentReplyGifsChange,
   reminderEnabled,
   onReminderEnabledChange,
   reminderDelay,
@@ -77,6 +129,13 @@ export default function AdvancedReplySettings({
   disabled = false,
 }: AdvancedReplySettingsProps) {
   const maxDelay = reminderUnit === 'minutes' ? 1440 : 72;
+  const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
+  const [uploadingGifIndex, setUploadingGifIndex] = useState<number | null>(
+    null,
+  );
+  const [gifError, setGifError] = useState<string | null>(null);
+  const pendingGifIndex = useRef<number | null>(null);
+  const gifInputRef = useRef<HTMLInputElement>(null);
 
   function updateReply(index: number, value: string) {
     onCommentRepliesChange(
@@ -91,6 +150,64 @@ export default function AdvancedReplySettings({
       (_, replyIndex) => replyIndex !== index,
     );
     onCommentRepliesChange(next.length > 0 ? next : ['']);
+    const nextGifs = commentReplyGifs.filter(
+      (_, replyIndex) => replyIndex !== index,
+    );
+    onCommentReplyGifsChange(nextGifs.length > 0 ? nextGifs : [null]);
+    setEmojiPickerIndex(null);
+  }
+
+  function addReply() {
+    onCommentRepliesChange([...commentReplies, '']);
+    onCommentReplyGifsChange([...commentReplyGifs, null]);
+  }
+
+  function appendEmoji(index: number, emoji: string) {
+    updateReply(index, `${commentReplies[index] ?? ''}${emoji}`);
+  }
+
+  function chooseGif(index: number) {
+    pendingGifIndex.current = index;
+    gifInputRef.current?.click();
+  }
+
+  async function uploadGif(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    const replyIndex = pendingGifIndex.current;
+    event.target.value = '';
+    if (!file || replyIndex === null) return;
+
+    setUploadingGifIndex(replyIndex);
+    setGifError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post('/api/tasks/attachments', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      });
+      const next = [...commentReplyGifs];
+      next[replyIndex] = response.data as CommentReplyGif;
+      onCommentReplyGifsChange(next);
+    } catch (requestError: unknown) {
+      const detail =
+        typeof requestError === 'object' &&
+        requestError &&
+        'response' in requestError
+          ? (requestError as { response?: { data?: { detail?: string } } })
+              .response?.data?.detail
+          : null;
+      setGifError(detail || 'Не удалось загрузить GIF');
+    } finally {
+      setUploadingGifIndex(null);
+      pendingGifIndex.current = null;
+    }
+  }
+
+  function removeGif(index: number) {
+    const next = [...commentReplyGifs];
+    next[index] = null;
+    onCommentReplyGifsChange(next);
   }
 
   function updateDelay(rawValue: string) {
@@ -136,41 +253,139 @@ export default function AdvancedReplySettings({
         </div>
 
         <div className='space-y-2'>
-          {commentReplies.map((reply, index) => (
-            <div key={index} className='flex items-center gap-2'>
-              <textarea
-                value={reply}
-                onChange={(event) => updateReply(index, event.target.value)}
-                placeholder='Например: Отправила, проверяй директ ❤️'
-                rows={2}
-                disabled={disabled || !commentRepliesEnabled}
-                className='min-w-0 flex-1 px-3 py-2 rounded-xl text-sm outline-none resize-none disabled:opacity-50'
+          {commentReplies.map((reply, index) => {
+            const replyGif = commentReplyGifs[index] ?? null;
+            const controlsDisabled = disabled || !commentRepliesEnabled;
+            return (
+              <div
+                key={index}
+                className='rounded-xl overflow-hidden'
                 style={{
                   background: 'var(--tg-theme-bg-color)',
-                  color: 'var(--tg-theme-text-color)',
                   border: '1px solid rgba(112, 132, 153, 0.35)',
+                  opacity: controlsDisabled ? 0.5 : 1,
                 }}
-              />
-              {commentReplies.length > 1 && (
-                <button
-                  type='button'
-                  disabled={disabled || !commentRepliesEnabled}
-                  onClick={() => removeReply(index)}
-                  aria-label={`Удалить автоответ ${index + 1}`}
-                  className='w-8 h-8 rounded-lg text-lg disabled:opacity-40'
-                  style={{ color: '#ff3b30' }}
+              >
+                <textarea
+                  value={reply}
+                  onChange={(event) => updateReply(index, event.target.value)}
+                  placeholder='Например: Отправила, проверяй директ ❤️'
+                  rows={2}
+                  disabled={controlsDisabled}
+                  className='w-full px-3 pt-3 pb-1 text-sm outline-none resize-none bg-transparent'
+                  style={{ color: 'var(--tg-theme-text-color)' }}
+                />
+
+                {replyGif && (
+                  <div className='px-3 py-2 flex items-center gap-2'>
+                    <img
+                      src={replyGif.url}
+                      alt={replyGif.name}
+                      className='w-20 h-16 rounded-lg object-cover'
+                    />
+                    <span
+                      className='text-xs min-w-0 flex-1 truncate'
+                      style={{ color: 'var(--tg-theme-hint-color)' }}
+                    >
+                      {replyGif.name}
+                    </span>
+                    <button
+                      type='button'
+                      onClick={() => removeGif(index)}
+                      disabled={controlsDisabled}
+                      className='text-xs'
+                      style={{ color: '#ff3b30' }}
+                    >
+                      Удалить GIF
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  className='flex items-center gap-1 px-2 py-1.5'
+                  style={{
+                    borderTop: '1px solid rgba(112, 132, 153, 0.18)',
+                  }}
                 >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
+                  <button
+                    type='button'
+                    disabled={controlsDisabled}
+                    onClick={() =>
+                      setEmojiPickerIndex((current) =>
+                        current === index ? null : index,
+                      )
+                    }
+                    className='px-2 py-1 rounded-lg text-sm disabled:cursor-not-allowed'
+                    aria-label={`Добавить смайлик в автоответ ${index + 1}`}
+                  >
+                    😊
+                  </button>
+                  <button
+                    type='button'
+                    disabled={controlsDisabled || uploadingGifIndex !== null}
+                    onClick={() => chooseGif(index)}
+                    className='px-2 py-1 rounded-lg text-xs font-semibold disabled:cursor-not-allowed'
+                    aria-label={`Добавить GIF в автоответ ${index + 1}`}
+                  >
+                    {uploadingGifIndex === index ? 'Загрузка...' : 'GIF'}
+                  </button>
+                  <span className='flex-1' />
+                  {commentReplies.length > 1 && (
+                    <button
+                      type='button'
+                      disabled={controlsDisabled}
+                      onClick={() => removeReply(index)}
+                      aria-label={`Удалить автоответ ${index + 1}`}
+                      className='w-8 h-8 rounded-lg text-lg disabled:opacity-40'
+                      style={{ color: '#ff3b30' }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {emojiPickerIndex === index && (
+                  <div
+                    className='flex flex-wrap gap-1 p-2'
+                    style={{
+                      borderTop: '1px solid rgba(112, 132, 153, 0.18)',
+                    }}
+                  >
+                    {COMMENT_EMOJIS.map((emoji) => (
+                      <button
+                        type='button'
+                        key={emoji}
+                        disabled={controlsDisabled}
+                        onClick={() => appendEmoji(index, emoji)}
+                        className='w-8 h-8 text-lg rounded-lg'
+                        aria-label={`Добавить ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <input
+            ref={gifInputRef}
+            type='file'
+            accept='image/gif'
+            className='hidden'
+            onChange={(event) => void uploadGif(event)}
+          />
+          {gifError && (
+            <p className='text-xs' style={{ color: '#ff3b30' }}>
+              {gifError}
+            </p>
+          )}
         </div>
 
         <button
           type='button'
           disabled={disabled || !commentRepliesEnabled}
-          onClick={() => onCommentRepliesChange([...commentReplies, ''])}
+          onClick={addReply}
           className='w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
           style={{
             background: 'var(--tg-theme-bg-color)',
