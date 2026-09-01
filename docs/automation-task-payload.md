@@ -1,0 +1,94 @@
+# Payload автоответа в Direct
+
+> 2026-09-01 cursor document automation task payload fields
+
+Настройки правила хранятся в колонке `automation_tasks.payload` типа `JSONB`.
+Ниже используется формат `jsonc`, чтобы справа от каждого поля показать
+пояснение. В базе сохраняется обычный JSON **без комментариев `//`**.
+
+```jsonc
+{
+  "is_active": true,                    // Включено ли правило целиком. false — автоматизация не выполняется.
+  "reply_text": "Когда бежим?🤪",       // Текст личного сообщения, которое бот отправляет в Direct.
+  "exact_match": true,                  // true — комментарий должен точно совпасть с кодовым словом; false — достаточно вхождения слова.
+  "reply_links": [],                    // Ссылки, прикреплённые к сообщению Direct. Сейчас форма добавления ссылок в интерфейсе отключена.
+  "content_type": "ALL",                // Где действует правило: ALL — на всех публикациях; OPTIONAL — только на выбранных.
+  "reminder_delay": 20,                 // Через какое количество выбранных единиц времени отправить напоминание.
+  "comment_replies": [                  // Тексты публичных ответов на комментарий после отправки сообщения в Direct.
+    "ро❤️"                              // Ответ с индексом 0; связанный GIF находится под тем же индексом в comment_reply_gifs.
+  ],
+  "reminder_enabled": true,             // Включена ли отправка напоминания пользователю.
+  "trigger_keywords": [                 // Кодовые слова, запускающие это правило.
+    "Бежим",
+    "Бегать",
+    "Супер🔥"
+  ],
+  "reply_attachments": [],              // Файлы, фото или GIF, прикреплённые к основному сообщению Direct.
+  "comment_reply_gifs": [               // GIF-вложения для ответов из comment_replies; индексы двух массивов должны совпадать.
+    null                                // У ответа comment_replies[0] нет GIF. При наличии здесь будет объект файла.
+  ],
+  "selected_media_ids": [],             // ID выбранных публикаций Instagram; используется при content_type = OPTIONAL.
+  "reminder_delay_unit": "minutes",     // Единица задержки: minutes — минуты, hours — часы.
+  "comment_replies_random": true,       // true — выбирать один из comment_replies случайным образом.
+  "comment_replies_enabled": true       // Включены ли публичные автоответы на комментарии.
+}
+```
+
+## Связь текстов и GIF
+
+Массивы `comment_replies` и `comment_reply_gifs` являются параллельными:
+
+- `comment_replies[0]` связан с `comment_reply_gifs[0]`;
+- `comment_replies[1]` связан с `comment_reply_gifs[1]`;
+- `null` означает, что у соответствующего текста GIF отсутствует.
+
+Пример ответа с GIF:
+
+```json
+{
+  "comment_replies": [
+    "Отправила, проверь Direct ❤️"
+  ],
+  "comment_reply_gifs": [
+    {
+      "name": "direct.gif",
+      "url": "https://example.supabase.co/storage/v1/object/public/automation-attachments/direct.gif",
+      "content_type": "image/gif",
+      "size": 245760
+    }
+  ]
+}
+```
+
+Поля объекта GIF:
+
+| Поле | Назначение |
+| --- | --- |
+| `name` | Исходное имя GIF-файла. |
+| `url` | Публичный URL загруженного файла в Supabase Storage. |
+| `content_type` | MIME-тип файла; для GIF ожидается `image/gif`. |
+| `size` | Размер файла в байтах. |
+
+## Логика включения
+
+- `is_active = false` отключает всё правило независимо от остальных настроек.
+- `comment_replies_enabled = false` отключает ответы на комментарии, но
+  сохранённые тексты и GIF остаются в payload.
+- `reminder_enabled = false` отключает напоминание, но значение задержки
+  сохраняется.
+- `comment_replies_random` применяется только при включённых автоответах.
+- `reminder_delay` читается вместе с `reminder_delay_unit`. Например,
+  `20` + `minutes` означает «через 20 минут».
+
+## Поля, которые хранятся вне payload
+
+Некоторые настройки задачи находятся в отдельных колонках
+`automation_tasks`, а не внутри этого JSON:
+
+- `comment_on_post` — правило действует на комментарии к публикациям;
+- `check_subscription` — проверять подписку пользователя;
+- `all_content_types` — использовать все публикации;
+- `selected_media_ids` — также дублируется отдельной колонкой для выборочных
+  публикаций;
+- `status` — состояние задачи (`pending`, `running`, `completed`, `failed` или
+  `cancelled`).
