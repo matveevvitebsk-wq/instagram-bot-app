@@ -110,6 +110,10 @@ export default function AutoReplyDM() {
   const [error, setError] = useState<string | null>(null);
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
   const [igUsername, setIgUsername] = useState('');
+  const [igDisplayName, setIgDisplayName] = useState('');
+  const [igProfilePictureUrl, setIgProfilePictureUrl] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     void loadAutoReplies();
@@ -128,6 +132,14 @@ export default function AutoReplyDM() {
         setIgAccountId(active.id);
         setIgUsername(
           typeof active.username === 'string' ? active.username : '',
+        );
+        setIgDisplayName(
+          typeof active.display_name === 'string' ? active.display_name : '',
+        );
+        setIgProfilePictureUrl(
+          typeof active.profile_picture_url === 'string'
+            ? active.profile_picture_url
+            : null,
         );
       }
     } catch {
@@ -750,6 +762,8 @@ export default function AutoReplyDM() {
               <ChatbotPreview
                 accountId={igAccountId}
                 username={igUsername}
+                displayName={igDisplayName}
+                profilePictureUrl={igProfilePictureUrl}
                 selectedMediaIds={selectedMediaIds}
                 triggerKeywords={keywords}
                 replyText={replyText}
