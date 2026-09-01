@@ -21,6 +21,7 @@ import AdvancedReplySettings, {
   commentRepliesFromPayload,
   reminderUnitFromPayload,
 } from '@/components/AdvancedReplySettings';
+import ChatbotPreview from '@/components/ChatbotPreview';
 
 interface AutoReplyTask {
   id: string;
@@ -108,6 +109,7 @@ export default function AutoReplyDM() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
+  const [igUsername, setIgUsername] = useState('');
 
   useEffect(() => {
     void loadAutoReplies();
@@ -122,7 +124,12 @@ export default function AutoReplyDM() {
       const active =
         list.find((account: { is_active?: boolean }) => account.is_active) ??
         list[0];
-      if (active?.id) setIgAccountId(active.id);
+      if (active?.id) {
+        setIgAccountId(active.id);
+        setIgUsername(
+          typeof active.username === 'string' ? active.username : '',
+        );
+      }
     } catch {
       // The form can still create an unassigned rule.
     }
@@ -266,6 +273,14 @@ export default function AutoReplyDM() {
         setError('Введите корректную ссылку кнопки с http:// или https://');
         return;
       }
+    }
+    if (
+      nextStep === 4 &&
+      commentRepliesEnabled &&
+      !commentReplies.some((reply) => reply.trim())
+    ) {
+      setError('Добавьте хотя бы один автоответ на комментарий');
+      return;
     }
     setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -458,7 +473,7 @@ export default function AutoReplyDM() {
               className='text-xs font-medium'
               style={{ color: 'var(--tg-theme-hint-color)' }}
             >
-              {editingId ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ АВТО-ОТВЕТ'} · ШАГ {step} ИЗ 3
+              {editingId ? 'РЕДАКТИРОВАНИЕ' : 'НОВЫЙ АВТО-ОТВЕТ'} · ШАГ {step} ИЗ 4
             </p>
             {editingId && (
               <button
@@ -705,10 +720,53 @@ export default function AutoReplyDM() {
                 disabled={saving}
               />
 
-              <div className='flex flex-col gap-3'>
+              <div className='flex gap-3'>
                 <button
                   type='button'
                   onClick={() => goToStep(2)}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium'
+                  style={{ border: '1px solid var(--tg-theme-hint-color)' }}
+                >
+                  Назад
+                </button>
+                <button
+                  type='button'
+                  onClick={() => goToStep(4)}
+                  disabled={saving}
+                  className='flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50'
+                  style={{
+                    background: 'var(--tg-theme-button-color)',
+                    color: 'var(--tg-theme-button-text-color)',
+                  }}
+                >
+                  Далее
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 4 && (
+            <>
+              <ChatbotPreview
+                accountId={igAccountId}
+                username={igUsername}
+                selectedMediaIds={selectedMediaIds}
+                triggerKeywords={keywords}
+                replyText={replyText}
+                dmButtonEnabled={dmButtonEnabled}
+                dmQuickReplyText={dmQuickReplyText}
+                dmFollowupText={dmFollowupText}
+                dmButtonText={dmButtonText}
+                dmButtonUrl={dmButtonUrl}
+                commentRepliesEnabled={commentRepliesEnabled}
+                commentReplies={commentReplies}
+                commentReplyGifs={commentReplyGifs}
+              />
+
+              <div className='flex flex-col gap-3'>
+                <button
+                  type='button'
+                  onClick={() => goToStep(3)}
                   className='w-full py-2.5 rounded-xl text-sm font-medium'
                   style={{ border: '1px solid var(--tg-theme-hint-color)' }}
                 >
