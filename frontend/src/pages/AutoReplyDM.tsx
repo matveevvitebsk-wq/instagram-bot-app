@@ -11,6 +11,7 @@ import SelectedMediaPicker, {
 import ReplyDmComposer, {
   ReplyAttachment,
   attachmentsFromPayload,
+  isValidDmButtonUrl,
   linksFromPayload,
 } from '@/components/ReplyDmComposer';
 import AdvancedReplySettings, {
@@ -34,6 +35,9 @@ interface AutoReplyTask {
     trigger_keywords?: string[];
     exact_match?: boolean;
     reply_text?: string;
+    dm_button_enabled?: boolean;
+    dm_button_text?: string;
+    dm_button_url?: string;
     reply_links?: string[];
     reply_attachments?: ReplyAttachment[];
     comment_replies_enabled?: boolean;
@@ -79,6 +83,9 @@ export default function AutoReplyDM() {
   const [checkSubscription, setCheckSubscription] = useState(true);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [replyText, setReplyText] = useState('');
+  const [dmButtonEnabled, setDmButtonEnabled] = useState(false);
+  const [dmButtonText, setDmButtonText] = useState('');
+  const [dmButtonUrl, setDmButtonUrl] = useState('');
   const [replyLinks, setReplyLinks] = useState<string[]>([]);
   const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>(
     [],
@@ -135,6 +142,9 @@ export default function AutoReplyDM() {
     setCheckSubscription(true);
     setSelectedMediaIds([]);
     setReplyText('');
+    setDmButtonEnabled(false);
+    setDmButtonText('');
+    setDmButtonUrl('');
     setReplyLinks([]);
     setReplyAttachments([]);
     setCommentRepliesEnabled(false);
@@ -159,6 +169,9 @@ export default function AutoReplyDM() {
     setCheckSubscription(true);
     setSelectedMediaIds([]);
     setReplyText('');
+    setDmButtonEnabled(false);
+    setDmButtonText('');
+    setDmButtonUrl('');
     setReplyLinks([]);
     setReplyAttachments([]);
     setCommentRepliesEnabled(false);
@@ -182,6 +195,9 @@ export default function AutoReplyDM() {
     // Checkbox on → all posts; off → selected posts only (picker).
     setSelectedMediaIds(onAllPosts ? [] : selectedMediaIdsFromTask(task));
     setReplyText(task.payload?.reply_text ?? '');
+    setDmButtonEnabled(task.payload?.dm_button_enabled === true);
+    setDmButtonText(task.payload?.dm_button_text ?? '');
+    setDmButtonUrl(task.payload?.dm_button_url ?? '');
     setReplyLinks(linksFromPayload(task.payload ?? {}));
     setReplyAttachments(attachmentsFromPayload(task.payload ?? {}));
     const loadedCommentReplies = commentRepliesFromPayload(task.payload ?? {});
@@ -223,6 +239,16 @@ export default function AutoReplyDM() {
       setError('Введите текст сообщения в Direct');
       return;
     }
+    if (nextStep === 3 && dmButtonEnabled) {
+      if (!dmButtonText.trim()) {
+        setError('Введите текст кнопки');
+        return;
+      }
+      if (!isValidDmButtonUrl(dmButtonUrl)) {
+        setError('Введите корректную ссылку кнопки с http:// или https://');
+        return;
+      }
+    }
     setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -257,6 +283,9 @@ export default function AutoReplyDM() {
       content_type: useAllPosts ? 'ALL' : 'OPTIONAL',
       selected_media_ids: mediaIds,
       reply_text: replyText.trim(),
+      dm_button_enabled: dmButtonEnabled,
+      dm_button_text: dmButtonText.trim(),
+      dm_button_url: dmButtonUrl.trim(),
       reply_links: replyLinks,
       reply_attachments: replyAttachments,
       comment_replies_enabled: commentRepliesEnabled,
@@ -590,6 +619,12 @@ export default function AutoReplyDM() {
               <ReplyDmComposer
                 replyText={replyText}
                 onReplyTextChange={setReplyText}
+                dmButtonEnabled={dmButtonEnabled}
+                onDmButtonEnabledChange={setDmButtonEnabled}
+                dmButtonText={dmButtonText}
+                onDmButtonTextChange={setDmButtonText}
+                dmButtonUrl={dmButtonUrl}
+                onDmButtonUrlChange={setDmButtonUrl}
                 replyLinks={replyLinks}
                 onReplyLinksChange={setReplyLinks}
                 replyAttachments={replyAttachments}
