@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 // ИСПРАВЛЕНО (15.07.2026): добавлен openLink для OAuth внутри Telegram
@@ -14,13 +14,12 @@ import LoadingScreen from '@/components/LoadingScreen';
 import Landing from '@/pages/Landing';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
-import InstagramPrerequisiteDialog from '@/components/InstagramPrerequisiteDialog';
 
 const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
   // ИСПРАВЛЕНО (15.07.2026): добавлен openLink в деструктуризацию
-  const { initData, isReady, platform, tg } = useTelegram();
+  const { initData, isReady, platform, tg, openLink } = useTelegram();
 
   console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
   console.log('START PARAM:', tg?.initDataUnsafe?.start_param);
@@ -63,15 +62,20 @@ export default function App() {
   // мы проверяем start_param и запускаем OAuth.
   // ═══════════════════════════════════════════════════════
 
-  const [showIgAuthPrompt, setShowIgAuthPrompt] = useState(false);
-
   useEffect(() => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
     if (startParam === 'ig_auth' && initData) {
-      setShowIgAuthPrompt(true);
+      const apiUrl =
+        import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
+      const url =
+        `${apiUrl}/api/instagram/meta/start-page` +
+        `?initData=${encodeURIComponent(initData)}`;
+
+      console.log('Запуск Instagram OAuth:', url);
+      openLink(url);
     }
-  }, [initData]);
+  }, [initData, openLink]);
 
   if (isPublicPath) {
     return (
@@ -89,10 +93,6 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <InstagramPrerequisiteDialog
-        open={showIgAuthPrompt}
-        onClose={() => setShowIgAuthPrompt(false)}
-      />
       <Routes>
         <Route path='/' element={<Layout />}>
           <Route index element={<Dashboard />} />

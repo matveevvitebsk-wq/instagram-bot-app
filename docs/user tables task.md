@@ -7,6 +7,8 @@
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
 >
 > 2026-09-05 cursor store device and OS types on each user login
+>
+> 2026-09-05 cursor revert Instagram launch button and keep login device logging
 
 The table is named `ig_accounts`, not `ig_accountts`.
 
@@ -47,10 +49,6 @@ A single customer profile can own multiple Instagram accounts. ig_accounts shoul
 `user_login_devices` stores `device_kind`, `os_type`, and `login_count` for
 each Telegram login. See
 [`user-login-devices.md`](user-login-devices.md).
-
-Before OAuth, the Mini App asks the user to open the Instagram app and log in
-with a Business or Creator account. See
-[`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 The `profile_picture_url` value is a Meta CDN URL and may expire. The backend
 refreshes `username`, `display_name`, and `profile_picture_url` through the
@@ -98,10 +96,6 @@ user_login_devices = число входов этого пользователя
 
 `user_login_devices` хранит `device_kind`, `os_type` и `login_count` при каждом
 входе через Telegram. См. [`user-login-devices.md`](user-login-devices.md).
-
-Перед OAuth Mini App просит открыть приложение Instagram и войти в
-бизнес-аккаунт. См.
-[`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 `profile_picture_url` содержит URL Meta CDN, который может устаревать. При
 загрузке активного аккаунта через `GET /api/accounts/` backend получает у
