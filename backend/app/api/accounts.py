@@ -8,6 +8,7 @@ from app.core.security import get_current_user
 from app.core.supabase import get_supabase
 from app.core.cache import cache
 from app.core.config import get_settings
+from app.services.instagram_profile import refresh_instagram_account_profile
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,54 +41,8 @@ def _profile_id(sb, current_user: dict) -> str:
 
 
 async def _refresh_instagram_profile(sb, account: dict) -> dict:
-    """Refresh short-lived Instagram CDN profile data before returning it."""
-    access_token = account.get("access_token")
-    if not access_token:
-        return account
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"https://graph.instagram.com/{settings.META_API_VERSION}/me",
-                params={
-                    "fields": "user_id,username,name,profile_picture_url",
-                    "access_token": access_token,
-                },
-            )
-        if response.status_code != 200:
-            logger.warning(
-                "Instagram profile refresh failed account=%s status=%s",
-                account.get("id"),
-                response.status_code,
-            )
-            return account
-
-        profile = response.json()
-        refreshed = {
-            "username": profile.get("username") or account.get("username"),
-            "display_name": profile.get("name") or account.get("display_name"),
-            "profile_picture_url": (
-                profile.get("profile_picture_url")
-                or account.get("profile_picture_url")
-            ),
-        }
-        changed = {
-            key: value
-            for key, value in refreshed.items()
-            if value and value != account.get(key)
-        }
-        if changed:
-            sb.table("ig_accounts").update(changed).eq(
-                "id", account["id"]
-            ).execute()
-            account = {**account, **changed}
-        return account
-    except (httpx.HTTPError, ValueError):
-        logger.exception(
-            "Unable to refresh Instagram profile for account %s",
-            account.get("id"),
-        )
-        return account
+    """Refresh Graph /me id and public profile fields before returning them."""
+    return await refresh_instagram_account_profile(sb, account)
 
 
 @router.get("/")
