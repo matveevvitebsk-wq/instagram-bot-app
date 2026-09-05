@@ -3,153 +3,58 @@ import { detectDevice, type DeviceProfile } from '@/utils/deviceProfile';
 export const INSTAGRAM_PREREQUISITE_MESSAGE =
   'Сначала зарегистрируйтесь или войдите в Instagram приложение и ваш аккаунт должен быть бизнес-аккаунтом.';
 
-export function getInstagramNativeUrl(profile: DeviceProfile): string {
-  if (profile.os === 'android') {
-    return 'intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end';
-  }
+export function getInstagramLaunchUrl(): string {
   return 'instagram://app';
-}
-
-export function getInstagramFallbackUrl(profile: DeviceProfile): string {
-  if (profile.os === 'ios') {
-    return 'https://apps.apple.com/app/instagram/id389801252';
-  }
-  if (profile.os === 'android') {
-    return 'https://play.google.com/store/apps/details?id=com.instagram.android';
-  }
-  if (profile.os === 'windows') {
-    return 'https://apps.microsoft.com/detail/9nblggh5l9xt';
-  }
-  return 'https://www.instagram.com/accounts/login/';
 }
 
 export function getInstagramDeviceHint(profile: DeviceProfile): string {
   if (profile.canOpenNativeInstagram && profile.os === 'ios') {
     return profile.kind === 'tablet'
-      ? 'Обнаружен iPad. Откроется приложение Instagram или App Store.'
-      : 'Обнаружен iPhone. Откроется приложение Instagram или App Store.';
+      ? 'Обнаружен iPad. Запустится приложение Instagram. Войдите в бизнес-аккаунт сами, затем вернитесь в MediaHave.'
+      : 'Обнаружен iPhone. Запустится приложение Instagram. Войдите в бизнес-аккаунт сами, затем вернитесь в MediaHave.';
   }
   if (profile.canOpenNativeInstagram && profile.os === 'android') {
     return profile.kind === 'tablet'
-      ? 'Обнаружен планшет Android. Откроется приложение Instagram или Google Play.'
-      : 'Обнаружен смартфон Android. Откроется приложение Instagram или Google Play.';
+      ? 'Обнаружен планшет Android. Запустится приложение Instagram. Войдите в бизнес-аккаунт сами, затем вернитесь в MediaHave.'
+      : 'Обнаружен смартфон Android. Запустится приложение Instagram. Войдите в бизнес-аккаунт сами, затем вернитесь в MediaHave.';
   }
   if (profile.os === 'windows') {
-    return 'Обнаружен компьютер Windows. Instagram откроется в браузере или Microsoft Store. Для проверки мобильного приложения используйте смартфон или планшет.';
+    return 'Обнаружен компьютер Windows. Запустите Instagram на смартфоне или планшете и войдите в бизнес-аккаунт сами.';
   }
   if (profile.os === 'macos') {
-    return 'Обнаружен компьютер Apple. Instagram откроется в браузере. Для проверки приложения используйте iPhone или iPad.';
+    return 'Обнаружен компьютер Apple. Запустите Instagram на iPhone или iPad и войдите в бизнес-аккаунт сами.';
   }
   if (profile.os === 'linux') {
-    return 'Обнаружен компьютер Linux. Instagram откроется в браузере. Для проверки приложения используйте Android-смартфон или планшет.';
+    return 'Обнаружен компьютер Linux. Запустите Instagram на Android и войдите в бизнес-аккаунт сами.';
   }
-  return 'Устройство не определено как смартфон. Instagram откроется в браузере.';
+  return 'Запустите Instagram на смартфоне и войдите в бизнес-аккаунт сами.';
 }
 
 export function resolveDeviceProfile(telegramPlatform?: string | null): DeviceProfile {
   return detectDevice({ telegramPlatform });
 }
 
-export function waitForAppSwitch(timeoutMs = 1600): Promise<boolean> {
-  if (typeof document === 'undefined') {
-    return Promise.resolve(false);
+function launchNativeScheme(url: string) {
+  const opened = window.open(url, '_blank');
+  if (opened) {
+    return;
   }
 
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (switched: boolean) => {
-      if (settled) return;
-      settled = true;
-      document.removeEventListener('visibilitychange', onHidden);
-      window.removeEventListener('pagehide', onHidden);
-      window.removeEventListener('blur', onHidden);
-      window.clearTimeout(timer);
-      resolve(switched);
-    };
-
-    const onHidden = () => {
-      if (
-        document.visibilityState === 'hidden' ||
-        document.hidden ||
-        !document.hasFocus()
-      ) {
-        finish(true);
-      }
-    };
-
-    document.addEventListener('visibilitychange', onHidden);
-    window.addEventListener('pagehide', onHidden);
-    window.addEventListener('blur', onHidden);
-
-    const timer = window.setTimeout(() => finish(false), timeoutMs);
-  });
-}
-
-export function waitUntilVisible(timeoutMs = 120000): Promise<void> {
-  if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => {
-    const done = () => {
-      document.removeEventListener('visibilitychange', onChange);
-      window.removeEventListener('focus', onChange);
-      window.clearTimeout(timer);
-      resolve();
-    };
-    const onChange = () => {
-      if (document.visibilityState === 'visible') done();
-    };
-    const timer = window.setTimeout(done, timeoutMs);
-    document.addEventListener('visibilitychange', onChange);
-    window.addEventListener('focus', onChange);
-  });
-}
-
-function assignNativeUrl(url: string, profile: DeviceProfile) {
   const iframe = document.createElement('iframe');
   iframe.src = url;
   iframe.style.display = 'none';
   document.body.appendChild(iframe);
-  window.setTimeout(() => iframe.remove(), 2000);
-
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.rel = 'noopener';
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  window.setTimeout(() => anchor.remove(), 1500);
-
-  if (profile.os === 'android') {
-    try {
-      window.location.assign(url);
-    } catch {
-      // Telegram WebView may block a custom scheme; the store fallback handles that.
-    }
-  }
+  window.setTimeout(() => iframe.remove(), 1500);
 }
 
-export async function openInstagramApp(options: {
+export function launchInstagramApp(options: {
   platform?: string | null;
-  openHttps: (url: string) => void;
-}): Promise<'opened' | 'missing' | 'desktop'> {
-  const { platform, openHttps } = options;
-  const profile = resolveDeviceProfile(platform);
-
+}): 'launched' | 'unsupported' {
+  const profile = resolveDeviceProfile(options.platform);
   if (!profile.canOpenNativeInstagram) {
-    openHttps(getInstagramFallbackUrl(profile));
-    return 'desktop';
+    return 'unsupported';
   }
 
-  const switchedPromise = waitForAppSwitch();
-  assignNativeUrl(getInstagramNativeUrl(profile), profile);
-  const switched = await switchedPromise;
-
-  if (!switched) {
-    openHttps(getInstagramFallbackUrl(profile));
-    return 'missing';
-  }
-
-  return 'opened';
+  launchNativeScheme(getInstagramLaunchUrl());
+  return 'launched';
 }
