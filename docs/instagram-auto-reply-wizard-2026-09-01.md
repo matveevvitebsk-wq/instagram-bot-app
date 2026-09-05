@@ -6,7 +6,7 @@
 >
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
 >
-> 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
+> 2026-09-05 cursor revert Instagram launch button and keep login device logging
 
 ## Результат
 
@@ -74,10 +74,6 @@ comment_replies[1]     ↔ comment_reply_gifs[1]
 - кнопки звонка и видеозвонка;
 - панель комментариев;
 - поле ввода и нижний индикатор телефона.
-
-Перед первым подключением аккаунта Mini App проверяет наличие Instagram на
-смартфоне, показывает требование бизнес-аккаунта и открывает приложение.
-Подробности: [`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 ## Данные подключённого Instagram-аккаунта
 
