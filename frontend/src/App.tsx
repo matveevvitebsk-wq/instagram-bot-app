@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 // ИСПРАВЛЕНО (15.07.2026): добавлен openLink для OAuth внутри Telegram
@@ -14,6 +14,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 import Landing from '@/pages/Landing';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
+import InstagramPrerequisiteDialog from '@/components/InstagramPrerequisiteDialog';
 
 const PUBLIC_PATHS = ['/privacy', '/terms'];
 
@@ -62,22 +63,31 @@ export default function App() {
   // мы проверяем start_param и запускаем OAuth.
   // ═══════════════════════════════════════════════════════
 
+  const [showIgAuthPrompt, setShowIgAuthPrompt] = useState(false);
+  const igAuthStarted = useRef(false);
+
   useEffect(() => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
     if (startParam === 'ig_auth' && initData) {
-      // ИСПРАВЛЕНО (15.07.2026): используем VITE_API_URL вместо хардкода
-      const apiUrl =
-        import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
-      const url =
-        `${apiUrl}/api/instagram/meta/start-page` +
-        `?initData=${encodeURIComponent(initData)}`;
-
-      console.log('Запуск Instagram OAuth:', url);
-
-      openLink(url);
+      setShowIgAuthPrompt(true);
     }
-  }, [initData, openLink]);
+  }, [initData]);
+
+  const startIgAuthOAuth = () => {
+    if (igAuthStarted.current || !initData) return;
+    igAuthStarted.current = true;
+    setShowIgAuthPrompt(false);
+
+    const apiUrl =
+      import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
+    const url =
+      `${apiUrl}/api/instagram/meta/start-page` +
+      `?initData=${encodeURIComponent(initData)}`;
+
+    console.log('Запуск Instagram OAuth:', url);
+    openLink(url);
+  };
 
   if (isPublicPath) {
     return (
@@ -95,6 +105,10 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <InstagramPrerequisiteDialog
+        open={showIgAuthPrompt}
+        onReady={startIgAuthOAuth}
+      />
       <Routes>
         <Route path='/' element={<Layout />}>
           <Route index element={<Dashboard />} />

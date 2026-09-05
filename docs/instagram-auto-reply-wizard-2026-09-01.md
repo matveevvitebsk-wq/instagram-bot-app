@@ -3,6 +3,8 @@
 > 2026-09-01 cursor document Instagram auto-reply wizard implementation
 >
 > 2026-09-01 cursor document Instagram profile preview and avatar refresh
+>
+> 2026-09-05 cursor require Instagram app login and business account before OAuth
 
 ## Результат
 
@@ -70,6 +72,10 @@ comment_replies[1]     ↔ comment_reply_gifs[1]
 - кнопки звонка и видеозвонка;
 - панель комментариев;
 - поле ввода и нижний индикатор телефона.
+
+Перед первым подключением аккаунта Mini App проверяет наличие Instagram на
+смартфоне, показывает требование бизнес-аккаунта и открывает приложение.
+Подробности: [`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 ## Данные подключённого Instagram-аккаунта
 

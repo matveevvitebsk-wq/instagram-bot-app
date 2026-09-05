@@ -3,6 +3,8 @@
 > 2026-09-01 cursor clarify automation task payload fields
 >
 > 2026-09-01 cursor document Direct buttons, comment media and Instagram preview
+>
+> 2026-09-05 cursor require Instagram app login and business account before OAuth
 
 Настройки сценария автоответа хранятся в колонке
 `automation_tasks.payload` типа `JSONB`.
@@ -145,6 +147,10 @@ Backend передаёт эти поля в webhook n8n внутри `payload`. 
 Полный результат разработки четырёх шагов, список изменённых компонентов,
 источники имени и аватара Instagram, а также выполненные проверки описаны в
 [`instagram-auto-reply-wizard-2026-09-01.md`](instagram-auto-reply-wizard-2026-09-01.md).
+
+Подключение Instagram перед созданием сценария требует установленного
+приложения и бизнес-аккаунта. См.
+[`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 Имя и аватар не входят в `automation_tasks.payload`. Они загружаются из
 активной строки `ig_accounts`:
