@@ -3,15 +3,35 @@
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
 >
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
+>
+> 2026-09-05 cursor launch Instagram app instead of navigating Mini App away
 
-## Результат
+## Почему была ошибка «Не удалось загрузить MediaHave-bot»
 
-Перед подключением Instagram Mini App больше не запускает OAuth сразу.
-Сначала пользователь видит сообщение:
+Mini App живёт внутри WebView Telegram. Код заменял страницу MediaHave через
+`window.location.assign` на `instagram://`, `intent://`, магазин или OAuth URL.
+Telegram воспринимал это как выгрузку Mini App и показывал:
 
-> Сначала зарегистрируйтесь или войдите в Instagram приложение и ваш аккаунт должен быть бизнес-аккаунтом.
+> Ошибка. Не удалось загрузить MediaHave-bot.
 
-Дальше действие зависит от устройства и системы.
+Магазин, сайт Instagram и несуществующий
+`/api/instagram/meta/start-page` тоже уводили WebView со страницы приложения.
+
+## Как должно работать
+
+Нужно не открывать браузер или магазин, а запустить приложение Instagram.
+Вход в Instagram пользователь делает сам. MediaHave при этом остаётся
+запущенным.
+
+1. показать сообщение про бизнес-аккаунт;
+2. по кнопке «Запустить Instagram» вызвать `instagram://app` через
+   `window.open` или скрытый iframe;
+3. не вызывать `window.location.assign`;
+4. не открывать App Store, Google Play и instagram.com;
+5. не запускать OAuth сразу после запуска Instagram.
+
+Подключение MediaHave к Instagram — отдельная кнопка «Подключить аккаунт».
+Она открывает OAuth через `Telegram.WebApp.openLink`, не заменяя Mini App.
 
 ## Как определяется оборудование
 
@@ -23,49 +43,15 @@ Mini App не получает модель телефона из системы
 3. `navigator.maxTouchPoints` — чтобы отличить iPad, который часто маскируется
    под Macintosh.
 
-| Устройство | Система | Что открывается |
+| Устройство | Система | Действие |
 | --- | --- | --- |
-| Смартфон | iOS / Apple | Приложение Instagram, иначе App Store |
-| Планшет | iPadOS / Apple | Приложение Instagram, иначе App Store |
-| Смартфон | Android | Приложение Instagram через `intent://`, иначе Google Play |
-| Планшет | Android | Приложение Instagram через `intent://`, иначе Google Play |
-| Компьютер | Windows | Браузер или Microsoft Store |
-| Компьютер | macOS / Apple | Браузер Instagram |
-| Компьютер | Linux | Браузер Instagram |
-| Неизвестно | — | Браузер Instagram |
-
-На компьютере нельзя надёжно открыть мобильное приложение Instagram. Поэтому
-показывается подсказка использовать смартфон или планшет.
-
-## Почему это не системная проверка пакета
-
-Telegram Mini App работает в WebView и не может спросить у Android или iOS,
-установлен ли `com.instagram.android`. Поэтому на телефоне и планшете проверка
-такая:
-
-1. по нажатию кнопки открывается deep link `instagram://app` или Android
-   `intent://` с пакетом Instagram;
-2. если Mini App уходит в фон, приложение считается установленным;
-3. если через 1.6 секунды Mini App остаётся на экране, открывается магазин
-   этой системы.
-
-## Где срабатывает
-
-- кнопка «Войти в существующий» на странице «Настройки»;
-- запуск Mini App с `start_param=ig_auth`.
-
-Сообщение также показано в карточке подключения на странице «Настройки» и в
-баннере на главной.
+| Смартфон / планшет | iOS или Android | Запускается приложение Instagram |
+| Компьютер | Windows, macOS, Linux | Показывается подсказка запустить Instagram на телефоне |
 
 ## Основные файлы
 
 | Файл | Назначение |
 | --- | --- |
-| `frontend/src/utils/deviceProfile.ts` | Тип устройства и ОС. |
-| `frontend/src/utils/instagramApp.ts` | Deep link, магазин и ожидание возврата. |
-| `frontend/src/components/InstagramPrerequisiteDialog.tsx` | Диалог с сообщением и кнопкой «Открыть Instagram». |
-| `frontend/src/pages/Settings.tsx` | Запуск проверки перед OAuth. |
-| `frontend/src/App.tsx` | Та же проверка для `start_param=ig_auth`. |
-
-OAuth и сохранение токена не менялись: после возврата пользователя по-прежнему
-используются `/api/instagram/meta/url` и callback Instagram Login.
+| `frontend/src/utils/instagramApp.ts` | Запуск Instagram без ухода со страницы Mini App. |
+| `frontend/src/components/InstagramPrerequisiteDialog.tsx` | Сообщение и кнопка «Запустить Instagram». |
+| `frontend/src/pages/Settings.tsx` | Запуск Instagram и отдельное подключение аккаунта. |
