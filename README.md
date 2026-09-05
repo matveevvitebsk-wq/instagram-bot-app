@@ -3,6 +3,8 @@
 > 2026-09-01 cursor document Instagram auto-reply wizard and profile preview
 >
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
+>
+> 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
 
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
@@ -24,8 +26,9 @@ MediaHave — Telegram Mini App для подключения профессио
 - аналитика Dashboard;
 - блокировка разделов до подключения Instagram;
 - автоматическое обновление интерфейса после OAuth;
-- перед подключением Instagram Mini App проверяет наличие приложения на
-  смартфоне, показывает требование бизнес-аккаунта и открывает Instagram;
+- перед подключением Instagram Mini App определяет смартфон, планшет или
+  компьютер и систему (iOS, Android, Windows, macOS, Linux), показывает
+  требование бизнес-аккаунта и открывает Instagram или магазин этой системы;
 - четырёхшаговый мастер автоответов с сообщениями Direct, ответами на
   комментарии, напоминаниями и предпросмотром Instagram;
 - актуализация имени, логина и URL аватара подключённого Instagram-аккаунта;

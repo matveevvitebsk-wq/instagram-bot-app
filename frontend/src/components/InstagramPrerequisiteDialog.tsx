@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import {
   INSTAGRAM_PREREQUISITE_MESSAGE,
+  getInstagramDeviceHint,
   openInstagramApp,
+  resolveDeviceProfile,
   waitUntilVisible,
 } from '@/utils/instagramApp';
 
@@ -19,6 +21,7 @@ export default function InstagramPrerequisiteDialog({
 }: InstagramPrerequisiteDialogProps) {
   const { platform, openLink } = useTelegram();
   const [opening, setOpening] = useState(false);
+  const device = resolveDeviceProfile(platform);
 
   if (!open) return null;
 
@@ -63,8 +66,7 @@ export default function InstagramPrerequisiteDialog({
           className='text-xs leading-4'
           style={{ color: 'var(--tg-theme-hint-color)' }}
         >
-          Откройте Instagram, войдите в бизнес-аккаунт, затем вернитесь сюда —
-          подключение продолжится.
+          {getInstagramDeviceHint(device)}
         </p>
         <button
           type='button'
