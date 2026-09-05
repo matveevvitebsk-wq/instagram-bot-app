@@ -5,6 +5,8 @@
 > 2026-09-01 cursor document Instagram profile preview and avatar refresh
 >
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
+>
+> 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
 
 ## Результат
 
