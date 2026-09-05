@@ -332,6 +332,9 @@ async def auth_callback(
             {
                 "instagram_page_id": instagram_id,
                 "instagram_access_token": access_token,
+                "instagram_id": graph_id or None,
+                "instagram_username": instagram_username,
+                "instagram_connected": True,
             }
         ).eq("telegram_id", telegram_id).execute()
 
@@ -369,6 +372,73 @@ async def register_instagram_account(data: InstagramRegisterRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _instagram_status_for_user(
+    telegram_id: str,
+    *,
+    require_graph_id: bool = False,
+) -> dict:
+    sb = get_supabase()
+    profiles = (
+        sb.table("customer_profiles")
+        .select("id")
+        .eq("telegram_id", telegram_id)
+        .limit(1)
+        .execute()
+    )
+    if not profiles.data:
+        return {
+            "connected": False,
+            "username": None,
+            "status": "disconnected",
+        }
+
+    accounts = (
+        sb.table("ig_accounts")
+        .select(
+            "id,username,display_name,profile_picture_url,is_active,"
+            "graph_id,access_token,"
+            "facebook_token_is_valid,facebook_token_refresh_required,"
+            "facebook_token_expires_at,facebook_token_last_checked_at"
+        )
+        .eq("owner_id", profiles.data[0]["id"])
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    if not accounts.data:
+        return {
+            "connected": False,
+            "username": None,
+            "status": "disconnected",
+        }
+
+    account = await refresh_instagram_account_profile(sb, dict(accounts.data[0]))
+    if require_graph_id and not account.get("graph_id"):
+        raise HTTPException(
+            status_code=502,
+            detail="Instagram не вернул Graph id. Проверьте токен аккаунта.",
+        )
+    return {
+        "id": account["id"],
+        "connected": True,
+        "username": account["username"],
+        "display_name": account.get("display_name"),
+        "profile_picture_url": account.get("profile_picture_url"),
+        "graph_id": account.get("graph_id"),
+        "facebook_token_is_valid": account.get(
+            "facebook_token_is_valid", False
+        ),
+        "facebook_token_refresh_required": account.get(
+            "facebook_token_refresh_required", False
+        ),
+        "facebook_token_expires_at": account.get("facebook_token_expires_at"),
+        "facebook_token_last_checked_at": account.get(
+            "facebook_token_last_checked_at"
+        ),
+        "status": "active",
+    }
+
+
 @router.get("/status/{user_id}")
 async def get_instagram_status(
     user_id: str,
@@ -376,66 +446,24 @@ async def get_instagram_status(
 ):
     if str(current_user["telegram_id"]) != user_id:
         raise HTTPException(status_code=403, detail="Telegram user mismatch")
-
     try:
-        sb = get_supabase()
-        profiles = (
-            sb.table("customer_profiles")
-            .select("id")
-            .eq("telegram_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not profiles.data:
-            return {
-                "connected": False,
-                "username": None,
-                "status": "disconnected",
-            }
+        return await _instagram_status_for_user(user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        accounts = (
-            sb.table("ig_accounts")
-            .select(
-                "id,username,display_name,profile_picture_url,is_active,"
-                "graph_id,access_token,"
-                "facebook_token_is_valid,facebook_token_refresh_required,"
-                "facebook_token_expires_at,facebook_token_last_checked_at"
-            )
-            .eq("owner_id", profiles.data[0]["id"])
-            .eq("is_active", True)
-            .limit(1)
-            .execute()
-        )
-        if accounts.data:
-            account = await refresh_instagram_account_profile(
-                sb, dict(accounts.data[0])
-            )
-            return {
-                "id": account["id"],
-                "connected": True,
-                "username": account["username"],
-                "display_name": account.get("display_name"),
-                "profile_picture_url": account.get("profile_picture_url"),
-                "graph_id": account.get("graph_id"),
-                "facebook_token_is_valid": account.get(
-                    "facebook_token_is_valid", False
-                ),
-                "facebook_token_refresh_required": account.get(
-                    "facebook_token_refresh_required", False
-                ),
-                "facebook_token_expires_at": account.get(
-                    "facebook_token_expires_at"
-                ),
-                "facebook_token_last_checked_at": account.get(
-                    "facebook_token_last_checked_at"
-                ),
-                "status": "active",
-            }
 
-        return {
-            "connected": False,
-            "username": None,
-            "status": "disconnected",
-        }
+@router.post("/refresh/{user_id}")
+async def refresh_instagram_status(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    if str(current_user["telegram_id"]) != user_id:
+        raise HTTPException(status_code=403, detail="Telegram user mismatch")
+    try:
+        return await _instagram_status_for_user(user_id, require_graph_id=True)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
