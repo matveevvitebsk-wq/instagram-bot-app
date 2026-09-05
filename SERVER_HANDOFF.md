@@ -8,7 +8,7 @@
 >
 > 2026-09-05 cursor store device and OS types on each user login
 >
-> 2026-09-05 cursor launch Instagram app instead of navigating Mini App away
+> 2026-09-05 cursor revert Instagram launch button and keep login device logging
 
 Дата актуализации: 2026-09-05
 Формат комментария об изменениях: `YYYY-MM-DD cursor <комментарий>`
@@ -66,9 +66,6 @@ production Supabase, данные могли быть добавлены вру�
 
 ### Интерфейс Mini App
 
-- Перед подключением Mini App определяет смартфон, планшет или компьютер и
-  систему. На телефоне и планшете запускается приложение Instagram, без ухода
-  со страницы MediaHave. Вход в Instagram пользователь делает сам.
 - После подтверждения Instagram статус обновляется при возврате фокуса в Mini App.
 - Баннер «Подключите Instagram» скрывается после подтверждённого подключения.
 - Разделы «Задачи», «Лиды» и «Воронки» разблокируются после подключения.

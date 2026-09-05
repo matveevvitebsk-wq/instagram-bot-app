@@ -8,7 +8,7 @@
 >
 > 2026-09-05 cursor store device and OS types on each user login
 >
-> 2026-09-05 cursor launch Instagram app instead of navigating Mini App away
+> 2026-09-05 cursor revert Instagram launch button and keep login device logging
 
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
@@ -30,9 +30,7 @@ MediaHave — Telegram Mini App для подключения профессио
 - аналитика Dashboard;
 - блокировка разделов до подключения Instagram;
 - автоматическое обновление интерфейса после OAuth;
-- перед подключением Instagram Mini App определяет смартфон, планшет или
-  компьютер и систему (iOS, Android, Windows, macOS, Linux), показывает
-  требование бизнес-аккаунта и открывает Instagram или магазин этой системы;
+- при входе записывает тип устройства и ОС в `user_login_devices`;
 - четырёхшаговый мастер автоответов с сообщениями Direct, ответами на
   комментарии, напоминаниями и предпросмотром Instagram;
 - актуализация имени, логина и URL аватара подключённого Instagram-аккаунта;
@@ -408,8 +406,6 @@ https://www.instagram.com/oauth/authorize
 - [`docs/PROJECT_AUDIT_2026-07-29.md`](docs/PROJECT_AUDIT_2026-07-29.md) — аудит;
 - [`docs/instagram-auto-reply-wizard-2026-09-01.md`](docs/instagram-auto-reply-wizard-2026-09-01.md) —
   результаты разработки мастера автоответов и предпросмотра Instagram;
-- [`docs/instagram-app-prerequisite-2026-09-05.md`](docs/instagram-app-prerequisite-2026-09-05.md) —
-  проверка приложения Instagram и требование бизнес-аккаунта перед OAuth;
 - [`docs/user-login-devices.md`](docs/user-login-devices.md) —
   таблица входов по типу оборудования и операционной системы;
 - [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —

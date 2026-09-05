@@ -1,6 +1,8 @@
 # Таблица входов пользователя
 
 > 2026-09-05 cursor store device and OS types on each user login
+>
+> 2026-09-05 cursor revert Instagram launch button and keep login device logging
 
 ## Результат
 
