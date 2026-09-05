@@ -71,6 +71,9 @@ export default function App() {
         'ig_auth start_param ignored: Instagram OAuth starts from Settings',
       );
     }
+    if (startParam === 'ig_connected' || startParam === 'ig_error') {
+      console.log('Returned from Instagram OAuth:', startParam);
+    }
   }, []);
 
   if (isPublicPath) {
