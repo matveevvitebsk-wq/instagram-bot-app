@@ -121,7 +121,11 @@ const Settings: React.FC = () => {
       });
       const authUrl = response.data.auth_url;
 
-      window.location.assign(authUrl);
+      if (tg?.openLink) {
+        tg.openLink(authUrl, { try_instant_view: false });
+      } else {
+        window.open(authUrl, '_blank', 'noopener');
+      }
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     }
@@ -284,12 +288,22 @@ const Settings: React.FC = () => {
               {getInstagramDeviceHint(resolveDeviceProfile(platform))}
             </p>
 
-            {/* Кнопка входа (существующий аккаунт) */}
             <button
               onClick={handleConnectInstagram}
               className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
             >
-              🔑 Войти в существующий
+              Запустить Instagram
+            </button>
+            <button
+              type='button'
+              onClick={() => void startInstagramOAuth()}
+              className='w-full py-3 rounded-lg font-medium'
+              style={{
+                background: 'var(--tg-theme-button-color)',
+                color: 'var(--tg-theme-button-text-color)',
+              }}
+            >
+              Подключить аккаунт
             </button>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
@@ -324,10 +338,6 @@ const Settings: React.FC = () => {
       <InstagramPrerequisiteDialog
         open={showInstagramPrompt}
         onClose={() => setShowInstagramPrompt(false)}
-        onReady={() => {
-          setShowInstagramPrompt(false);
-          void startInstagramOAuth();
-        }}
       />
     </div>
   );

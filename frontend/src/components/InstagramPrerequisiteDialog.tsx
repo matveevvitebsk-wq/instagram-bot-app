@@ -3,43 +3,32 @@ import { useTelegram } from '@/hooks/useTelegram';
 import {
   INSTAGRAM_PREREQUISITE_MESSAGE,
   getInstagramDeviceHint,
-  openInstagramApp,
+  launchInstagramApp,
   resolveDeviceProfile,
-  waitUntilVisible,
 } from '@/utils/instagramApp';
 
 interface InstagramPrerequisiteDialogProps {
   open: boolean;
   onClose?: () => void;
-  onReady: () => void;
 }
 
 export default function InstagramPrerequisiteDialog({
   open,
   onClose,
-  onReady,
 }: InstagramPrerequisiteDialogProps) {
-  const { platform, openLink } = useTelegram();
-  const [opening, setOpening] = useState(false);
+  const { platform } = useTelegram();
+  const [launching, setLaunching] = useState(false);
+  const [launched, setLaunched] = useState(false);
   const device = resolveDeviceProfile(platform);
 
   if (!open) return null;
 
-  const handleOpenInstagram = async () => {
-    if (opening) return;
-    setOpening(true);
-    try {
-      const result = await openInstagramApp({
-        platform,
-        openHttps: openLink,
-      });
-      if (result !== 'desktop') {
-        await waitUntilVisible();
-      }
-      onReady();
-    } finally {
-      setOpening(false);
-    }
+  const handleLaunchInstagram = () => {
+    if (launching) return;
+    setLaunching(true);
+    const result = launchInstagramApp({ platform });
+    setLaunched(result === 'launched');
+    setLaunching(false);
   };
 
   return (
@@ -68,27 +57,33 @@ export default function InstagramPrerequisiteDialog({
         >
           {getInstagramDeviceHint(device)}
         </p>
+        {launched && (
+          <p className='text-xs leading-4'>
+            Instagram запущен. Войдите в бизнес-аккаунт сами, затем вернитесь
+            сюда.
+          </p>
+        )}
         <button
           type='button'
-          onClick={() => void handleOpenInstagram()}
-          disabled={opening}
+          onClick={handleLaunchInstagram}
+          disabled={launching || !device.canOpenNativeInstagram}
           className='w-full py-3 rounded-xl text-sm font-semibold active:opacity-70 disabled:opacity-60'
           style={{
             background: 'var(--tg-theme-button-color)',
             color: 'var(--tg-theme-button-text-color)',
           }}
         >
-          {opening ? 'Открываем Instagram…' : 'Открыть Instagram'}
+          {launching ? 'Запускаем Instagram…' : 'Запустить Instagram'}
         </button>
         {onClose && (
           <button
             type='button'
             onClick={onClose}
-            disabled={opening}
+            disabled={launching}
             className='w-full py-2.5 rounded-xl text-sm font-medium active:opacity-70'
             style={{ color: 'var(--tg-theme-hint-color)' }}
           >
-            Отмена
+            Закрыть
           </button>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 // ИСПРАВЛЕНО (15.07.2026): добавлен openLink для OAuth внутри Telegram
@@ -20,7 +20,7 @@ const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
   // ИСПРАВЛЕНО (15.07.2026): добавлен openLink в деструктуризацию
-  const { initData, isReady, platform, tg, openLink } = useTelegram();
+  const { initData, isReady, platform, tg } = useTelegram();
 
   console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
   console.log('START PARAM:', tg?.initDataUnsafe?.start_param);
@@ -64,7 +64,6 @@ export default function App() {
   // ═══════════════════════════════════════════════════════
 
   const [showIgAuthPrompt, setShowIgAuthPrompt] = useState(false);
-  const igAuthStarted = useRef(false);
 
   useEffect(() => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
@@ -73,21 +72,6 @@ export default function App() {
       setShowIgAuthPrompt(true);
     }
   }, [initData]);
-
-  const startIgAuthOAuth = () => {
-    if (igAuthStarted.current || !initData) return;
-    igAuthStarted.current = true;
-    setShowIgAuthPrompt(false);
-
-    const apiUrl =
-      import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
-    const url =
-      `${apiUrl}/api/instagram/meta/start-page` +
-      `?initData=${encodeURIComponent(initData)}`;
-
-    console.log('Запуск Instagram OAuth:', url);
-    openLink(url);
-  };
 
   if (isPublicPath) {
     return (
@@ -107,7 +91,7 @@ export default function App() {
     <BrowserRouter>
       <InstagramPrerequisiteDialog
         open={showIgAuthPrompt}
-        onReady={startIgAuthOAuth}
+        onClose={() => setShowIgAuthPrompt(false)}
       />
       <Routes>
         <Route path='/' element={<Layout />}>
