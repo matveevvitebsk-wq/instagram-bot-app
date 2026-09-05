@@ -19,7 +19,7 @@ interface InstagramAccount {
 }
 
 const Settings: React.FC = () => {
-  const { tg, user } = useTelegram();
+  const { tg, user, openExternalLink } = useTelegram();
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +114,10 @@ const Settings: React.FC = () => {
       });
       const authUrl = response.data.auth_url;
 
-      window.location.assign(authUrl);
+      // Do not assign Instagram into the Mini App WebView. Instagram then
+      // shows /accounts/login/?force_authentication and Telegram reports
+      // net::ERR_HTTP_RESPONSE_CODE_FAILURE even if the Instagram app is open.
+      openExternalLink(authUrl);
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     }
@@ -277,6 +280,10 @@ const Settings: React.FC = () => {
             >
               🔑 Войти в существующий
             </button>
+            <p className='text-xs text-gray-500'>
+              Вход откроется в браузере или приложении Instagram. Сессия в
+              приложении Instagram не видна внутри Telegram.
+            </p>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
               Сервис в режиме тестирования.

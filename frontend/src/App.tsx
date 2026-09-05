@@ -19,7 +19,7 @@ const PUBLIC_PATHS = ['/privacy', '/terms'];
 
 export default function App() {
   // ИСПРАВЛЕНО (15.07.2026): добавлен openLink в деструктуризацию
-  const { initData, isReady, platform, tg, openLink } = useTelegram();
+  const { initData, isReady, platform, tg } = useTelegram();
 
   console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
   console.log('START PARAM:', tg?.initDataUnsafe?.start_param);
@@ -65,17 +65,14 @@ export default function App() {
   useEffect(() => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
-    if (startParam === 'ig_auth' && initData) {
-      const apiUrl =
-        import.meta.env.VITE_API_URL || 'https://api.almarathon.com';
-      const url =
-        `${apiUrl}/api/instagram/meta/start-page` +
-        `?initData=${encodeURIComponent(initData)}`;
-
-      console.log('Запуск Instagram OAuth:', url);
-      openLink(url);
+    if (startParam === 'ig_auth') {
+      // /api/instagram/meta/start-page is not implemented. Opening it in
+      // Telegram produces a webpage error. Connect Instagram from Settings.
+      console.log(
+        'ig_auth start_param ignored: Instagram OAuth starts from Settings',
+      );
     }
-  }, [initData, openLink]);
+  }, []);
 
   if (isPublicPath) {
     return (
