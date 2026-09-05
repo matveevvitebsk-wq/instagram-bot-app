@@ -1,4 +1,4 @@
-git config --global user.email "matveev@tut.by"
+git config --global user.email "vitebskbanya@yandex.by"
 git config --global user.name "Almavit"
 
 
