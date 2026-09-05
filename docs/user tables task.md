@@ -1,6 +1,8 @@
 # User and Instagram account tables
 
 > 2026-09-01 cursor clarify Instagram profile fields and avatar URL refresh
+>
+> 2026-09-05 cursor require Instagram app login and business account before OAuth
 
 The table is named `ig_accounts`, not `ig_accountts`.
 
@@ -36,6 +38,10 @@ In short:
 customer_profiles = Telegram/MediaHave user
 ig_accounts = Instagram account connected by that user
 A single customer profile can own multiple Instagram accounts. ig_accounts should be the canonical location for Instagram credentials and account details.
+
+Before OAuth, the Mini App asks the user to open the Instagram app and log in
+with a Business or Creator account. See
+[`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 The `profile_picture_url` value is a Meta CDN URL and may expire. The backend
 refreshes `username`, `display_name`, and `profile_picture_url` through the
@@ -79,6 +85,10 @@ ID в Telegram, имя пользователя, имя и фамилия, а т
 customer_profiles = пользователь Telegram/MediaHave
 ig_accounts = аккаунт в Instagram, подключенный этим пользователем
 Один профиль клиента может владеть несколькими аккаунтами в Instagram. ig_accounts должен быть каноническим хранилищем учетных данных и сведений об аккаунтах в Instagram.
+
+Перед OAuth Mini App просит открыть приложение Instagram и войти в
+бизнес-аккаунт. См.
+[`instagram-app-prerequisite-2026-09-05.md`](instagram-app-prerequisite-2026-09-05.md).
 
 `profile_picture_url` содержит URL Meta CDN, который может устаревать. При
 загрузке активного аккаунта через `GET /api/accounts/` backend получает у
