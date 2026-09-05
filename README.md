@@ -400,6 +400,8 @@ https://www.instagram.com/oauth/authorize
 - OAuth browser нельзя гарантированно закрыть программно;
 - HTTP 429 на `instagram.com/accounts/login` снимается ожиданием 15–30 минут,
   повторно открывать эту ссылку не нужно;
+- «Опаньки» в Telegram Android лечится меню ⋮ → «Открыть в Chrome», а не
+  обновлением Android WebView;
 - токены Instagram требуют автоматического refresh до `token_expires_at`;
 - rate limiter и cache работают в памяти одного backend-процесса.
 

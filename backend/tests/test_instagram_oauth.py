@@ -40,6 +40,9 @@ def test_start_page_hands_off_to_instagram_app():
     )
     assert "com.instagram.android" in html
     assert "www.instagram.com/oauth/authorize" in html
+    assert "TelegramWebviewProxy" in html
+    assert "Открыть в Chrome" in html
+    assert "if (!isEmbeddedBrowser())" in html
     assert "force_authentication" not in html
     assert "accounts/login" not in html
 

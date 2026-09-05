@@ -21,6 +21,11 @@ Requests**. Повторное открытие той же ссылки тол�
 `force_authentication` добавляет сам Instagram, когда в текущем браузере нет
 логина. Это не параметр нашего authorize URL.
 
+Сообщение Telegram «Опаньки… При загрузке этой страницы возникли неполадки.
+Обновите Android WebView» появляется, когда встроенный браузер Telegram
+пытается открыть `intent://` или страницу Instagram с 429. Обновлять WebView
+не нужно: откройте ту же страницу в Chrome через меню ⋮.
+
 ## Исправление
 
 - Settings открывает `https://api.almarathon.com/api/instagram/meta/start-page`,

@@ -134,6 +134,11 @@ const Settings: React.FC = () => {
       // that has no Instagram session (that page is what returns HTTP 429).
       openExternalLink(startPageUrl);
       lastConnectAt.current = Date.now();
+      if (tg?.showAlert) {
+        tg.showAlert(
+          'Если открылось окно Telegram с ошибкой или серым экраном, нажмите ⋮ справа вверху и выберите «Открыть в Chrome». Не входите на странице логина Instagram внутри Telegram.',
+        );
+      }
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     } finally {
@@ -300,9 +305,8 @@ const Settings: React.FC = () => {
               {connecting ? 'Открываем Instagram…' : '🔑 Войти в существующий'}
             </button>
             <p className='text-xs text-gray-500'>
-              Вход откроется в приложении Instagram. Если Instagram показал
-              ошибку 429 на странице логина, подождите 15–30 минут и не
-              открывайте ту ссылку повторно.
+              Если Telegram покажет «Опаньки» или серое окно, нажмите ⋮ и
+              выберите «Открыть в Chrome». Обновлять Android WebView не нужно.
             </p>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
