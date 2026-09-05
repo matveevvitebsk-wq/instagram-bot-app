@@ -1,9 +1,10 @@
 // frontend/src/pages/Settings.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 import { notifyInstagramConnection } from '../utils/instagramConnection';
+import { instagramConnectWaitMs } from '../utils/instagramConnectCooldown';
 
 interface InstagramAccount {
   id: string;
@@ -23,6 +24,8 @@ const Settings: React.FC = () => {
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const lastConnectAt = useRef<number | null>(null);
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -99,6 +102,16 @@ const Settings: React.FC = () => {
   // };
 
   const handleConnectInstagram = async () => {
+    if (connecting) return;
+
+    const waitMs = instagramConnectWaitMs(lastConnectAt.current);
+    if (waitMs > 0) {
+      alert(
+        'Подождите, прежде чем открывать вход снова. Если Instagram показал ошибку 429, подождите 15–30 минут и не открывайте страницу логина повторно.',
+      );
+      return;
+    }
+
     try {
       const telegramId = user?.id;
 
@@ -107,19 +120,24 @@ const Settings: React.FC = () => {
         return;
       }
 
+      setConnecting(true);
       const response = await api.get('/api/instagram/meta/url', {
         params: {
           telegram_id: telegramId,
         },
       });
-      const authUrl = response.data.auth_url;
+      const startPageUrl =
+        response.data.start_page_url || response.data.auth_url;
 
-      // Do not assign Instagram into the Mini App WebView. Instagram then
-      // shows /accounts/login/?force_authentication and Telegram reports
-      // net::ERR_HTTP_RESPONSE_CODE_FAILURE even if the Instagram app is open.
-      openExternalLink(authUrl);
+      // Open our HTTPS start-page, not Instagram login. The start-page hands
+      // off to the Instagram app so /accounts/login is not loaded in a browser
+      // that has no Instagram session (that page is what returns HTTP 429).
+      openExternalLink(startPageUrl);
+      lastConnectAt.current = Date.now();
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -276,13 +294,15 @@ const Settings: React.FC = () => {
             {/* Кнопка входа (существующий аккаунт) */}
             <button
               onClick={handleConnectInstagram}
-              className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
+              disabled={connecting}
+              className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all disabled:opacity-60'
             >
-              🔑 Войти в существующий
+              {connecting ? 'Открываем Instagram…' : '🔑 Войти в существующий'}
             </button>
             <p className='text-xs text-gray-500'>
-              Вход откроется в браузере или приложении Instagram. Сессия в
-              приложении Instagram не видна внутри Telegram.
+              Вход откроется в приложении Instagram. Если Instagram показал
+              ошибку 429 на странице логина, подождите 15–30 минут и не
+              открывайте ту ссылку повторно.
             </p>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
