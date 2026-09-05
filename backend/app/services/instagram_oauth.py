@@ -90,12 +90,13 @@ def start_page_html(auth_url: str) -> str:
       font-size: 16px;
     }}
     p {{ line-height: 1.45; }}
+    .hint {{ color: #737373; font-size: 14px; }}
   </style>
 </head>
 <body>
   <main>
-    <p>Открываем Instagram для входа. Если приложение установлено, вход пойдёт в нём, а не на веб-странице логина.</p>
-    <p id="status">Подождите…</p>
+    <p>Чтобы войти, откройте эту страницу в Chrome. Telegram не умеет открыть Instagram внутри своего окна.</p>
+    <p id="status" class="hint">Нажмите ⋮ справа вверху и выберите «Открыть в Chrome» или «Открыть в браузере».</p>
     <a id="fallback" href="#">Открыть Instagram</a>
   </main>
   <script>
@@ -104,7 +105,16 @@ def start_page_html(auth_url: str) -> str:
     const status = document.getElementById("status");
     fallback.href = authUrl;
 
-    function openAuthorize() {{
+    function isEmbeddedBrowser() {{
+      const ua = navigator.userAgent || "";
+      if (window.TelegramWebviewProxy) return true;
+      if (window.Telegram && window.Telegram.WebApp) return true;
+      if (/; wv\\)/i.test(ua)) return true;
+      if (/Telegram/i.test(ua)) return true;
+      return false;
+    }}
+
+    function openInInstagramApp() {{
       const ua = navigator.userAgent || "";
       if (/Android/i.test(ua)) {{
         const path = authUrl.replace(/^https:\\/\\//, "");
@@ -120,13 +130,16 @@ def start_page_html(auth_url: str) -> str:
 
     fallback.addEventListener("click", function (event) {{
       event.preventDefault();
-      openAuthorize();
+      if (isEmbeddedBrowser()) {{
+        status.textContent = "Сначала откройте эту страницу в Chrome через меню ⋮. Не входите в Instagram внутри Telegram.";
+        return;
+      }}
+      openInInstagramApp();
     }});
 
-    try {{
-      openAuthorize();
-    }} catch (error) {{
-      status.textContent = "Нажмите кнопку, чтобы открыть Instagram.";
+    if (!isEmbeddedBrowser()) {{
+      status.textContent = "Открываем Instagram…";
+      openInInstagramApp();
     }}
   </script>
 </body>
