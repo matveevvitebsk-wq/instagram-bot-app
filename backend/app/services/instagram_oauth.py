@@ -163,6 +163,66 @@ def expired_start_page_html() -> str:
 """
 
 
+def telegram_mini_app_url(start_param: str) -> str:
+    username = settings.TELEGRAM_BOT_USERNAME.strip().lstrip("@")
+    return f"https://t.me/{username}?startapp={start_param}"
+
+
+def oauth_return_html(success: bool) -> str:
+    start_param = "ig_connected" if success else "ig_error"
+    app_url = telegram_mini_app_url(start_param)
+    app_url_js = json.dumps(app_url)
+    title = "Instagram подключён" if success else "Не удалось подключить Instagram"
+    body = (
+        "Открываем MediaHave в Telegram."
+        if success
+        else "Вернитесь в MediaHave в Telegram и попробуйте ещё раз."
+    )
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fafafa;
+      color: #262626;
+      padding: 24px;
+      text-align: center;
+    }}
+    a {{
+      display: inline-block;
+      margin-top: 16px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: #229ed9;
+      color: #fff;
+      text-decoration: none;
+      font-size: 16px;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <p>{title}</p>
+    <p>{body}</p>
+    <a href="{app_url}">Открыть приложение в Telegram</a>
+  </main>
+  <script>
+    window.location.replace({app_url_js});
+  </script>
+</body>
+</html>
+"""
+
+
 def validate_oauth_state(state: str) -> Optional[dict]:
     try:
         data = decode_instagram_oauth_state(state)

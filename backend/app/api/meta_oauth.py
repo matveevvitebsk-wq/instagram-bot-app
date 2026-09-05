@@ -22,6 +22,7 @@ from app.services.instagram_oauth import (
     instagram_auth_url,
     instagram_oauth_configured,
     instagram_start_page_url,
+    oauth_return_html,
     start_page_html,
     validate_oauth_state,
 )
@@ -31,12 +32,11 @@ router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 logger = logging.getLogger(__name__)
 
 
-def oauth_result_response(success: bool) -> RedirectResponse:
-    path = "" if success else "settings"
-    result = "connected" if success else "error"
-    query = urlencode({"instagram": result})
-    url = f"{settings.FRONTEND_URL.rstrip('/')}/{path}?{query}"
-    return RedirectResponse(url=url, status_code=303)
+def oauth_result_response(success: bool) -> HTMLResponse:
+    return HTMLResponse(
+        content=oauth_return_html(success),
+        headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"},
+    )
 
 
 def facebook_oauth_result_response(success: bool) -> RedirectResponse:

@@ -1,7 +1,62 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  instagramOAuthReturnStartParam,
+  telegramMiniAppUrl,
+} from '../utils/telegramMiniApp';
 
 export default function Landing() {
   const [showTestModal, setShowTestModal] = useState(false);
+  const instagramResult = new URLSearchParams(window.location.search).get(
+    'instagram',
+  );
+  const returnStartParam = instagramOAuthReturnStartParam(instagramResult);
+  const telegramAppUrl = returnStartParam
+    ? telegramMiniAppUrl(returnStartParam)
+    : null;
+
+  useEffect(() => {
+    if (telegramAppUrl) {
+      window.location.replace(telegramAppUrl);
+    }
+  }, [telegramAppUrl]);
+
+  if (telegramAppUrl) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          textAlign: 'center',
+          fontFamily: 'sans-serif',
+        }}
+      >
+        <main>
+          <p>
+            {instagramResult === 'connected'
+              ? 'Instagram подключён. Открываем MediaHave в Telegram.'
+              : 'Не удалось подключить Instagram. Откройте MediaHave в Telegram.'}
+          </p>
+          <a
+            href={telegramAppUrl}
+            style={{
+              display: 'inline-block',
+              marginTop: 16,
+              padding: '12px 18px',
+              borderRadius: 10,
+              background: '#229ed9',
+              color: '#fff',
+              textDecoration: 'none',
+            }}
+          >
+            Открыть приложение в Telegram
+          </a>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <>
