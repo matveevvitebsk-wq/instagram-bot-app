@@ -260,6 +260,7 @@ last_login_at
 id                    UUID primary key
 owner_id              FK → customer_profiles.id
 page_id               Instagram professional account user_id
+graph_id              Instagram Graph /me id (webhook recipient/sender for the business)
 username              Instagram username
 display_name          полное имя Instagram-профиля
 profile_picture_url   URL изображения профиля
