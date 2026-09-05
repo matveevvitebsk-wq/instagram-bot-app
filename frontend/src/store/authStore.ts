@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import api from "@/utils/api";
+import { detectDevice } from "@/utils/deviceProfile";
 
 interface AuthState {
   token: string | null;
@@ -22,7 +23,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (initData: string) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await api.post("/api/auth/telegram", { init_data: initData });
+      const device = detectDevice({
+        telegramPlatform:
+          typeof window !== "undefined"
+            ? window.Telegram?.WebApp?.platform
+            : undefined,
+      });
+      const res = await api.post("/api/auth/telegram", {
+        init_data: initData,
+        device_kind: device.kind,
+        os_type: device.os,
+        telegram_platform: device.telegramPlatform,
+      });
       const { access_token, user } = res.data;
 
       console.log("🔑 Ответ от бэкенда:", res.data);

@@ -5,6 +5,8 @@
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
 >
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
+>
+> 2026-09-05 cursor store device and OS types on each user login
 
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
@@ -250,6 +252,7 @@ Backend содержит автоматические тесты для payload 
 - `automation_funnels` — воронки;
 - `users` — лиды;
 - `events` — события;
+- `user_login_devices` — входы по типу устройства и ОС;
 - `ai_analytics_snapshots` — аналитические снимки.
 
 Частичная migration находится в:
@@ -405,6 +408,8 @@ https://www.instagram.com/oauth/authorize
   результаты разработки мастера автоответов и предпросмотра Instagram;
 - [`docs/instagram-app-prerequisite-2026-09-05.md`](docs/instagram-app-prerequisite-2026-09-05.md) —
   проверка приложения Instagram и требование бизнес-аккаунта перед OAuth;
+- [`docs/user-login-devices.md`](docs/user-login-devices.md) —
+  таблица входов по типу оборудования и операционной системы;
 - [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —
   структура JSON payload сценария автоответа;
 - [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —
