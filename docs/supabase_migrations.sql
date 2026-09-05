@@ -30,6 +30,12 @@ UPDATE ig_accounts
 SET display_name = NULL
 WHERE display_name = username;
 
+ALTER TABLE ig_accounts
+    ADD COLUMN IF NOT EXISTS graph_id VARCHAR(255);
+
+CREATE INDEX IF NOT EXISTS idx_ig_accounts_graph_id
+    ON ig_accounts (graph_id);
+
 -- ─── 2. Таблица задач автоматизации ─────────────────────────────
 CREATE TABLE IF NOT EXISTS automation_tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

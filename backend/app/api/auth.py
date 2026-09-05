@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.core.security import verify_telegram_init_data, create_access_token
 from app.core.supabase import get_supabase
 from app.services.facebook_tokens import maintain_owner_facebook_tokens
+from app.services.instagram_profile import refresh_owner_instagram_profiles
 from app.services.login_devices import record_user_login_device
 
 router = APIRouter()
@@ -70,6 +71,7 @@ async def auth_telegram(body: TelegramAuthRequest):
 
     profile = result.data[0]
     await maintain_owner_facebook_tokens(sb, profile["id"])
+    await refresh_owner_instagram_profiles(sb, profile["id"])
     record_user_login_device(
         sb,
         owner_id=profile["id"],
