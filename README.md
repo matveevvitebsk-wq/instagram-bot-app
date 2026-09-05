@@ -7,6 +7,8 @@
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
 >
 > 2026-09-05 cursor store device and OS types on each user login
+>
+> 2026-09-05 cursor launch Instagram app instead of navigating Mini App away
 
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
