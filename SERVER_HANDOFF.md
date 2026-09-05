@@ -47,6 +47,8 @@ Instagram OAuth и Docker Compose.
 После успешного подключения в `ig_accounts` сохраняются:
 
 - `page_id` — Instagram professional account `user_id`, а не Facebook Page ID;
+- `graph_id` — Instagram Graph `/me` `id`; совпадает с webhook
+  `recipient.id` и с `sender.id` исходящих echo-сообщений бизнеса;
 - `username` — username, например `almat.running`;
 - `display_name` — полное имя профиля из поля Instagram `name`;
 - `profile_picture_url` — URL изображения профиля;

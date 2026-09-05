@@ -279,6 +279,7 @@ npx supabase db dump --linked --schema public -f docs/supabase_schema.sql
 ```text
 owner_id
 page_id
+graph_id
 username
 display_name
 profile_picture_url
@@ -289,8 +290,9 @@ is_active
 ```
 
 `page_id` содержит Instagram professional account `user_id`, а не Facebook
-Page ID. `display_name` содержит полное имя профиля, а `username` — Instagram
-username. `profile_picture_url` является URL Meta CDN: endpoint
+Page ID. `graph_id` содержит Graph `/me` `id` (тот же формат, что
+`sender.id` / `recipient.id` в webhook). `display_name` содержит полное имя
+профиля, а `username` — Instagram username. `profile_picture_url` является URL Meta CDN: endpoint
 `GET /api/accounts/` запрашивает актуальное значение через Instagram API и
 обновляет его в `ig_accounts`.
 

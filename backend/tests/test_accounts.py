@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import httpx
 
-from app.api.accounts import ACCOUNT_PUBLIC_FIELDS, _refresh_instagram_profile
+from app.api.accounts import ACCOUNT_PUBLIC_FIELDS
+from app.services.instagram_profile import refresh_instagram_account_profile
 
 
 class FakeResult:
@@ -55,11 +56,12 @@ def test_refresh_instagram_profile_updates_avatar_url():
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.host == "graph.instagram.com"
         assert request.url.params["fields"] == (
-            "user_id,username,name,profile_picture_url"
+            "id,user_id,username,name,profile_picture_url,followers_count"
         )
         return httpx.Response(
             200,
             json={
+                "id": "1917627436259991",
                 "user_id": "123",
                 "username": "new_name",
                 "name": "New name",
@@ -68,12 +70,17 @@ def test_refresh_instagram_profile_updates_avatar_url():
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    with patch("app.api.accounts.httpx.AsyncClient", return_value=client):
-        refreshed = asyncio.run(_refresh_instagram_profile(sb, account))
+    with patch(
+        "app.services.instagram_profile.httpx.AsyncClient",
+        return_value=client,
+    ):
+        refreshed = asyncio.run(refresh_instagram_account_profile(sb, account))
 
     assert refreshed["profile_picture_url"] == "https://fresh.cdn/avatar.jpg"
     assert refreshed["display_name"] == "New name"
+    assert refreshed["graph_id"] == "1917627436259991"
     assert sb.accounts.updated == {
+        "graph_id": "1917627436259991",
         "username": "new_name",
         "display_name": "New name",
         "profile_picture_url": "https://fresh.cdn/avatar.jpg",

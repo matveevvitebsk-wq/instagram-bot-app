@@ -26,6 +26,7 @@ from app.services.instagram_oauth import (
     start_page_html,
     validate_oauth_state,
 )
+from app.services.instagram_profile import refresh_instagram_account_profile
 
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
@@ -291,6 +292,7 @@ async def auth_callback(
             instagram = profile_response.json()
 
         instagram_id = str(instagram.get("user_id") or "")
+        graph_id = str(instagram.get("id") or "").strip()
         instagram_username = instagram.get("username")
         if not instagram_id or not instagram_username:
             raise HTTPException(
@@ -313,6 +315,7 @@ async def auth_callback(
             {
                 "owner_id": profile.data["id"],
                 "page_id": instagram_id,
+                "graph_id": graph_id or None,
                 "username": instagram_username,
                 "display_name": instagram.get("name"),
                 "profile_picture_url": instagram.get("profile_picture_url"),
@@ -394,6 +397,7 @@ async def get_instagram_status(
             sb.table("ig_accounts")
             .select(
                 "id,username,display_name,profile_picture_url,is_active,"
+                "graph_id,access_token,"
                 "facebook_token_is_valid,facebook_token_refresh_required,"
                 "facebook_token_expires_at,facebook_token_last_checked_at"
             )
@@ -403,13 +407,16 @@ async def get_instagram_status(
             .execute()
         )
         if accounts.data:
-            account = accounts.data[0]
+            account = await refresh_instagram_account_profile(
+                sb, dict(accounts.data[0])
+            )
             return {
                 "id": account["id"],
                 "connected": True,
                 "username": account["username"],
                 "display_name": account.get("display_name"),
                 "profile_picture_url": account.get("profile_picture_url"),
+                "graph_id": account.get("graph_id"),
                 "facebook_token_is_valid": account.get(
                     "facebook_token_is_valid", False
                 ),
