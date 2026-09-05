@@ -21,7 +21,7 @@ interface UseTelegramReturn {
   hideBackButton: () => void;
   showMainButton: (text: string, callback: () => void) => void;
   hideMainButton: () => void;
-  showAlert: (text: string) => void;
+  showAlert: (text: string, callback?: () => void) => void;
   showConfirm: (text: string, callback: (confirmed: boolean) => void) => void;
   hapticFeedback: (type: "light" | "medium" | "heavy" | "error" | "success" | "warning") => void;
   closeApp: () => void;
@@ -210,7 +210,14 @@ export const useTelegram = (): UseTelegramReturn => {
     hideBackButton,
     showMainButton,
     hideMainButton,
-    showAlert: (text) => tg?.showAlert(text),
+    showAlert: (text: string, callback?: () => void) => {
+      if (tg?.showAlert) {
+        tg.showAlert(text, callback);
+        return;
+      }
+      window.alert(text);
+      callback?.();
+    },
     showConfirm: (text, cb) => tg?.showConfirm(text, cb),
     hapticFeedback,
     closeApp: () => tg?.close(),
