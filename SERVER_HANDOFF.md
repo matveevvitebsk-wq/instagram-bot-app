@@ -5,6 +5,8 @@
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
 >
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
+>
+> 2026-09-05 cursor store device and OS types on each user login
 
 Дата актуализации: 2026-09-05
 Формат комментария об изменениях: `YYYY-MM-DD cursor <комментарий>`
@@ -202,7 +204,9 @@ Telegram auth:
 1. Frontend передаёт Telegram `initData`.
 2. Backend проверяет HMAC-SHA256 подпись.
 3. Профиль создаётся или обновляется в `customer_profiles`.
-4. Backend выдаёт JWT HS256.
+4. Backend записывает тип оборудования и ОС в `user_login_devices` и
+   увеличивает `login_count`.
+5. Backend выдаёт JWT HS256.
 
 Backend подключается к Supabase через service-role key. Этот ключ обходит RLS
 и должен существовать только на сервере.
@@ -234,6 +238,21 @@ instagram_connected_at
 ```
 
 Telegram-пользователь создаётся или обновляется по `telegram_id`.
+
+### `user_login_devices`
+
+```text
+owner_id            FK → customer_profiles.id
+telegram_id
+device_kind         phone | tablet | computer
+os_type             ios | android | windows | macos | linux | unknown
+telegram_platform
+login_count
+first_login_at
+last_login_at
+```
+
+Повторный вход с той же пары устройство + система увеличивает `login_count`.
 
 ### `ig_accounts`
 
@@ -285,7 +304,8 @@ Meta `is_user_follow_business` and the webhook IGSID. See
 - `users`;
 - `interactions`;
 - `ai_analytics_snapshots`;
-- `events`.
+- `events`;
+- `user_login_devices` — счётчик входов по `device_kind` и `os_type`.
 
 Они не создаются текущим `docs/supabase_migrations.sql`; перед новым
 развёртыванием полную live-схему нужно выгрузить и синхронизировать.

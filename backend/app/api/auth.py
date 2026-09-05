@@ -1,15 +1,21 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from app.core.security import verify_telegram_init_data, create_access_token
 from app.core.supabase import get_supabase
 from app.services.facebook_tokens import maintain_owner_facebook_tokens
+from app.services.login_devices import record_user_login_device
 
 router = APIRouter()
 
 
 class TelegramAuthRequest(BaseModel):
     init_data: str
+    device_kind: Optional[str] = None
+    os_type: Optional[str] = None
+    telegram_platform: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
@@ -64,6 +70,14 @@ async def auth_telegram(body: TelegramAuthRequest):
 
     profile = result.data[0]
     await maintain_owner_facebook_tokens(sb, profile["id"])
+    record_user_login_device(
+        sb,
+        owner_id=profile["id"],
+        telegram_id=telegram_id,
+        device_kind=body.device_kind,
+        os_type=body.os_type,
+        telegram_platform=body.telegram_platform,
+    )
     token = create_access_token({**user_data, "profile_id": profile["id"]})
 
     return AuthResponse(
