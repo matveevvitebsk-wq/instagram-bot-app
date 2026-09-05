@@ -34,6 +34,9 @@ Requests**. Повторное открытие той же ссылки тол�
   На iOS — Universal Link `www.instagram.com/oauth/authorize`.
 - Кнопка «Войти в существующий» имеет паузу 45 секунд между нажатиями.
 - `start_param=ig_auth` сам OAuth не запускает: нужен signed `state` из Settings.
+- После успешного входа callback открывает Mini App
+  `https://t.me/mediahave_bot?startapp=ig_connected`, а не сайт
+  `almarathon.com/?instagram=connected`.
 
 Если пользователь уже получил 429: подождать 15–30 минут, не открывать ссылку
 логина повторно, затем нажать «Войти в существующий» ещё раз — вход должен

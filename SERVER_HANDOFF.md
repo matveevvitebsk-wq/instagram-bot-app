@@ -37,8 +37,8 @@ Instagram OAuth и Docker Compose.
   `https://api.instagram.com/oauth/access_token`.
 - Short-lived token обменивается на long-lived token через
   `https://graph.instagram.com/access_token`.
-- После успешного callback пользователь возвращается на главную страницу
-  `https://almarathon.com/?instagram=connected`.
+- После успешного callback пользователь возвращается в Mini App:
+  `https://t.me/mediahave_bot?startapp=ig_connected`.
 - Backend записывает точную ошибку Instagram token exchange в журнал, не
   показывая токены пользователю.
 
@@ -360,8 +360,9 @@ Settings
   → GET graph.instagram.com/{version}/me
   → upsert ig_accounts
   → update customer_profiles
-  → redirect на https://almarathon.com/?instagram=connected
-  → frontend повторно проверяет GET /api/accounts/
+  → HTML «Открыть приложение в Telegram»
+  → https://t.me/mediahave_bot?startapp=ig_connected
+  → Mini App проверяет GET /api/accounts/
 ```
 
 Страница `instagram.com/accounts/login/?force_authentication` — это веб-логин
@@ -393,6 +394,7 @@ Backend:
 
 ```text
 BOT_TOKEN
+TELEGRAM_BOT_USERNAME
 WEBAPP_URL
 FRONTEND_URL
 BACKEND_URL

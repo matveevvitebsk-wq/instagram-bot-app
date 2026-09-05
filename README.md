@@ -308,7 +308,8 @@ Settings
   → long-lived token
   → Instagram profile
   → Supabase
-  → главная страница Mini App
+  → https://t.me/mediahave_bot?startapp=ig_connected
+  → Mini App
 ```
 
 Не открывайте `instagram.com/accounts/login` внутри Mini App или повторно в

@@ -3,7 +3,9 @@ from app.services.instagram_oauth import (
     expired_start_page_html,
     instagram_auth_url,
     instagram_start_page_url,
+    oauth_return_html,
     start_page_html,
+    telegram_mini_app_url,
     validate_oauth_state,
 )
 
@@ -50,3 +52,13 @@ def test_start_page_hands_off_to_instagram_app():
 def test_expired_start_page_mentions_429():
     html = expired_start_page_html()
     assert "429" in html
+
+
+def test_oauth_return_opens_telegram_mini_app():
+    assert telegram_mini_app_url("ig_connected") == (
+        "https://t.me/mediahave_bot?startapp=ig_connected"
+    )
+    html = oauth_return_html(True)
+    assert "https://t.me/mediahave_bot?startapp=ig_connected" in html
+    assert "almarathon.com/?instagram=connected" not in html
+    assert "Открыть приложение в Telegram" in html
