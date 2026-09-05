@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     WEBAPP_URL: str = "https://almarathon.com"
     FRONTEND_URL: str = "https://almarathon.com"
     BACKEND_URL: str = "https://api.almarathon.com"
+    TELEGRAM_BOT_USERNAME: str = "mediahave_bot"
     
     # JWT
     JWT_SECRET: str
