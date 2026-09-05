@@ -11,6 +11,7 @@ interface InstagramAccount {
   username: string;
   display_name?: string | null;
   profile_picture_url?: string | null;
+  graph_id?: string | null;
   connected: boolean;
   status: 'active' | 'pending' | 'error' | 'disconnected';
   facebook_token_is_valid?: boolean;
@@ -146,6 +147,18 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleRefreshAccount = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await api.post(`/api/instagram/refresh/${user.id}`);
+      setAccount(response.data);
+      notifyInstagramConnection(Boolean(response.data?.connected));
+    } catch (error) {
+      console.error('Failed to refresh Instagram account:', error);
+      alert('Не удалось обновить Instagram id. Проверьте подключение и токен.');
+    }
+  };
+
   const disconnectInstagram = async () => {
     if (!account?.id) return;
 
@@ -245,6 +258,14 @@ const Settings: React.FC = () => {
                 >
                   {account.status === 'active' ? '✓ Активен' : '⏳ На проверке'}
                 </p>
+                {account.graph_id && (
+                  <p
+                    className='text-xs break-all mt-1'
+                    style={{ color: 'var(--tg-theme-hint-color)' }}
+                  >
+                    Graph id: {account.graph_id}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -253,7 +274,7 @@ const Settings: React.FC = () => {
               style={{ borderTop: '1px solid rgba(127,127,127,0.18)' }}
             >
               <button
-                onClick={() => void fetchAccountStatus()}
+                onClick={() => void handleRefreshAccount()}
                 className='w-full px-3 py-2.5 rounded-xl text-sm font-medium active:opacity-70'
                 style={{
                   background: 'var(--tg-theme-button-color)',
