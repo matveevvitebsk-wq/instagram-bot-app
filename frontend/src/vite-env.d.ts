@@ -77,11 +77,12 @@ interface TelegramWebApp {
     // try_browser: "chrome" | "firefox" | "safari" — открывает в указанном
     // браузере (системный браузер, вне Telegram).
     //
-    // Используем "internal" чтобы OAuth-ссылкa открывалась внутри Telegram.
+    // Instagram OAuth uses try_browser: "chrome" so Android does not load
+    // instagram.com/accounts/login inside Telegram's WebView.
     // ══════════════════════════════════════════════════════════════════════
     openLink: (url: string, options?: {
         try_instant_view?: boolean;
-        try_browser?: "chrome" | "firefox" | "safari";  // ← ВОССТАНОВЛЕНО (15.07.2026)
+        try_browser?: "chrome" | "firefox" | "safari";
     }) => void;
     // ДОБАВЛЕНО: Новый метод для работы с внутренними ссылками Telegram (Deep Links).
     // Необходим для перенаправления пользователя на прокси-бота на десктопных платформах.
