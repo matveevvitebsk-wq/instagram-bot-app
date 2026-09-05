@@ -66,8 +66,7 @@ export default function App() {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
     if (startParam === 'ig_auth') {
-      // /api/instagram/meta/start-page is not implemented. Opening it in
-      // Telegram produces a webpage error. Connect Instagram from Settings.
+      // start-page needs a signed OAuth state from Settings, not start_param.
       console.log(
         'ig_auth start_param ignored: Instagram OAuth starts from Settings',
       );

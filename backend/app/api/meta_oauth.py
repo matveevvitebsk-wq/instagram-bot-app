@@ -1,6 +1,6 @@
 # backend/app/api/meta_oauth.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 import httpx
 import logging
@@ -15,6 +15,15 @@ from app.services.facebook_tokens import (
     FacebookTokenError,
     attach_facebook_token_to_owner,
     exchange_facebook_token,
+)
+from app.services.instagram_oauth import (
+    create_instagram_oauth_state,
+    expired_start_page_html,
+    instagram_auth_url,
+    instagram_oauth_configured,
+    instagram_start_page_url,
+    start_page_html,
+    validate_oauth_state,
 )
 
 
@@ -56,31 +65,25 @@ async def get_meta_url(
     if str(current_user["telegram_id"]) != telegram_id:
         raise HTTPException(status_code=403, detail="Telegram user mismatch")
 
-    if not all([
-        settings.META_INSTAGRAM_APP_ID,
-        settings.META_INSTAGRAM_APP_SECRET,
-        settings.META_REDIRECT_URI,
-    ]):
+    if not instagram_oauth_configured():
         raise HTTPException(status_code=500, detail="Instagram OAuth not configured")
 
-    state = jwt.encode(
-        {
-            "telegram_id": telegram_id,
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
-        },
-        settings.JWT_SECRET,
-        algorithm=settings.JWT_ALGORITHM,
-    )
-    params = {
-        "client_id": settings.META_INSTAGRAM_APP_ID,
-        "redirect_uri": settings.META_REDIRECT_URI,
-        "response_type": "code",
-        "scope": settings.meta_oauth_scopes,
-        "state": state,
+    state = create_instagram_oauth_state(telegram_id)
+    return {
+        "auth_url": instagram_auth_url(state),
+        "start_page_url": instagram_start_page_url(state),
     }
-    auth_url = f"{settings.meta_oauth_url}?{urlencode(params)}"
 
-    return {"auth_url": auth_url}
+
+@router.get("/meta/start-page", response_class=HTMLResponse)
+async def instagram_oauth_start_page(state: str = Query(...)):
+    if not instagram_oauth_configured() or not validate_oauth_state(state):
+        return HTMLResponse(content=expired_start_page_html(), status_code=400)
+
+    return HTMLResponse(
+        content=start_page_html(instagram_auth_url(state)),
+        headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"},
+    )
 
 
 @router.get("/facebook/url")
