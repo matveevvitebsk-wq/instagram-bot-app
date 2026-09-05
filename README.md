@@ -301,7 +301,8 @@ username. `profile_picture_url` является URL Meta CDN: endpoint
 ```text
 Settings
   → GET /api/instagram/meta/url
-  → instagram.com/oauth/authorize
+  → Telegram.WebApp.openLink(instagram.com/oauth/authorize)
+  → системный браузер или приложение Instagram
   → GET /api/instagram/auth/callback
   → short-lived token
   → long-lived token
@@ -309,6 +310,10 @@ Settings
   → Supabase
   → главная страница Mini App
 ```
+
+Не открывайте `instagram.com` через `window.location.assign` внутри Mini App.
+WebView Telegram не видит сессию приложения Instagram и получает
+`/accounts/login/?force_authentication` → `net::ERR_HTTP_RESPONSE_CODE_FAILURE`.
 
 Scopes:
 
@@ -408,6 +413,8 @@ https://www.instagram.com/oauth/authorize
   результаты разработки мастера автоответов и предпросмотра Instagram;
 - [`docs/user-login-devices.md`](docs/user-login-devices.md) —
   таблица входов по типу оборудования и операционной системы;
+- [`docs/instagram-oauth-webview-2026-09-05.md`](docs/instagram-oauth-webview-2026-09-05.md) —
+  почему Instagram login падает в WebView Telegram;
 - [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —
   структура JSON payload сценария автоответа;
 - [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —

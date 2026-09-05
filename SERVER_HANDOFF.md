@@ -351,7 +351,8 @@ WHERE igba_id IS NOT NULL;
 ```text
 Settings
   → GET /api/instagram/meta/url?telegram_id=...
-  → instagram.com/oauth/authorize
+  → Telegram.WebApp.openLink(instagram.com/oauth/authorize, try_browser=chrome)
+  → системный браузер или приложение Instagram
   → пользователь подтверждает permissions
   → GET /api/instagram/auth/callback?code=...&state=...
   → short-lived token
@@ -362,6 +363,11 @@ Settings
   → redirect на https://almarathon.com/?instagram=connected
   → frontend повторно проверяет GET /api/accounts/
 ```
+
+`window.location.assign` на Instagram OAuth внутри Mini App приводит к
+`instagram.com/accounts/login/?force_authentication` и ошибке Telegram
+«Не удалось открыть веб-страницу» / `net::ERR_HTTP_RESPONSE_CODE_FAILURE`.
+Сессия в приложении Instagram недоступна WebView Telegram.
 
 Используемые scopes:
 

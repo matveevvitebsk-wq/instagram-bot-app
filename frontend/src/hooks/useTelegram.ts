@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { openExternalUrl } from "../utils/openExternalUrl";
 
 interface TelegramUser {
   id: number;
@@ -43,6 +44,9 @@ interface UseTelegramReturn {
   //
   // ══════════════════════════════════════════════════════════════════════
   openLink: (url: string) => void;
+  // Instagram OAuth must leave the Mini App WebView. Native Instagram login
+  // is not visible to Telegram's embedded browser.
+  openExternalLink: (url: string) => void;
   // НОВОЕ (15.07.2026)
   // Открывает ссылку t.me внутри Telegram,
   // используется для запуска Mini App через startapp
@@ -167,6 +171,10 @@ export const useTelegram = (): UseTelegramReturn => {
     []
   );
 
+  const openExternalLink = useCallback((url: string) => {
+    openExternalUrl(url, window.Telegram?.WebApp ?? null);
+  }, []);
+
   // ═══════════════════════════════════════════════════════
   // НОВОЕ (15.07.2026)
   //
@@ -222,6 +230,7 @@ export const useTelegram = (): UseTelegramReturn => {
     hapticFeedback,
     closeApp: () => tg?.close(),
     openLink,
+    openExternalLink,
     openTelegramLink,
   };
 };
