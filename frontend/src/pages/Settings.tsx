@@ -4,12 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 import { notifyInstagramConnection } from '../utils/instagramConnection';
-import InstagramPrerequisiteDialog from '../components/InstagramPrerequisiteDialog';
-import {
-  INSTAGRAM_PREREQUISITE_MESSAGE,
-  getInstagramDeviceHint,
-  resolveDeviceProfile,
-} from '../utils/instagramApp';
 
 interface InstagramAccount {
   id: string;
@@ -25,11 +19,10 @@ interface InstagramAccount {
 }
 
 const Settings: React.FC = () => {
-  const { tg, user, platform } = useTelegram();
+  const { tg, user } = useTelegram();
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showInstagramPrompt, setShowInstagramPrompt] = useState(false);
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -105,7 +98,7 @@ const Settings: React.FC = () => {
   //   }
   // };
 
-  const startInstagramOAuth = async () => {
+  const handleConnectInstagram = async () => {
     try {
       const telegramId = user?.id;
 
@@ -121,18 +114,10 @@ const Settings: React.FC = () => {
       });
       const authUrl = response.data.auth_url;
 
-      if (tg?.openLink) {
-        tg.openLink(authUrl, { try_instant_view: false });
-      } else {
-        window.open(authUrl, '_blank', 'noopener');
-      }
+      window.location.assign(authUrl);
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     }
-  };
-
-  const handleConnectInstagram = () => {
-    setShowInstagramPrompt(true);
   };
 
   const disconnectInstagram = async () => {
@@ -282,28 +267,15 @@ const Settings: React.FC = () => {
         ) : (
           <div className='space-y-3'>
             <p className='text-gray-600 dark:text-gray-400 text-sm'>
-              {INSTAGRAM_PREREQUISITE_MESSAGE}
-            </p>
-            <p className='text-xs' style={{ color: 'var(--tg-theme-hint-color)' }}>
-              {getInstagramDeviceHint(resolveDeviceProfile(platform))}
+              Подключите Instagram, если у вас есть аккаунт Business или Creator.
             </p>
 
+            {/* Кнопка входа (существующий аккаунт) */}
             <button
               onClick={handleConnectInstagram}
               className='w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all'
             >
-              Запустить Instagram
-            </button>
-            <button
-              type='button'
-              onClick={() => void startInstagramOAuth()}
-              className='w-full py-3 rounded-lg font-medium'
-              style={{
-                background: 'var(--tg-theme-button-color)',
-                color: 'var(--tg-theme-button-text-color)',
-              }}
-            >
-              Подключить аккаунт
+              🔑 Войти в существующий
             </button>
 
             <div className='text-center text-xs text-gray-500 mt-2'>
@@ -335,10 +307,6 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      <InstagramPrerequisiteDialog
-        open={showInstagramPrompt}
-        onClose={() => setShowInstagramPrompt(false)}
-      />
     </div>
   );
 };
