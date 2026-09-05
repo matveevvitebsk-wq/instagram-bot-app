@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 import { notifyInstagramConnection } from '../utils/instagramConnection';
+import InstagramPrerequisiteDialog from '../components/InstagramPrerequisiteDialog';
+import { INSTAGRAM_PREREQUISITE_MESSAGE } from '../utils/instagramApp';
 
 interface InstagramAccount {
   id: string;
@@ -23,6 +25,7 @@ const Settings: React.FC = () => {
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showInstagramPrompt, setShowInstagramPrompt] = useState(false);
 
   const fetchAccountStatus = useCallback(async () => {
     if (!user?.id) {
@@ -98,7 +101,7 @@ const Settings: React.FC = () => {
   //   }
   // };
 
-  const handleConnectInstagram = async () => {
+  const startInstagramOAuth = async () => {
     try {
       const telegramId = user?.id;
 
@@ -118,6 +121,10 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error('Instagram OAuth error: ', error);
     }
+  };
+
+  const handleConnectInstagram = () => {
+    setShowInstagramPrompt(true);
   };
 
   const disconnectInstagram = async () => {
@@ -267,7 +274,7 @@ const Settings: React.FC = () => {
         ) : (
           <div className='space-y-3'>
             <p className='text-gray-600 dark:text-gray-400 text-sm'>
-              Подключите Instagram, если у вас есть аккаунт Business или Creator.
+              {INSTAGRAM_PREREQUISITE_MESSAGE}
             </p>
 
             {/* Кнопка входа (существующий аккаунт) */}
@@ -306,6 +313,15 @@ const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <InstagramPrerequisiteDialog
+        open={showInstagramPrompt}
+        onClose={() => setShowInstagramPrompt(false)}
+        onReady={() => {
+          setShowInstagramPrompt(false);
+          void startInstagramOAuth();
+        }}
+      />
     </div>
   );
 };

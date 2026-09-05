@@ -1,11 +1,13 @@
 # MediaHave — Telegram Mini App для Instagram
 
 > 2026-09-01 cursor document Instagram auto-reply wizard and profile preview
+>
+> 2026-09-05 cursor require Instagram app login and business account before OAuth
 
 MediaHave — Telegram Mini App для подключения профессионального Instagram-
 аккаунта и автоматизации задач, лидов и воронок.
 
-Актуальное состояние: 2026-09-01.
+Актуальное состояние: 2026-09-05.
 
 Подробная инструкция по сопровождению, серверу, Supabase и диагностике:
 [`SERVER_HANDOFF.md`](SERVER_HANDOFF.md).
@@ -22,6 +24,8 @@ MediaHave — Telegram Mini App для подключения профессио
 - аналитика Dashboard;
 - блокировка разделов до подключения Instagram;
 - автоматическое обновление интерфейса после OAuth;
+- перед подключением Instagram Mini App проверяет наличие приложения на
+  смартфоне, показывает требование бизнес-аккаунта и открывает Instagram;
 - четырёхшаговый мастер автоответов с сообщениями Direct, ответами на
   комментарии, напоминаниями и предпросмотром Instagram;
 - актуализация имени, логина и URL аватара подключённого Instagram-аккаунта;
@@ -396,6 +400,8 @@ https://www.instagram.com/oauth/authorize
 - [`docs/PROJECT_AUDIT_2026-07-29.md`](docs/PROJECT_AUDIT_2026-07-29.md) — аудит;
 - [`docs/instagram-auto-reply-wizard-2026-09-01.md`](docs/instagram-auto-reply-wizard-2026-09-01.md) —
   результаты разработки мастера автоответов и предпросмотра Instagram;
+- [`docs/instagram-app-prerequisite-2026-09-05.md`](docs/instagram-app-prerequisite-2026-09-05.md) —
+  проверка приложения Instagram и требование бизнес-аккаунта перед OAuth;
 - [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —
   структура JSON payload сценария автоответа;
 - [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —
