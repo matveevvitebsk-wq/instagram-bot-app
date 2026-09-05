@@ -5,6 +5,8 @@
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
 >
 > 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
+>
+> 2026-09-05 cursor store device and OS types on each user login
 
 The table is named `ig_accounts`, not `ig_accountts`.
 
@@ -39,7 +41,12 @@ In short:
 
 customer_profiles = Telegram/MediaHave user
 ig_accounts = Instagram account connected by that user
+user_login_devices = login counts by device kind and OS for that user
 A single customer profile can own multiple Instagram accounts. ig_accounts should be the canonical location for Instagram credentials and account details.
+
+`user_login_devices` stores `device_kind`, `os_type`, and `login_count` for
+each Telegram login. See
+[`user-login-devices.md`](user-login-devices.md).
 
 Before OAuth, the Mini App asks the user to open the Instagram app and log in
 with a Business or Creator account. See
@@ -86,7 +93,11 @@ ID в Telegram, имя пользователя, имя и фамилия, а т
 
 customer_profiles = пользователь Telegram/MediaHave
 ig_accounts = аккаунт в Instagram, подключенный этим пользователем
+user_login_devices = число входов этого пользователя по типу устройства и ОС
 Один профиль клиента может владеть несколькими аккаунтами в Instagram. ig_accounts должен быть каноническим хранилищем учетных данных и сведений об аккаунтах в Instagram.
+
+`user_login_devices` хранит `device_kind`, `os_type` и `login_count` при каждом
+входе через Telegram. См. [`user-login-devices.md`](user-login-devices.md).
 
 Перед OAuth Mini App просит открыть приложение Instagram и войти в
 бизнес-аккаунт. См.
