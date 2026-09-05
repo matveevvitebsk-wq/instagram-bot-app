@@ -145,3 +145,28 @@ CREATE POLICY "owner_tasks" ON automation_tasks
 -- ─── 6. Realtime для задач (уведомления в Mini App) ─────────────
 -- Включите в Supabase Dashboard: Database → Replication → automation_tasks
 -- ALTER TABLE automation_tasks REPLICA IDENTITY FULL;
+
+-- ─── 7. Входы пользователя по устройству и системе ──────────────
+-- 2026-09-05 cursor store device and OS types on each user login
+CREATE TABLE IF NOT EXISTS user_login_devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL REFERENCES customer_profiles(id) ON DELETE CASCADE,
+    telegram_id VARCHAR(100) NOT NULL,
+    device_kind VARCHAR(20) NOT NULL,
+    os_type VARCHAR(20) NOT NULL,
+    telegram_platform VARCHAR(40) NOT NULL DEFAULT 'unknown',
+    login_count INTEGER NOT NULL DEFAULT 1,
+    first_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT user_login_devices_device_kind_check
+        CHECK (device_kind IN ('phone', 'tablet', 'computer')),
+    CONSTRAINT user_login_devices_os_type_check
+        CHECK (os_type IN ('ios', 'android', 'windows', 'macos', 'linux', 'unknown')),
+    CONSTRAINT user_login_devices_owner_device_os_key
+        UNIQUE (owner_id, device_kind, os_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_login_devices_owner
+    ON user_login_devices (owner_id, last_login_at DESC);
+
+ALTER TABLE user_login_devices ENABLE ROW LEVEL SECURITY;
