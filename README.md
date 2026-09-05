@@ -301,8 +301,8 @@ username. `profile_picture_url` является URL Meta CDN: endpoint
 ```text
 Settings
   → GET /api/instagram/meta/url
-  → Telegram.WebApp.openLink(instagram.com/oauth/authorize)
-  → системный браузер или приложение Instagram
+  → Telegram.WebApp.openLink(api.almarathon.com/.../meta/start-page)
+  → Android intent / iOS Universal Link в приложение Instagram
   → GET /api/instagram/auth/callback
   → short-lived token
   → long-lived token
@@ -311,9 +311,9 @@ Settings
   → главная страница Mini App
 ```
 
-Не открывайте `instagram.com` через `window.location.assign` внутри Mini App.
-WebView Telegram не видит сессию приложения Instagram и получает
-`/accounts/login/?force_authentication` → `net::ERR_HTTP_RESPONSE_CODE_FAILURE`.
+Не открывайте `instagram.com/accounts/login` внутри Mini App или повторно в
+браузере: Instagram отвечает `HTTP 429` / `force_authentication`, даже если
+приложение Instagram уже запущено.
 
 Scopes:
 
@@ -398,8 +398,8 @@ https://www.instagram.com/oauth/authorize
 - часть используемых таблиц отсутствует в migration-файле;
 - отсутствуют автоматические тесты и CI;
 - OAuth browser нельзя гарантированно закрыть программно;
-- endpoint `/api/instagram/meta/start-page`, упомянутый в старой документации,
-  не реализован;
+- HTTP 429 на `instagram.com/accounts/login` снимается ожиданием 15–30 минут,
+  повторно открывать эту ссылку не нужно;
 - токены Instagram требуют автоматического refresh до `token_expires_at`;
 - rate limiter и cache работают в памяти одного backend-процесса.
 
@@ -414,7 +414,7 @@ https://www.instagram.com/oauth/authorize
 - [`docs/user-login-devices.md`](docs/user-login-devices.md) —
   таблица входов по типу оборудования и операционной системы;
 - [`docs/instagram-oauth-webview-2026-09-05.md`](docs/instagram-oauth-webview-2026-09-05.md) —
-  почему Instagram login падает в WebView Telegram;
+  почему Instagram login падает с 429 / force_authentication;
 - [`docs/automation-task-payload.md`](docs/automation-task-payload.md) —
   структура JSON payload сценария автоответа;
 - [`docs/fix-oauth-inside-telegram-2025-07-15.md`](docs/fix-oauth-inside-telegram-2025-07-15.md) —

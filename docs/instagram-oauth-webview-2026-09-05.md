@@ -1,40 +1,38 @@
 # Instagram OAuth в Telegram Mini App — 2026-09-05
 
-## Симптом
+## Симптомы
 
-Telegram показывает «Не удалось открыть веб-страницу» для URL вида:
+1. Telegram: «Не удалось открыть веб-страницу» /
+   `net::ERR_HTTP_RESPONSE_CODE_FAILURE`.
+2. Браузер: «Страница недоступна» / `HTTP ERROR 429` на
 
-`https://www.instagram.com/accounts/login/?force_authentication&platform_app_id=...&next=https://www.instagram.com/oauth/authorize/third_party/...`
-
-Причина в интерфейсе: `net::ERR_HTTP_RESPONSE_CODE_FAILURE`.
+`https://www.instagram.com/accounts/login/?force_authentication&platform_app_id=...&next=...oauth/authorize/third_party...`
 
 Приложение Instagram при этом может быть запущено, пользователь в нём
 авторизован.
 
 ## Почему так происходит
 
-1. Кнопка «Войти в существующий» вызывала `window.location.assign(authUrl)`.
-2. Mini App подменял свой документ на `instagram.com/oauth/authorize`.
-3. WebView Telegram не разделяет cookies и сессию с приложением Instagram.
-4. Instagram отвечает страницей `/accounts/login/?force_authentication`.
-5. Instagram / Meta часто отдают 4xx встроенному браузеру Telegram.
-6. Chromium в Telegram трактует это как `ERR_HTTP_RESPONSE_CODE_FAILURE`.
+WebView Telegram и обычный браузер не видят сессию приложения Instagram.
+Instagram тогда открывает веб-логин `/accounts/login/?force_authentication`.
+Эта страница часто отвечает 4xx, а после нескольких попыток — **429 Too Many
+Requests**. Повторное открытие той же ссылки только усиливает блокировку.
 
-То, что Instagram открыт на телефоне, не помогает: OAuth шёл внутри
-документа Mini App, а не в приложении Instagram.
-
-Отдельно `start_param=ig_auth` открывал несуществующий
-`/api/instagram/meta/start-page`. Это тоже даёт ошибку загрузки страницы.
+`force_authentication` добавляет сам Instagram, когда в текущем браузере нет
+логина. Это не параметр нашего authorize URL.
 
 ## Исправление
 
-- Settings открывает `auth_url` через `Telegram.WebApp.openLink` с
-  `try_browser: 'chrome'`, чтобы Android не грузил Instagram во in-app
-  browser.
-- Если Telegram WebApp недоступен, используется `window.open`.
-- `window.location.assign` для Instagram больше не вызывается.
-- `start_param=ig_auth` больше не ходит на нереализованный start-page.
+- Settings открывает `https://api.almarathon.com/api/instagram/meta/start-page`,
+  а не `instagram.com` внутри Mini App.
+- Start-page на Android уводит OAuth в `com.instagram.android` через intent.
+  На iOS — Universal Link `www.instagram.com/oauth/authorize`.
+- Кнопка «Войти в существующий» имеет паузу 45 секунд между нажатиями.
+- `start_param=ig_auth` сам OAuth не запускает: нужен signed `state` из Settings.
 
-Кнопка регистрации остаётся одной: «Войти в существующий». Диалог
-«Запустить Instagram» не возвращается. Таблица `user_login_devices` не
-меняется.
+Если пользователь уже получил 429: подождать 15–30 минут, не открывать ссылку
+логина повторно, затем нажать «Войти в существующий» ещё раз — вход должен
+пойти в приложении Instagram.
+
+Кнопка регистрации одна. Диалог «Запустить Instagram» не используется.
+Таблица `user_login_devices` не меняется.
