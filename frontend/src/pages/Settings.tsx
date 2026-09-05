@@ -5,7 +5,11 @@ import { useTelegram } from '../hooks/useTelegram';
 import api from '../utils/api';
 import { notifyInstagramConnection } from '../utils/instagramConnection';
 import InstagramPrerequisiteDialog from '../components/InstagramPrerequisiteDialog';
-import { INSTAGRAM_PREREQUISITE_MESSAGE } from '../utils/instagramApp';
+import {
+  INSTAGRAM_PREREQUISITE_MESSAGE,
+  getInstagramDeviceHint,
+  resolveDeviceProfile,
+} from '../utils/instagramApp';
 
 interface InstagramAccount {
   id: string;
@@ -21,7 +25,7 @@ interface InstagramAccount {
 }
 
 const Settings: React.FC = () => {
-  const { tg, user } = useTelegram();
+  const { tg, user, platform } = useTelegram();
   const navigate = useNavigate();
   const [account, setAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -275,6 +279,9 @@ const Settings: React.FC = () => {
           <div className='space-y-3'>
             <p className='text-gray-600 dark:text-gray-400 text-sm'>
               {INSTAGRAM_PREREQUISITE_MESSAGE}
+            </p>
+            <p className='text-xs' style={{ color: 'var(--tg-theme-hint-color)' }}>
+              {getInstagramDeviceHint(resolveDeviceProfile(platform))}
             </p>
 
             {/* Кнопка входа (существующий аккаунт) */}

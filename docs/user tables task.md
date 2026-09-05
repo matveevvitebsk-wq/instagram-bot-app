@@ -3,6 +3,8 @@
 > 2026-09-01 cursor clarify Instagram profile fields and avatar URL refresh
 >
 > 2026-09-05 cursor require Instagram app login and business account before OAuth
+>
+> 2026-09-05 cursor detect phone, tablet and computer OS before opening Instagram
 
 The table is named `ig_accounts`, not `ig_accountts`.
 
