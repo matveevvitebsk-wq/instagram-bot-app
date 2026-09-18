@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Архитектура Meta-токенов — MediaHave</title>
+  <style>
+    :root {
+      --bg: #f5f8fc;
+      --ink: #162030;
+      --muted: #5a687a;
+      --teal: #0e7480;
+      --soft: #ccecf0;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background:
+      radial-gradient(1200px 600px at 10% -10%, #d7eef1 0%, transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, #e8f0f8 0%, transparent 50%),
+      var(--bg);
+      color: var(--ink);
+      font-family: "DejaVu Sans", "Noto Sans", sans-serif; }
+    .deck { height: 100%; overflow: hidden; }
+    .slide {
+      display: none; height: 100%; padding: 48px 64px;
+      flex-direction: column; justify-content: center;
+      animation: fade .35s ease;
+    }
+    .slide.active { display: flex; }
+    .brand {
+      font-size: clamp(40px, 6vw, 72px); font-weight: 700;
+      color: var(--teal); margin: 0 0 12px; letter-spacing: -0.03em;
+    }
+    h1 { font-size: clamp(28px, 4vw, 44px); margin: 0 0 16px; max-width: 16ch; }
+    h2 { font-size: clamp(24px, 3vw, 36px); margin: 0 0 24px; color: var(--teal); }
+    .lead { font-size: 1.25rem; color: var(--muted); max-width: 42ch; }
+    .hint { margin-top: 40px; color: var(--muted); font-size: .95rem; }
+    ol, ul { font-size: 1.25rem; line-height: 1.7; max-width: 48ch; }
+    .image-slide { justify-content: flex-start; }
+    .image-slide img {
+      width: 100%; max-height: calc(100vh - 140px); object-fit: contain;
+      border-radius: 12px; box-shadow: 0 8px 32px rgba(22,32,48,.08);
+      background: white;
+    }
+    .progress {
+      position: fixed; left: 0; right: 0; bottom: 0; height: 4px; background: #d7e2ec;
+    }
+    .progress > i {
+      display: block; height: 100%; background: var(--teal); width: 0%; transition: width .25s ease;
+    }
+    .nav {
+      position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px;
+    }
+    .nav button {
+      border: 0; background: var(--teal); color: white; border-radius: 10px;
+      padding: 10px 14px; font: inherit; cursor: pointer;
+    }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @media (max-width: 720px) {
+      .slide { padding: 28px 20px; }
+      ol, ul { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+    
+        <section class="slide title-slide">
+          <p class="brand">MediaHave</p>
+          <h1>Архитектура Meta-токенов, n8n и MediaHave</h1>
+          <p class="lead">Русскоязычная визуальная презентация безопасного контура оркестрации</p>
+          <p class="hint">← → или пробел для навигации</p>
+        </section>
+        
+        <section class="slide">
+          <h2>Содержание</h2>
+          <ol>
+            <li>Текущее состояние и риски</li>
+            <li>Целевая архитектура с backend-брокером</li>
+            <li>Роли IGAA и EAAV</li>
+            <li>Обработка webhook</li>
+            <li>Безопасное хранение секретов</li>
+            <li>Жизненный цикл токенов</li>
+            <li>Этапы внедрения</li>
+          </ol>
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Текущее состояние</h2>
+          <img src="01-tekushchee-sostoyanie.png" alt="Текущее состояние" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Целевая архитектура</h2>
+          <img src="02-tselevaya-arkhitektura.png" alt="Целевая архитектура" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Роли IGAA и EAAV</h2>
+          <img src="03-roli-igaa-eaav.png" alt="Роли IGAA и EAAV" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Обработка webhook</h2>
+          <img src="04-obrabotka-webhook.png" alt="Обработка webhook" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Безопасное хранение</h2>
+          <img src="05-bezopasnoe-hranenie.png" alt="Безопасное хранение" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Жизненный цикл токенов</h2>
+          <img src="06-zhiznennyy-tsikl.png" alt="Жизненный цикл токенов" />
+        </section>
+        
+        <section class="slide image-slide">
+          <h2>Этапы внедрения</h2>
+          <img src="07-etapy-vnedreniya.png" alt="Этапы внедрения" />
+        </section>
+        
+        <section class="slide">
+          <h2>Ключевые принципы</h2>
+          <ul>
+            <li>n8n управляет сценарием, backend — токенами и Graph API</li>
+            <li>Токены не передаются в n8n и не хранятся в workflow</li>
+            <li>Webhook проверяется по X-Hub-Signature-256</li>
+            <li>IGAA → graph.instagram.com; EAAV → graph.facebook.com</li>
+            <li>Секреты — в Vault/KMS; в БД только метаданные</li>
+            <li>Ранее раскрытые токены необходимо ротировать</li>
+          </ul>
+        </section>
+        
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+  <div class="nav">
+    <button type="button" id="prev">Назад</button>
+    <button type="button" id="next">Далее</button>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let i = 0;
+    const bar = document.getElementById('bar');
+    function show(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+      bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    }
+    document.getElementById('prev').onclick = () => show(i - 1);
+    document.getElementById('next').onclick = () => show(i + 1);
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) show(i + 1);
+      if (['ArrowLeft', 'PageUp'].includes(e.key)) show(i - 1);
+      if (e.key === 'Home') show(0);
+      if (e.key === 'End') show(slides.length - 1);
+    });
+    show(0);
+  </script>
+</body>
+</html>
