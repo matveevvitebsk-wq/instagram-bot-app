@@ -1,0 +1,48 @@
+git config --global user.email "matveev.vitebsk@gmail.com"
+git config --global user.name "matveevvitebsk-wq"
+
+создадим отслеживание изменений в папке(каталог)
+git init
+
+показать срыть файлы file.exclude в настройках параметров
+
+U-ключ создаёт в удалённом репозитории ветку, соответствующую локальной и связывает их.
+U = Untracked не отслеживаемы. GIT не следит за изменениями файла
+
+добавляет все неотслеживаемые файлы в отслеживание в локальном репозитории
+git add .
+
+связать наш локальный репозиторий с репозиторием на GitHub
+git remote add origin https://github.com/matveevvitebsk-wq/instagram-bot-app.git
+git remote set-url origin mainhttps://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@github.com/matveevvitebsk-wq/instagram-bot-app.git
+q
+
+загрузить локальный репо на github
+git push origin main
+
+или
+git push -u origin main | В том случае, если ветка main (или branch_name)
+не является отслеживаемой веткой origin/main (или origin/branch_name), а вы хотите сделать её таковой.
+если вы устанавливаете связь между той веткой, в которой вы находитесь и
+веткой master на удалённом сервере. Команду требуется выполнить единожды,
+чтобы потом можно было отправлять/принимать изменения лишь
+выполняя git push из ветки без указания всяких алиасов для сервера и удалённых веток.
+Это сделано для удобства.
+Отслеживаемые ветки - это локальные ветки, которые напрямую связаны с удалённой веткой.
+Если, находясь на отслеживаемой ветке,
+вы наберёте git push, Git уже будет знать, на какой сервер и в какую ветку отправлять изменения.
+
+git status текущее состояние git репозитория
+git branch -m <branch name> переименование текущей ветки
+git push -u origin main
+
+git remote set-url --push origin https://github.com/Almavit/instagram-bot-app.git
+
+git checkout -b [name_branch] создать отдельную ветку
+в github нажать кнопку "Compare & pull request " напротив name_branch
+Написать коментарий в "Add a description"
+Нажать кнопку "Create pull request"
+
+git pull origin main
+
+git reset --hard origin/main

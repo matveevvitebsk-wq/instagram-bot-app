@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // 1. УДАЛИТЕ (или закомментируйте) эти две строки:
+    // "baseUrl": "./",
+    // "ignoreDeprecations": "6.0",
+
+    // 2. Если у вас используются абсолютные импорты,
+    // настройте современный маппинг через paths (без baseUrl):
+    // "paths": {
+    //   "*": ["./node_modules/*", "./src/*"]
+    // GOOGLE II: Правильная настройка путей для алиаса @/* без использования устаревшего baseUrl
+    "paths": {
+      "@/*": ["./src/*"]
+      // "paths": {
+      //   "@/*": ["src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

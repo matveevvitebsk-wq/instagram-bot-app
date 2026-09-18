@@ -1,0 +1,259 @@
+# В случае ошибки на сервере
+
+     error: Your local changes to the following files would be overwritten by merge:
+            .env.example
+            backend/app/api/auth.py
+            backend/app/api/meta_oauth.py
+            backend/app/core/config.py
+            docker-compose.yml
+            docs/git pul compile.txt
+            frontend/src/App.tsx
+            frontend/src/pages/Settings.tsx
+    Please commit your changes or stash them before you merge.
+    error: The following untracked working tree files would be overwritten by merge:
+            backend/app/services/__init__.py
+            backend/app/services/facebook_tokens.py
+            backend/migrations/20260801_add_facebook_token_fields.sql
+            docs/github instruction.md
+            docs/user tables task.md
+    Please move or remove them before you merge.
+    Aborting
+
+# Восстановление `git pull` на production-сервере
+
+Эта инструкция применяется, когда обновление production-копии
+`instagram-bot-app` блокируется локальными изменениями, untracked-файлами или
+ошибками прав доступа.
+
+Проблема была решена в три этапа:
+
+1. Исправлены права на каталог `n8n`.
+2. Локальные изменения сохранены в резервную копию и Git stash.
+3. Выполнен безопасный fast-forward pull, после которого восстановлен `.env`.
+
+## 1. Перейти в каталог приложения
+
+```bash
+cd /opt/instagram-bot/instagram-bot-app
+```
+
+`cd` меняет текущий каталог. Команду необходимо выполнить перед Git, Docker и
+npm-командами, чтобы они применялись именно к `instagram-bot-app`.
+
+Если проект находится в другом месте, замените путь на фактический.
+
+Не используйте `/home/almat/n8n-docker-caddy`: в этом каталоге нет backend и
+frontend приложения.
+
+## 2. Исправить владельца файлов
+
+```bash
+sudo chown -R "$(id -un):$(id -gn)" n8n
+```
+
+Параметры:
+
+- `sudo` запускает только эту операцию с правами администратора;
+- `chown` меняет владельца файлов;
+- `-R` обрабатывает все вложенные файлы и каталоги;
+- `$(id -un)` возвращает имя текущего пользователя, например `almat`;
+- `$(id -gn)` возвращает его основную группу;
+- `n8n` — каталог, для которого меняются права.
+
+Команда нужна при ошибках `Permission denied`, `cannot create directory` или
+`failed to remove`.
+
+Не применяйте рекурсивный `chown` ко всему `/opt`, всему серверу, каталогам баз
+данных или Docker volumes, которым специально назначен другой UID.
+
+Не запускайте `sudo git pull`: у root может отсутствовать GitHub SSH-ключ, а
+созданные файлы станут принадлежать root.
+
+## 3. Создать каталог резервной копии
+
+```bash
+mkdir -p /tmp/instagram-bot-prepull
+```
+
+- `mkdir` создаёт каталог;
+- `-p` не выдаёт ошибку, если он уже существует.
+
+Каталог `/tmp` может очищаться после перезагрузки. Для долговременного хранения
+используйте, например:
+
+```bash
+mkdir -p "$HOME/backups/instagram-bot-prepull"
+```
+
+## 4. Скопировать production `.env`
+
+```bash
+cp -a .env /tmp/instagram-bot-prepull/.env
+```
+
+- `cp` копирует файл;
+- `-a` сохраняет права, даты и другие атрибуты.
+
+`.env` обычно исключён через `.gitignore` и не попадает в обычный stash. Его
+следует сохранять перед `git pull`, сменой ветки, переустановкой или переносом
+проекта.
+
+Никогда не добавляйте production `.env` в Git.
+
+## 5. Сохранить патч tracked-файлов
+
+```bash
+git diff > /tmp/instagram-bot-prepull/tracked.patch
+```
+
+`git diff` выводит изменения tracked-файлов, а `>` записывает их в файл.
+
+Посмотреть патч:
+
+```bash
+less /tmp/instagram-bot-prepull/tracked.patch
+```
+
+При необходимости применить после проверки:
+
+```bash
+git apply /tmp/instagram-bot-prepull/tracked.patch
+```
+
+Не применяйте патч автоматически: часть изменений уже может находиться в новой
+версии `main`.
+
+Обычный `git diff` не сохраняет untracked-файлы. Их сохраняет stash с параметром
+`-u`.
+
+## 6. Сохранить список изменённых файлов
+
+```bash
+git status --short > /tmp/instagram-bot-prepull/status.txt
+```
+
+Обозначения в выводе:
+
+- `M` — изменённый tracked-файл;
+- `??` — новый untracked-файл;
+- `D` — удалённый файл;
+- `A` — добавленный файл.
+
+Посмотреть сохранённый список:
+
+```bash
+cat /tmp/instagram-bot-prepull/status.txt
+```
+
+## 7. Сохранить изменения в stash
+
+```bash
+git stash push -u -m "2026-08-03 complete server backup"
+```
+
+Параметры:
+
+- `git stash push` временно сохраняет изменения и очищает рабочую директорию;
+- `-u` включает untracked-файлы;
+- `-m` задаёт понятное описание stash.
+
+Ignored-файлы, например `.env`, `node_modules` и `dist`, не включаются. Поэтому
+`.env` сохраняется отдельно.
+
+Список stash:
+
+```bash
+git stash list
+```
+
+Просмотр содержимого:
+
+```bash
+git stash show --stat stash@{0}
+git stash show -p stash@{0}
+```
+
+Не выполняйте `git stash pop` автоматически. Старые файлы могут перезаписать
+новые версии, уже полученные из `main`.
+
+## 8. Проверить чистоту рабочей директории
+
+```bash
+git status --short
+```
+
+Перед pull вывод должен быть пустым. Если строки остались, остановитесь и
+определите, какие файлы всё ещё мешают обновлению.
+
+## 9. Безопасно получить обновления
+
+```bash
+git pull --ff-only origin main
+```
+
+Параметры:
+
+- `git pull` загружает и применяет изменения;
+- `--ff-only` разрешает только fast-forward без автоматического merge-коммита;
+- `origin` — имя GitHub remote;
+- `main` — обновляемая ветка.
+
+`--ff-only` полезен для deployment-сервера: при расхождении истории команда
+остановится, а не создаст случайный merge-коммит.
+
+Не используйте force/reset без выяснения причины расхождения.
+
+## 10. Восстановить production `.env`
+
+```bash
+cp -a /tmp/instagram-bot-prepull/.env .env
+```
+
+Проверить наличие непустого файла без показа секретов:
+
+```bash
+test -s .env && echo ".env существует и не пуст"
+```
+
+Не публикуйте содержимое `.env` и не выводите его в общедоступный терминал.
+
+## 11. Проверить текущий commit
+
+```bash
+git rev-parse --short HEAD
+```
+
+Команда выводит сокращённый SHA текущего коммита и подтверждает, что сервер
+действительно обновился.
+
+Дополнительная проверка:
+
+```bash
+git status --short --branch
+```
+
+Для чистой синхронизированной ветки ожидается вывод вида:
+
+```text
+## main...origin/main
+```
+
+## Когда применять всю процедуру
+
+Используйте её при ошибках:
+
+```text
+local changes would be overwritten
+untracked working tree files would be overwritten
+Permission denied
+```
+
+Если рабочая директория уже чистая, обычно достаточно:
+
+```bash
+git pull --ff-only origin main
+```
+
+Deployment-сервер не следует использовать для постоянного редактирования
+tracked-файлов. Production-настройки храните в `.env`, а изменения программы
+вносите через Git.
