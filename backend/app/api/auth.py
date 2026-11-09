@@ -82,7 +82,17 @@ async def auth_telegram(body: TelegramAuthRequest):
     )
     token = create_access_token({**user_data, "profile_id": profile["id"]})
 
+    safe_user = {
+        "id": profile["id"],
+        "telegram_id": profile["telegram_id"],
+        "first_name": profile.get("first_name"),
+        "last_name": profile.get("last_name"),
+        "username": profile.get("username"),
+        "photo_url": profile.get("photo_url"),
+        "language_code": profile.get("language_code"),
+    }
+
     return AuthResponse(
         access_token=token,
-        user=profile
+        user=safe_user
     )

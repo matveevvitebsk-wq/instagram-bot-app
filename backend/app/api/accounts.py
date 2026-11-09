@@ -183,17 +183,47 @@ async def link_account(
     current_user: dict = Depends(get_current_user)
 ):
     sb = get_supabase()
-    profile = sb.table("customer_profiles").select("id").eq(
-        "telegram_id", current_user["telegram_id"]
-    ).single().execute()
-    result = sb.table("ig_accounts").upsert({
-        "owner_id": profile.data["id"],
+    owner_id = _profile_id(sb, current_user)
+
+    account_data = {
+        "owner_id": owner_id,
         "page_id": body.page_id,
         "access_token": body.access_token,
         "username": body.username,
         "is_active": True,
-    }, on_conflict="page_id").execute()
-    return result.data[0]
+    }
+
+    existing = (
+        sb.table("ig_accounts")
+        .select("id,owner_id")
+        .eq("page_id", body.page_id)
+        .limit(1)
+        .execute()
+    )
+
+    if existing.data:
+        account = existing.data[0]
+        if str(account["owner_id"]) != str(owner_id):
+            raise HTTPException(
+                status_code=409,
+                detail="Этот Instagram-аккаунт уже подключён к другому пользователю",
+            )
+
+        result = (
+            sb.table("ig_accounts")
+            .update(account_data)
+            .eq("id", account["id"])
+            .eq("owner_id", owner_id)
+            .execute()
+        )
+    else:
+        result = sb.table("ig_accounts").insert(account_data).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Не удалось сохранить Instagram-аккаунт")
+
+    saved = result.data[0]
+    return {field: saved.get(field) for field in ACCOUNT_PUBLIC_FIELDS}
 
 @router.delete("/{account_id}")
 async def unlink_account(

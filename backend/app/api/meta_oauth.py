@@ -311,23 +311,43 @@ async def auth_callback(
         if not profile.data:
             raise HTTPException(status_code=404, detail="Telegram profile not found")
 
-        sb.table("ig_accounts").upsert(
-            {
-                "owner_id": profile.data["id"],
-                "page_id": instagram_id,
-                "graph_id": graph_id or None,
-                "username": instagram_username,
-                "display_name": instagram.get("name"),
-                "profile_picture_url": instagram.get("profile_picture_url"),
-                "followers_count": instagram.get("followers_count", 0),
-                "access_token": access_token,
-                "token_expires_at": (
-                    token_expires_at.isoformat() if token_expires_at else None
-                ),
-                "is_active": True,
-            },
-            on_conflict="page_id",
-        ).execute()
+        owner_id = profile.data["id"]
+        account_data = {
+            "owner_id": owner_id,
+            "page_id": instagram_id,
+            "graph_id": graph_id or None,
+            "username": instagram_username,
+            "display_name": instagram.get("name"),
+            "profile_picture_url": instagram.get("profile_picture_url"),
+            "followers_count": instagram.get("followers_count", 0),
+            "access_token": access_token,
+            "token_expires_at": (
+                token_expires_at.isoformat() if token_expires_at else None
+            ),
+            "is_active": True,
+        }
+
+        existing = (
+            sb.table("ig_accounts")
+            .select("id,owner_id")
+            .eq("page_id", instagram_id)
+            .limit(1)
+            .execute()
+        )
+
+        if existing.data:
+            account = existing.data[0]
+            if str(account["owner_id"]) != str(owner_id):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Этот Instagram-аккаунт уже подключён к другому пользователю",
+                )
+
+            sb.table("ig_accounts").update(account_data).eq(
+                "id", account["id"]
+            ).eq("owner_id", owner_id).execute()
+        else:
+            sb.table("ig_accounts").insert(account_data).execute()
         sb.table("customer_profiles").update(
             {
                 "instagram_page_id": instagram_id,

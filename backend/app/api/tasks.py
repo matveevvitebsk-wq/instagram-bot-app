@@ -130,6 +130,24 @@ async def create_task(
     sb = get_supabase()
     telegram_id = current_user["telegram_id"]
     profile_id = get_profile_id(sb, current_user)
+
+    # Проверяем, что Instagram-аккаунт принадлежит текущему пользователю
+    if body.ig_account_id:
+        account = (
+            sb.table("ig_accounts")
+            .select("id")
+            .eq("id", body.ig_account_id)
+            .eq("owner_id", profile_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if not account.data:
+            raise HTTPException(
+                status_code=403,
+                detail="Instagram-аккаунт не найден или не принадлежит пользователю"
+            )
+
     payload = normalize_task_payload(body.payload)
 
     # Создаём запись задачи в Supabase

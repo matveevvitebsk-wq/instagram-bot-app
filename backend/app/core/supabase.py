@@ -8,12 +8,12 @@ settings = get_settings()
 @lru_cache()
 def get_supabase() -> Client:
     """
-    Supabase клиент с service_role ключом — для операций бэкенда.
+    Supabase клиент с Secret API ключом — для операций бэкенда.
     Этот ключ обходит RLS политики (использовать только на сервере!).
     """
     return create_client(
         settings.SUPABASE_URL,
-        settings.SUPABASE_SERVICE_ROLE_KEY
+        settings.SUPABASE_SECRET_KEY
     )
 
 
