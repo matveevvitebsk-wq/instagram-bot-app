@@ -59,6 +59,23 @@ async def create_auto_reply(
     sb = get_supabase()
     profile_id = get_profile_id(sb, current_user)
 
+    # Проверяем принадлежность Instagram-аккаунта пользователю
+    if body.ig_account_id:
+        account = (
+            sb.table("ig_accounts")
+            .select("id")
+            .eq("id", body.ig_account_id)
+            .eq("owner_id", profile_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if not account.data:
+            raise HTTPException(
+                status_code=403,
+                detail="Instagram-аккаунт не найден или не принадлежит пользователю"
+            )
+
     result = (
         sb.table("automation_funnels")
         .insert(

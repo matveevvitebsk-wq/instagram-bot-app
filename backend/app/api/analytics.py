@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase
 
@@ -45,9 +45,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
 @router.get("/leads")
 async def get_leads(
     current_user: dict = Depends(get_current_user),
-    limit: int = 50,
-    offset: int = 0,
-    status_filter: str = None
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    status_filter: str = Query(None, max_length=50)
 ):
     """Список лидов (подписчиков/зрителей) с фильтрацией по статусу воронки."""
     sb = get_supabase()
@@ -55,7 +55,11 @@ async def get_leads(
         "telegram_id", current_user["telegram_id"]
     ).single().execute()
 
-    query = sb.table("users").select("*").eq("owner_id", profile.data["id"])
+    query = sb.table("users").select(
+        "id,instagram_id,username,full_name,is_follower,"
+        "lead_status,last_interaction_at,created_at",
+        count="exact"
+    ).eq("owner_id", profile.data["id"])
 
     if status_filter:
         query = query.eq("lead_status", status_filter)
@@ -64,4 +68,4 @@ async def get_leads(
         offset, offset + limit - 1
     ).execute()
 
-    return {"leads": result.data, "total": len(result.data)}
+    return {"leads": result.data, "total": result.count or 0}

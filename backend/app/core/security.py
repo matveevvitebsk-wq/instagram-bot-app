@@ -1,4 +1,5 @@
 import hmac
+import logging
 import hashlib
 import json
 import time
@@ -13,6 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer()
 
 
@@ -39,9 +41,18 @@ def verify_telegram_init_data(init_data: str) -> dict:
         if not hash_val:
             raise ValueError("hash отсутствует в initData")
 
-        # Проверяем срок давности (не старше 24 часов)
-        auth_date = int(parsed.get("auth_date", 0))
-        if time.time() - auth_date > 86400:
+        # Проверяем срок действия initData
+        auth_date_raw = parsed.get("auth_date")
+        if not auth_date_raw:
+            raise ValueError("auth_date отсутствует")
+
+        auth_date = int(auth_date_raw)
+        current_time = time.time()
+
+        if auth_date > current_time + 60:
+            raise ValueError("auth_date находится в будущем")
+
+        if current_time - auth_date > 86400:
             raise ValueError("initData устарел (>24ч)")
 
         # Формируем строку для проверки (ключи в алфавитном порядке)
@@ -84,6 +95,7 @@ def create_access_token(user_data: dict) -> str:
     payload = {
         "sub": str(user_data["id"]),
         "telegram_id": str(user_data["id"]),
+        "profile_id": str(user_data["profile_id"]),
         "first_name": user_data.get("first_name", ""),
         "username": user_data.get("username", ""),
         "exp": datetime.now(timezone.utc) + timedelta(
@@ -117,13 +129,14 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ) -> dict:
     token = credentials.credentials
-    print(f"🔑 Received token: {token[:20]}...")
     try:
         payload = decode_access_token(token)
-        print(f"✅ Decoded user: {payload}")
         return payload
-    except Exception as e:
-        print(f"❌ Token error: {e}")
+    except HTTPException:
+        logger.warning("JWT authentication failed")
+        raise
+    except Exception:
+        logger.exception("Unexpected JWT authentication error")
         raise
 
 

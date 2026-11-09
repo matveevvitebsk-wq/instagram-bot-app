@@ -17,7 +17,7 @@ async def track_event(
 ):
     supabase = get_supabase()
     supabase.table("events").insert({
-        "user_id": current_user.get("profile_id") or current_user.get("id"),
+        "user_id": current_user["profile_id"],
         "telegram_id": current_user["telegram_id"],
         "event_name": event.event_name,
         "properties": event.properties
