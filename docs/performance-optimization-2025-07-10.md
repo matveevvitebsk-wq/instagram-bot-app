@@ -57,7 +57,7 @@ return () => {
 
 ```
 VITE_SUPABASE_URL=https://belqsqksiibgqbgzohvo.supabase.co
-VITE_SUPABASE_ANON_KEY=***
+VITE_SUPABASE_ANON_KEY=CHANGE_ME
 ```
 
 Переменные окружения для Supabase клиента на фронтенде.
