@@ -64,7 +64,6 @@ export default function Dashboard() {
 
   return (
     <div className='p-4 space-y-4'>
-      {/* Шапка */}
       <div className='flex items-center justify-between gap-3 pt-2'>
         <div className='flex items-center gap-3 min-w-0'>
           {user?.photo_url ? (
@@ -112,24 +111,29 @@ export default function Dashboard() {
         </span>
       </div>
 
-      {/* Баннер подключения Instagram */}
       {!igLoading && !connected && (
         <Link
           to='/settings'
           onClick={() => track('connect_banner_clicked')}
           className='block rounded-2xl p-4 active:opacity-80 transition-opacity'
-          style={{ background: 'rgba(255,149,0,0.12)', border: '1px solid rgba(255,149,0,0.3)' }}
+          style={{
+            background: 'rgba(255,149,0,0.12)',
+            border: '1px solid rgba(255,149,0,0.3)',
+          }}
         >
           <p className='text-sm font-medium' style={{ color: '#ff9500' }}>
-            ⚠️ Подключите Instagram
+            Подключите Instagram
           </p>
-          <p className='text-xs mt-1' style={{ color: 'var(--tg-theme-hint-color)' }}>
-            Чтобы пользоваться задачами, авто-ответами в DM и лидами — привяжите бизнес-аккаунт в Настройках
+          <p
+            className='text-xs mt-1'
+            style={{ color: 'var(--tg-theme-hint-color)' }}
+          >
+            Чтобы пользоваться задачами, авто-ответами в DM и лидами — привяжите
+            бизнес-аккаунт в Настройках
           </p>
         </Link>
       )}
 
-      {/* Карточки статистики */}
       <p
         className='text-xs font-semibold uppercase tracking-wide'
         style={{ color: 'var(--tg-theme-hint-color)' }}
@@ -138,9 +142,9 @@ export default function Dashboard() {
       </p>
       {loading ? (
         <div className='grid grid-cols-2 gap-3'>
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4].map((item) => (
             <div
-              key={i}
+              key={item}
               className='rounded-2xl h-24 animate-pulse'
               style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
             />
@@ -172,7 +176,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Инсайты */}
       {data?.weekly_snapshots?.[0]?.ai_insights && (
         <div
           className='rounded-2xl p-4'
@@ -182,7 +185,7 @@ export default function Dashboard() {
             className='text-xs font-medium mb-1'
             style={{ color: 'var(--tg-theme-hint-color)' }}
           >
-            🤖 AI Инсайт
+            AI Инсайт
           </p>
           <p
             className='text-sm'
@@ -193,7 +196,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Быстрые действия */}
       <p
         className='text-xs font-semibold uppercase tracking-wide pt-1'
         style={{ color: 'var(--tg-theme-hint-color)' }}
@@ -201,10 +203,34 @@ export default function Dashboard() {
         Действия
       </p>
       <div className='grid grid-cols-2 gap-3'>
-        <QuickAction to='/tasks' emoji='⚡' label='Новая задача' locked={!connected} onLockedClick={handleLockedClick} />
-        <QuickAction to='/auto-reply-dm' emoji='💬' label='Авто-ответ в DM' locked={!connected} onLockedClick={handleLockedClick} />
-        <QuickAction to='/leads' emoji='👥' label='База лидов' locked={!connected} onLockedClick={handleLockedClick} />
-        <QuickAction to='/settings' emoji='⚙️' label='Аккаунты' locked={false} onLockedClick={handleLockedClick} />
+        <QuickAction
+          to='/tasks'
+          emoji='⚡'
+          label='Новая задача'
+          locked={!connected}
+          onLockedClick={handleLockedClick}
+        />
+        <QuickAction
+          to='/auto-reply-dm'
+          emoji='💬'
+          label='Авто-ответ в DM'
+          locked={!connected}
+          onLockedClick={handleLockedClick}
+        />
+        <QuickAction
+          to='/leads'
+          emoji='👥'
+          label='База лидов'
+          locked={!connected}
+          onLockedClick={handleLockedClick}
+        />
+        <QuickAction
+          to='/settings'
+          emoji='⚙️'
+          label='Аккаунты'
+          locked={false}
+          onLockedClick={handleLockedClick}
+        />
       </div>
     </div>
   );
@@ -283,7 +309,9 @@ function QuickAction({
         >
           {emoji}
         </span>
-        <span className='text-sm font-semibold leading-tight flex-1'>{label}</span>
+        <span className='text-sm font-semibold leading-tight flex-1'>
+          {label}
+        </span>
         <span className='absolute top-2 right-2 text-xs'>🔒</span>
       </button>
     );
@@ -304,7 +332,9 @@ function QuickAction({
       >
         {emoji}
       </span>
-      <span className='text-sm font-semibold leading-tight flex-1'>{label}</span>
+      <span className='text-sm font-semibold leading-tight flex-1'>
+        {label}
+      </span>
       <span className='text-base opacity-75' aria-hidden='true'>
         ›
       </span>
